@@ -1,7 +1,7 @@
 import { Check, Leaf, Recycle, Sparkles } from 'lucide-react'
 
 const HERO_IMAGE_SRC = `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encodeURIComponent(
-  'modern minimalist illustration, recycling and sustainability theme, friendly people sorting waste into color bins, clean vector-like flat design, soft gradients, indigo and emerald accents, white background, high quality, crisp shapes'
+  'modern minimalist illustration, recycling and sustainability theme, friendly people sorting waste into color bins, clean vector-like flat design, soft gradients, indigo and emerald accents, white background, high quality, crisp shapes',
 )}&image_size=landscape_16_9`
 
 export default function LoginVisual({ appName = 'CrowdRecycle' }) {

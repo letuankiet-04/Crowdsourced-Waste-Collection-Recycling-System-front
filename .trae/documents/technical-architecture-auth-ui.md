@@ -32,7 +32,6 @@ type SignUpPayload = {
   username: string
   email: string
   password: string
-  phone: string
   otp: string
 }
 

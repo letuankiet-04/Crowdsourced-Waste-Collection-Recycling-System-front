@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, Loader2, Recycle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 function validateEmail(email) {
   const trimmed = email.trim()
@@ -38,6 +39,7 @@ function Banner({ tone, children }) {
 }
 
 export default function LoginCard({ onSuccess }) {
+  const navigate = useNavigate()
   const emailRef = useRef(null)
   const passwordRef = useRef(null)
 
@@ -236,7 +238,7 @@ export default function LoginCard({ onSuccess }) {
           <button
             type="button"
             className="font-medium text-indigo-700 underline-offset-4 hover:underline"
-            onClick={() => setFormInfo('Sign up is not wired yet.')}
+            onClick={() => navigate('/auth/signup')}
             disabled={submitting}
           >
             Sign up

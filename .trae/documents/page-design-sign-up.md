@@ -11,7 +11,7 @@
   - Right column: photo/visual panel with dark green overlay, trust badge, brand + quote block.
 - Recommended CSS approach:
   - Outer: `grid grid-cols-1 lg:grid-cols-2 gap-6`.
-  - Form: stacked layout (`grid gap-4`) with one 2-column row for Password/Confirm, and one 2-column row for Phone/OTP.
+- Form: stacked layout (`grid gap-4`) with one 2-column row for Password/Confirm, and one 2-column row for Email/OTP.
 - Responsive behavior:
   - ≥1024px (lg): show both columns.
   - <1024px: collapse to single column; hide the right visual panel (or render it below as a collapsed section); keep form at `max-w-md` centered.
@@ -52,8 +52,7 @@
 - Form fields
   - Username (full width)
   - Password + Confirm Password (2 columns on desktop, stacked on mobile)
-  - Email Address (full width)
-  - Phone Number + OTP (2 columns on desktop, stacked on mobile)
+  - Email Address + OTP (2 columns on desktop, stacked on mobile)
 - Primary CTA
   - Button: “Sign Up” full width.
   - Loading state: spinner + “Signing up…” (optional), disable all inputs.
@@ -80,12 +79,11 @@
 
 ## Accessibility
 - Use `<label htmlFor>` for every field.
-- Ensure tab order matches visual order (Username → Password → Confirm → Email → Phone → OTP → Sign Up → Log in link).
+- Ensure tab order matches visual order (Username → Password → Confirm → Email → OTP → Sign Up → Log in link).
 - Associate errors with inputs via `aria-describedby` and `aria-invalid`.
 - Provide `autoComplete` attributes:
   - username: `username`
   - email: `email`
   - password: `new-password`
   - confirm: `new-password` (or omit autocomplete)
-  - phone: `tel`
   - otp: `one-time-code` (where supported)
