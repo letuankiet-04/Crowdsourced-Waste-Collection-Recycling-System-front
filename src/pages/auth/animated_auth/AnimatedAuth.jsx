@@ -1,5 +1,6 @@
 import { Leaf, Recycle } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Login } from '../../../api/fakeApi/authApi.js'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import foliageBackground from '../../../assets/foliage-bg.svg'
 import LoginForm from '../LoginForm.jsx'
@@ -100,9 +101,36 @@ export default function AnimatedAuth() {
   function goSignup() {
     if (mode !== 'signup') navigate('/auth/signup')
   }
+  async function handleLogin({ email, password }) {
+    setPending(true)
+    try {
+      const res = await Login(email, password)
 
-  function handleLogin() {
-    simulate('login')
+      localStorage.setItem('token', res.token)
+      const userToStore = {
+        ...res.user,
+        role: typeof res.user?.role === 'string' ? res.user.role.toLowerCase() : res.user?.role,
+      }
+      localStorage.setItem('user', JSON.stringify(userToStore))
+
+      switch (res.user.role) {
+        case 'Citizen':
+          navigate('/citizen/dashboard')
+          break
+        case 'Enterprise':
+          navigate('/enterprise/dashboard')
+          break
+        case 'Collector':
+          navigate('/collector/dashboard')
+          break
+        case 'Admin':
+          navigate('/admin/dashboard')
+          break
+      }
+    }
+    finally {
+      setPending(false)
+    }
   }
 
   function handleSignup() {

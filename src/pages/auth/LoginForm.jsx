@@ -72,11 +72,9 @@ export default function LoginForm({ mode, pending, onLogin}) {
       setError('Email and password are required.')
       return
     }
-    if (email.toLowerCase() !== 'demo@demo.com' || password !== 'password') {
-      setError('Invalid email or password.')
-      return
-    }
-    onLogin()
+    onLogin({email, password}).catch((err) => {
+      setError(err.message || 'Login failed. Please try again.')
+    })
   }
 
   return (
