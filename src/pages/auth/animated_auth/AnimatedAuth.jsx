@@ -34,14 +34,14 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
             </div>
             <div className="text-3xl font-semibold tracking-tight">Welcome back</div>
             <div className="mt-3 text-sm text-white/80">
-              Sign in to keep tracking collections, pickups, and rewards.
+              Login to keep tracking collections, pickups, and rewards.
             </div>
             <button
               type="button"
               className="mt-8 inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 focus:ring-2 focus:ring-white/30"
               onClick={onGoLogin}
             >
-              Sign in
+              Login
             </button>
           </div>
         </div>
@@ -146,12 +146,12 @@ export default function AnimatedAuth() {
                     <div className="mb-8 flex items-center justify-between gap-4">
                       <div>
                         <div className="text-2xl font-semibold tracking-tight text-slate-900">
-                          {mode === 'signup' ? 'Create account' : 'Sign in'}
+                          {mode === 'signup' ? 'Create account' : 'Login'}
                         </div>
                         <div className="mt-1 text-sm text-slate-600">
                           {mode === 'signup'
                             ? 'Create an account to start contributing.'
-                            : 'Sign in to access your account.'}
+                            : 'Login to access your account.'}
                         </div>
                       </div>
                       <div
@@ -181,7 +181,7 @@ export default function AnimatedAuth() {
                             : 'text-slate-700 hover:bg-slate-50'
                         )}
                       >
-                        Sign in
+                        Login
                       </button>
                       <button
                         type="button"

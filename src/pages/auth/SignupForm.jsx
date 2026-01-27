@@ -51,7 +51,7 @@ function PrimaryButton({ children, disabled, pending, className, ...props }) {
   )
 }
 
-export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin }) {
+export default function SignupForm({ mode, pending, onSignup }) {
   const [values, setValues] = useState({ name: '', email: '', password: '' })
   const isActive = mode === 'signup'
 
@@ -107,18 +107,6 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
       >
         Create account
       </PrimaryButton>
-      <div className="text-center text-sm text-slate-600">
-        Already have an account?{' '}
-        <button
-          type="button"
-          onClick={onSwitchToLogin}
-          className="font-semibold text-emerald-700 underline-offset-4 hover:underline"
-          disabled={pending}
-        >
-          Sign in
-        </button>
-      </div>
     </form>
   )
 }
-

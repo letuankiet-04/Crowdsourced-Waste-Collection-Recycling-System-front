@@ -33,7 +33,7 @@ function PrimaryButton({ children, disabled, pending, className, ...props }) {
   return (
     <button
       className={cn(
-        'inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60',
         className
       )}
       disabled={disabled || pending}
@@ -51,7 +51,7 @@ function PrimaryButton({ children, disabled, pending, className, ...props }) {
   )
 }
 
-export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) {
+export default function LoginForm({ mode, pending, onLogin}) {
   const [values, setValues] = useState({ email: '', password: '', remember: false })
   const [error, setError] = useState('')
   const isActive = mode === 'login'
@@ -121,20 +121,8 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
         </div>
       ) : null}
       <PrimaryButton type="submit" pending={pending}>
-        Sign in
+        Login
       </PrimaryButton>
-      <div className="text-center text-sm text-slate-600">
-        Don&apos;t have an account?{' '}
-        <button
-          type="button"
-          onClick={onSwitchToSignup}
-          className="font-semibold text-indigo-700 underline-offset-4 hover:underline"
-          disabled={pending}
-        >
-          Sign up
-        </button>
-      </div>
     </form>
   )
 }
-
