@@ -39,10 +39,10 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
             </div>
             <button
               type="button"
-              className="mt-8 inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 focus:ring-2 focus:ring-white/30"
+              className="relative mt-8 inline-flex items-center justify-center overflow-hidden rounded-xl px-5 py-2 text-lg font-semibold text-white shadow-[0_12px_24px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/25 backdrop-blur transition-all duration-200 before:absolute before:inset-0 before:content-[''] before:bg-gradient-to-b before:from-white/25 before:to-white/0 before:opacity-40 hover:-translate-y-0.5 hover:bg-white/10 hover:ring-white/35 hover:shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)] focus:outline-none focus:ring-2 focus:ring-white/35 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-0"
               onClick={onGoLogin}
             >
-              Login
+              <span className="relative z-10">Login</span>
             </button>
           </div>
         </div>
@@ -60,10 +60,10 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
             </div>
             <button
               type="button"
-              className="mt-8 inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15 focus:ring-2 focus:ring-white/30"
+              className="relative mt-8 inline-flex items-center justify-center overflow-hidden rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/25 backdrop-blur transition-all duration-200 before:absolute before:inset-0 before:content-[''] before:bg-gradient-to-b before:from-white/25 before:to-white/0 before:opacity-40 hover:-translate-y-0.5 hover:bg-white/10 hover:ring-white/35 hover:shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)] focus:outline-none focus:ring-2 focus:ring-white/35 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-0"
               onClick={onGoSignup}
             >
-              Sign up
+              <span className="relative z-10">Sign up</span>
             </button>
           </div>
         </div>
@@ -202,11 +202,12 @@ export default function AnimatedAuth() {
                       <button
                         type="button"
                         onClick={goLogin}
+                        disabled={pending}
                         className={cn(
-                          'flex-1 rounded-xl px-3 py-2 font-semibold transition',
+                          'flex-1 rounded-xl px-3 py-2 font-semibold transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60',
                           mode === 'login'
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'text-slate-700 hover:bg-slate-50'
+                            ? 'bg-indigo-600 text-white shadow-sm focus:ring-indigo-200'
+                            : 'text-slate-700 hover:bg-slate-50 focus:ring-slate-200'
                         )}
                       >
                         Login
@@ -214,11 +215,12 @@ export default function AnimatedAuth() {
                       <button
                         type="button"
                         onClick={goSignup}
+                        disabled={pending}
                         className={cn(
-                          'flex-1 rounded-xl px-3 py-2 font-semibold transition',
+                          'flex-1 rounded-xl px-3 py-2 font-semibold transition focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60',
                           mode === 'signup'
-                            ? 'bg-emerald-600 text-white shadow-sm'
-                            : 'text-slate-700 hover:bg-slate-50'
+                            ? 'bg-emerald-600 text-white shadow-sm focus:ring-emerald-200'
+                            : 'text-slate-700 hover:bg-slate-50 focus:ring-slate-200'
                         )}
                       >
                         Sign up

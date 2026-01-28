@@ -1,90 +1,83 @@
 import img01 from "../../assets/mission_01.jpg";
 import img02 from "../../assets/mission_02.jpg";
+import { Check } from "lucide-react";
+import Container from "../../components/ui/Container";
 
 export default function MissionSection() {
   return (
     <>
-     <section className="py-5 bg-white">
-      <div className="container">
-        <div className="row align-items-center">
+      <section className="bg-white py-16">
+        <Container>
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
 
           {/* LEFT CONTENT */}
-          <div className="col-lg-6 pe-lg-5">
-            <h2 className="fw-bold mb-4">Our Mission</h2>
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Our Mission
+              </h2>
 
-            <p className="text-muted mb-5" style={{ lineHeight: "1.8" }}>
+              <p className="mt-5 text-slate-600" style={{ lineHeight: "1.8" }}>
               We are driving environmental sustainability through deep community
               involvement and innovative waste management solutions. Our goal
               is to transform the way urban centers handle circular economy
               challenges.
             </p>
 
-            <div className="d-flex align-items-start mb-4">
-              <span className="badge bg-success rounded-circle p-3 me-3">
-                ✓
-              </span>
-              <div>
-                <h6 className="fw-semibold mb-1">
+              <div className="mt-8 grid gap-6">
+                <div className="flex items-start gap-4">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <Check className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
                   Environmental Sustainability
-                </h6>
-                <p className="text-muted mb-0">
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
                   Promoting a circular economy by reducing landfill waste and
                   increasing recycling rates.
                 </p>
-              </div>
-            </div>
+                  </div>
+                </div>
 
-            <div className="d-flex align-items-start">
-              <span className="badge bg-success rounded-circle p-3 me-3">
-                ✓
-              </span>
-              <div>
-                <h6 className="fw-semibold mb-1">
+                <div className="flex items-start gap-4">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <Check className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
                   Community Empowerment
-                </h6>
-                <p className="text-muted mb-0">
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
                   Connecting residents with authorities for a transparent,
                   collaborative approach.
                 </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
           {/* RIGHT IMAGES */}
-          <div className="col-lg-6">
-            <div className="d-flex justify-content-center align-items-start gap-4">
+            <div className="flex justify-center gap-6">
 
               {/* BIG IMAGE */}
               <img
                 src={img01}
                 alt="Waste management"
-                className="rounded-4 shadow"
-                style={{
-                  width: "320px",
-                  height: "420px",
-                  objectFit: "cover",
-                }}
+                className="h-[420px] w-[320px] rounded-2xl object-cover shadow-lg shadow-slate-900/10"
               />
 
               {/* SMALL IMAGE */}
               <img
                 src={img02}
                 alt="Community"
-                className="rounded-4 shadow"
-                style={{
-                  width: "320px",
-                  height: "420px",
-                  objectFit: "cover",
-                  marginTop: "60px",
-                }}
+                className="mt-14 hidden h-[420px] w-[320px] rounded-2xl object-cover shadow-lg shadow-slate-900/10 sm:block"
               />
 
             </div>
-          </div>
 
-        </div>
-      </div>
-    </section>
+          </div>
+        </Container>
+      </section>
     </>
   );
 }

@@ -1,45 +1,48 @@
 import { Link } from "react-router-dom";
 import logo from "../../assets/app-logo.jpg";
+import Button from "../../components/ui/Button";
+import Container from "../../components/ui/Container";
 
 export default function HomeHeader() {
   return (
     <>
-       <nav className="navbar bg-dark border-bottom border-secondary">
-      <div className="container py-2">
+      <nav className="border-b border-slate-800 bg-slate-950">
+        <Container className="flex items-center justify-between py-3">
 
         {/* LOGO */}
         <Link
           to="/home"
-          className="navbar-brand d-flex align-items-center gap-2 text-light fw-semibold"
+          className="inline-flex items-center gap-2 font-semibold text-white"
         >
           <img
             src={logo}
             alt="Citizen Portal"
             width="32"
             height="32"
+            className="rounded"
           />
           Citizen Portal
         </Link>
 
         {/* MENU – LUÔN HIỆN */}
-        <div className="d-flex align-items-center gap-4">
-          <Link className="text-light text-decoration-none" to="/home">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link className="text-sm font-medium text-white/90 transition hover:text-white" to="/home">
             Home
           </Link>
-          <Link className="text-light text-decoration-none" to="/home#about">
+          <Link className="text-sm font-medium text-white/90 transition hover:text-white" to="/home#about">
             About
           </Link>
-          <Link className="text-light text-decoration-none" to="/home#contact">
+          <Link className="text-sm font-medium text-white/90 transition hover:text-white" to="/home#contact">
             Contact
           </Link>
 
-          <Link to="/auth/login" className="btn btn-success px-4">
+          <Button as={Link} to="/auth/login" className="px-5">
             Login
-          </Link>
+          </Button>
         </div>
 
-      </div>
-    </nav>
+        </Container>
+      </nav>
     </>
   );
 }

@@ -1,79 +1,62 @@
 import etp_img from "../../assets/enterprise.png";
+import Container from "../../components/ui/Container";
 
 export default function EnterpriseSection(){
 
     return(
 
         <>
-    <section className="py-5">
-  <div className="container">
-    <div
-      className="card border-0 shadow-sm rounded-4 p-4"
-      style={{ backgroundColor: "#f9fbf9" }}
-    >
-      <div className="row align-items-center g-5">
+          <section className="py-16">
+            <Container>
+              <div className="rounded-2xl bg-emerald-50/40 p-6 shadow-sm ring-1 ring-slate-200 sm:p-10">
+                <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+                  <div className="lg:col-span-5">
+                    <img
+                      src={etp_img}
+                      alt="Green building"
+                      className="w-full rounded-2xl shadow-lg shadow-slate-900/10"
+                    />
+                  </div>
 
-        {/* LEFT IMAGE */}
-        <div className="col-lg-5">
-          <img
-            src={etp_img}
-            alt="Green building"
-            className="img-fluid rounded-4 shadow-sm"
-          />
-        </div>
+                  <div className="lg:col-span-7">
+                    <p className="text-xs font-semibold tracking-[0.2em] text-emerald-600">
+                      THE ENTERPRISE
+                    </p>
 
-        {/* RIGHT CONTENT */}
-        <div className="col-lg-7">
-          <small
-            className="fw-semibold"
-            style={{
-              color: "#22c55e",
-              letterSpacing: "2px",
-            }}
-          >
-            THE ENTERPRISE
-          </small>
+                    <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                      Leading Urban Sustainability
+                    </h2>
 
-          <h2 className="fw-bold mt-3 mb-4">
-            Leading Urban Sustainability
-          </h2>
+                    <p className="mt-5 max-w-xl text-slate-600" style={{ lineHeight: "1.8" }}>
+                      The organization behind the Citizen Portal is a global leader
+                      in waste management and urban greening. Since 2010, we’ve
+                      pioneered technologies that integrate ESG goals into the
+                      fabric of city living.
+                    </p>
 
-          <p
-            className="text-muted mb-5"
-            style={{ lineHeight: "1.8", maxWidth: "520px" }}
-          >
-            The organization behind the Citizen Portal is a global leader
-            in waste management and urban greening. Since 2010, we’ve
-            pioneered technologies that integrate ESG goals into the
-            fabric of city living.
-          </p>
+                    <div className="mt-8 flex flex-wrap gap-10">
+                      <div>
+                        <div className="text-2xl font-bold text-slate-900">100+</div>
+                        <div className="mt-1 text-sm text-slate-600">Corporate Partners</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-slate-900">25</div>
+                        <div className="mt-1 text-sm text-slate-600">ESG Awards</div>
+                      </div>
+                    </div>
 
-          {/* STATS */}
-          <div className="d-flex gap-5 mb-4">
-            <div>
-              <h4 className="fw-bold mb-0">100+</h4>
-              <span className="text-muted">Corporate Partners</span>
-            </div>
-            <div>
-              <h4 className="fw-bold mb-0">25</h4>
-              <span className="text-muted">ESG Awards</span>
-            </div>
-          </div>
-
-          {/* LINK */}
-          <a
-            href="#"
-            className="fw-semibold text-dark text-decoration-none d-inline-flex align-items-center gap-2"
-          >
-            Read our 2023 ESG Report
-            <span style={{ fontSize: "1.2rem" }}>→</span>
-          </a>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</section>
+                    <a
+                      href="#"
+                      className="mt-8 inline-flex items-center gap-2 font-semibold text-slate-900 transition hover:text-emerald-700"
+                    >
+                      Read our 2023 ESG Report
+                      <span aria-hidden="true">→</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </Container>
+          </section>
 
         
         </>
