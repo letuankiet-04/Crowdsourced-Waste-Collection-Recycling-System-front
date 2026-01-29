@@ -1,29 +1,31 @@
 import { useState } from "react";
+import useImagePreviews from "../../../../hooks/useImagePreviews.js";
+import { Card } from "../../../../components/ui/Card.jsx";
+import PillSelect from "../../../../components/ui/PillSelect.jsx";
+import SelectedChips from "../../../../components/ui/SelectedChips.jsx";
+
+const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
 
 export default function CreateReportForm() {
-  const [images, setImages] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const { items: images, active, activeIndex, setActiveIndex, addFiles } = useImagePreviews({ max: 6 });
   const [types, setTypes] = useState([]);
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
   const [notes, setNotes] = useState("");
 
   const handleAddPhotos = (e) => {
-    const files = Array.from(e.target.files || []);
-    const previews = files.map((f) => ({
-      file: f,
-      url: URL.createObjectURL(f),
-    }));
-    setImages((prev) => [...prev, ...previews].slice(0, 6));
-    if (activeIndex === -1 && previews.length > 0) setActiveIndex(0);
+    addFiles(e.target.files);
+    e.target.value = "";
   };
 
-  const PILLS = ["Organic", "Recyclable", "Hazardous", "Other"];
+  const toggleType = (type) => {
+    setTypes((prev) => (prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type]));
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* LEFT COLUMN */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-lg">
+      <Card as="section" className="p-6">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Visual Evidence</h4>
           <span className="text-sm text-gray-500">
@@ -32,10 +34,10 @@ export default function CreateReportForm() {
         </div>
 
         <div className="aspect-[4/3] rounded-xl border border-gray-100 bg-gray-100/60 flex items-center justify-center text-gray-500 text-lg">
-          {images.length ? (
+          {active ? (
             <img
               alt="preview"
-              src={images[activeIndex]?.url}
+              src={active.url}
               className="h-full w-full object-cover rounded-xl"
             />
           ) : (
@@ -74,58 +76,15 @@ export default function CreateReportForm() {
           Photos help authorities identify the waste type and equipment needed
           for collection more quickly.
         </div>
-      </section>
+      </Card>
 
       {/* RIGHT COLUMN */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-lg">
+      <Card as="section" className="p-6">
         <h4 className="text-sm font-semibold text-gray-500 uppercase">What Type of Waste?</h4>
-        <div className="mt-3 grid grid-cols-4 gap-3">
-          {PILLS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              aria-pressed={types.includes(p)}
-              className={`rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 border transition ${
-                types.includes(p)
-                  ? "bg-green-50 text-green-700 border-green-200 ring-2 ring-green-200"
-                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-              }`}
-              onClick={() =>
-                setTypes((prev) =>
-                  prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-                )
-              }
-            >
-              <span className="inline-block">{p}</span>
-              {types.includes(p) && (
-                <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-green-100 text-green-700 text-xs">✓</span>
-              )}
-            </button>
-          ))}
+        <div className="mt-3">
+          <PillSelect options={WASTE_TYPES} selected={types} onToggle={toggleType} />
         </div>
-        {types.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {types.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center gap-2 rounded-full bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 text-sm"
-              >
-                {t}
-                <button
-                  type="button"
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/70 text-green-700 hover:bg-white"
-                  onClick={() =>
-                    setTypes((prev) => prev.filter((x) => x !== t))
-                  }
-                  aria-label={`Remove ${t}`}
-                  title={`Remove ${t}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        <SelectedChips items={types} onRemove={(t) => setTypes((prev) => prev.filter((x) => x !== t))} className="mt-4" />
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Location</h4>
@@ -177,7 +136,7 @@ export default function CreateReportForm() {
             Submit Report
           </button>
         </div>
-      </section>
+      </Card>
     </div>
   );
 }

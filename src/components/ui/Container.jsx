@@ -1,6 +1,4 @@
-function cn(...parts) {
-  return parts.filter(Boolean).join(" ")
-}
+import { cn } from '../../lib/cn.js'
 
 export default function Container({ className, children, ...props }) {
   return (
