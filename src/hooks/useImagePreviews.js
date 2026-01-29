@@ -7,6 +7,16 @@ export default function useImagePreviews({ max = 6 } = {}) {
 
   const active = useMemo(() => items[activeIndex] ?? null, [items, activeIndex])
 
+  const clear = useCallback(() => {
+    setItems((prev) => {
+      prev.forEach((item) => {
+        if (item?.url) URL.revokeObjectURL(item.url)
+      })
+      return []
+    })
+    setActiveIndex(0)
+  }, [])
+
   const addFiles = useCallback(
     (files) => {
       const next = Array.from(files || []).map((file) => ({ file, url: URL.createObjectURL(file) }))
@@ -15,6 +25,20 @@ export default function useImagePreviews({ max = 6 } = {}) {
         return merged
       })
       setActiveIndex((prev) => (prev < 0 && next.length > 0 ? 0 : prev))
+    },
+    [max]
+  )
+
+  const replaceFiles = useCallback(
+    (files) => {
+      const next = Array.from(files || []).map((file) => ({ file, url: URL.createObjectURL(file) })).slice(0, max)
+      setItems((prev) => {
+        prev.forEach((item) => {
+          if (item?.url) URL.revokeObjectURL(item.url)
+        })
+        return next
+      })
+      setActiveIndex(0)
     },
     [max]
   )
@@ -40,5 +64,5 @@ export default function useImagePreviews({ max = 6 } = {}) {
     }
   }, [])
 
-  return { items, active, activeIndex, setActiveIndex, addFiles, removeAt }
+  return { items, active, activeIndex, setActiveIndex, clear, addFiles, replaceFiles, removeAt }
 }

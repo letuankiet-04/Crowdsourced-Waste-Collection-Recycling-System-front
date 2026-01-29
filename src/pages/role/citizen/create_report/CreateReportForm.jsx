@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import useImagePreviews from "../../../../hooks/useImagePreviews.js";
 import MapPicker from "../../../../components/MapPicker.jsx";
 import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
 import { Card } from "../../../../components/ui/Card.jsx";
 import PillSelect from "../../../../components/ui/PillSelect.jsx";
 import SelectedChips from "../../../../components/ui/SelectedChips.jsx";
+import ImageUploader from "../../../../components/ui/ImageUploader.jsx";
 
 const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
 
 export default function CreateReportForm() {
-  const { items: images, active, activeIndex, setActiveIndex, addFiles, removeAt } = useImagePreviews({ max: 6 });
   const [types, setTypes] = useState([]);
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
@@ -48,80 +47,15 @@ export default function CreateReportForm() {
     return () => clearTimeout(t);
   }, [address]);
 
-  const handleAddPhotos = (e) => {
-    addFiles(e.target.files);
-    e.target.value = "";
-  };
-
   const toggleType = (type) => {
     setTypes((prev) => (prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type]));
-  };
-  const handleRemoveImage = (index) => {
-    removeAt(index);
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* LEFT COLUMN */}
       <Card as="section" className="p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold text-gray-500 uppercase">Visual Evidence</h4>
-          <span className="text-sm text-gray-500">
-            {images.length} images attached
-          </span>
-        </div>
-
-        <div className="aspect-[4/3] rounded-xl border border-gray-100 bg-gray-100/60 flex items-center justify-center text-gray-500 text-lg">
-          {active ? (
-            <img
-              alt="preview"
-              src={active.url}
-              className="h-full w-full object-cover rounded-xl"
-            />
-          ) : (
-            <>Main preview</>
-          )}
-        </div>
-
-        <div className="mt-4 grid grid-cols-4 gap-3">
-          {images.map((img, idx) => (
-            <div key={idx} className="relative group">
-              <button
-                type="button"
-                onClick={() => setActiveIndex(idx)}
-                className={`aspect-square rounded-xl border ${idx === activeIndex ? "border-green-500 ring-2 ring-green-200" : "border-gray-200"} overflow-hidden bg-white transition hover:scale-[1.02] active:scale-[0.98]`}
-              >
-                <img
-                  alt={`thumb-${idx}`}
-                  src={img.url}
-                  className="h-full w-full object-cover"
-                />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveImage(idx);
-                }}
-                className="absolute top-1.5 right-1.5 inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/90 text-gray-700 border border-gray-200 shadow-sm opacity-0 group-hover:opacity-100 transition hover:bg-red-50 hover:text-red-600"
-                aria-label="Remove image"
-                title="Remove image"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <label className="aspect-square rounded-xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleAddPhotos}
-            />
-            + Add Photo
-          </label>
-        </div>
+        <ImageUploader title="Visual Evidence" max={6} multiple addLabel="+ Add Photo" />
 
         <div className="mt-4 rounded-xl bg-green-50 text-green-800 border border-green-100 p-4 text-sm">
           Photos help authorities identify the waste type and equipment needed

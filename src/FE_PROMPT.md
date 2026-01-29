@@ -149,6 +149,11 @@ Build the user interface (UI) for a Waste Collection & Recycling Management Syst
 - Responsive (mobile-first)
 - Support real-time updates (WebSocket / SSE)
 - Image compression before upload
+- File upload validation:
+  - Only accept image files with extensions: .jpg, .png
+  - Maximum file size per file: 10MB
+  - Error messages: "Invalid file type", "File is too large" (prioritize file type validation first)
+  - Use a reusable ValidationError component to display validation feedback
 - GPS permission handling
 - Offline mode (optional)
 
