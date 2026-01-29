@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import MapPicker from "../../../../components/MapPicker.jsx";
 
 export default function CreateReportForm() {
   const [images, setImages] = useState([]);
@@ -7,6 +8,39 @@ export default function CreateReportForm() {
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
   const [notes, setNotes] = useState("");
+  const [coords, setCoords] = useState(null);
+  const [addrLoading, setAddrLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [geoError, setGeoError] = useState("");
+  const sourceRef = useRef(null);
+
+  useEffect(() => {
+    if (sourceRef.current !== "address") return;
+    if (!address || address.trim().length < 3) return;
+    setAddrLoading(true);
+    setGeoError("");
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(address)}`);
+        if (r.ok) {
+          const data = await r.json();
+          if (Array.isArray(data) && data.length) {
+            const first = data[0];
+            setCoords({ lat: parseFloat(first.lat), lng: parseFloat(first.lon) });
+          } else {
+            setGeoError("Address not found");
+          }
+        } else {
+          setGeoError("Address lookup failed");
+        }
+      } catch {
+        setGeoError("Network error during address lookup");
+      } finally {
+        setAddrLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [address]);
 
   const handleAddPhotos = (e) => {
     const files = Array.from(e.target.files || []);
@@ -16,6 +50,22 @@ export default function CreateReportForm() {
     }));
     setImages((prev) => [...prev, ...previews].slice(0, 6));
     if (activeIndex === -1 && previews.length > 0) setActiveIndex(0);
+  };
+
+  const handleRemoveImage = (index) => {
+    setImages((prev) => {
+      const next = [...prev];
+      const removed = next.splice(index, 1)[0];
+      if (removed?.url) URL.revokeObjectURL(removed.url);
+      const nextLen = next.length;
+      setActiveIndex((prevActive) => {
+        if (nextLen <= 0) return -1;
+        if (index < prevActive) return prevActive - 1;
+        if (index === prevActive) return Math.min(prevActive, nextLen - 1);
+        return prevActive;
+      });
+      return next;
+    });
   };
 
   const PILLS = ["Organic", "Recyclable", "Hazardous", "Other"];
@@ -45,18 +95,31 @@ export default function CreateReportForm() {
 
         <div className="mt-4 grid grid-cols-4 gap-3">
           {images.map((img, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setActiveIndex(idx)}
-              className={`aspect-square rounded-xl border ${idx === activeIndex ? "border-green-500 ring-2 ring-green-200" : "border-gray-200"} overflow-hidden bg-white`}
-            >
-              <img
-                alt={`thumb-${idx}`}
-                src={img.url}
-                className="h-full w-full object-cover"
-              />
-            </button>
+            <div key={idx} className="relative group">
+              <button
+                type="button"
+                onClick={() => setActiveIndex(idx)}
+                className={`aspect-square rounded-xl border ${idx === activeIndex ? "border-green-500 ring-2 ring-green-200" : "border-gray-200"} overflow-hidden bg-white transition hover:scale-[1.02] active:scale-[0.98]`}
+              >
+                <img
+                  alt={`thumb-${idx}`}
+                  src={img.url}
+                  className="h-full w-full object-cover"
+                />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveImage(idx);
+                }}
+                className="absolute top-1.5 right-1.5 inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/90 text-gray-700 border border-gray-200 shadow-sm opacity-0 group-hover:opacity-100 transition hover:bg-red-50 hover:text-red-600"
+                aria-label="Remove image"
+                title="Remove image"
+              >
+                ×
+              </button>
+            </div>
           ))}
           <label className="aspect-square rounded-xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition">
             <input
@@ -132,17 +195,72 @@ export default function CreateReportForm() {
           <div className="mt-2 flex items-center gap-2">
             <input
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                sourceRef.current = "address";
+                setAddress(e.target.value);
+              }}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200"
               placeholder="221B Baker St, London NW1 6XE, UK"
             />
-            <button type="button" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98]">
-              Get GPS
+            <button
+              type="button"
+              disabled={gpsLoading}
+              onClick={async () => {
+                setGeoError("");
+                setGpsLoading(true);
+                sourceRef.current = "gps";
+                try {
+                  const pos = await new Promise((resolve, reject) =>
+                    navigator.geolocation
+                      ? navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+                      : reject(new Error("Geolocation not supported"))
+                  );
+                  const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                  setCoords(next);
+                  const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${next.lat}&lon=${next.lng}`);
+                  if (r.ok) {
+                    const data = await r.json();
+                    sourceRef.current = "system";
+                    setAddress(data.display_name || "");
+                  }
+                } catch {
+                  setGeoError("Unable to get current location");
+                } finally {
+                  setGpsLoading(false);
+                }
+              }}
+              className={`inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border ${gpsLoading ? "border-gray-200 text-gray-400" : "border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98]"}`}
+            >
+              {gpsLoading ? "Locating..." : "Use current location"}
             </button>
           </div>
-          <div className="mt-3 aspect-[4/3] rounded-xl border border-gray-100 bg-gray-100/60 flex items-center justify-center">
-            <span className="text-gray-500">Map preview</span>
+          {addrLoading && <div className="mt-2 text-sm text-gray-500">Finding location...</div>}
+          {geoError && <div className="mt-2 text-sm text-red-600">{geoError}</div>}
+          <div className="mt-3">
+            <MapPicker
+              value={coords}
+              onChange={async (c) => {
+                setGeoError("");
+                sourceRef.current = "map";
+                setCoords(c);
+                try {
+                  const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${c.lat}&lon=${c.lng}`);
+                  if (r.ok) {
+                    const data = await r.json();
+                    sourceRef.current = "system";
+                    setAddress(data.display_name || "");
+                  }
+                } catch {
+                  setGeoError("Unable to resolve address for the selected location");
+                }
+              }}
+            />
           </div>
+          {coords && (
+            <div className="mt-2 text-sm text-gray-600">
+              Coordinates saved: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+            </div>
+          )}
         </div>
 
         <div className="mt-6">
