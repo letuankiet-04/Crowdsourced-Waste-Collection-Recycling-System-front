@@ -1,31 +1,32 @@
-import { Navigate } from "react-router-dom";
+import { Navigate } from 'react-router-dom'
+import { PATHS } from '../routes/paths.js'
 
-export default function ProtectedRoute({children, role}) {
-  const token = localStorage.getItem("token");
+export default function ProtectedRoute({ children, role }) {
+  const token = localStorage.getItem('token')
 
-  let user = null;
+  let user = null
   try {
-    const rawUser = localStorage.getItem("user");
-    user = rawUser ? JSON.parse(rawUser) : null;
+    const rawUser = localStorage.getItem('user')
+    user = rawUser ? JSON.parse(rawUser) : null
   } catch {
-    user = null;
+    user = null
   }
 
   if (!token || !user) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to={PATHS.auth.login} replace />
   }
 
   const userRole =
-    typeof user?.role === "string" ? user.role.toLowerCase() : "";
+    typeof user?.role === 'string' ? user.role.toLowerCase() : ''
   const allowedRoles = Array.isArray(role)
     ? role.map((r) => String(r).toLowerCase())
-    : typeof role === "string"
+    : typeof role === 'string'
       ? [role.toLowerCase()]
-      : null;
+      : null
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to={PATHS.unauthorized} replace />
   }
 
-  return children;
+  return children
 }

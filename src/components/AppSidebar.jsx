@@ -1,4 +1,5 @@
 import { cloneElement, isValidElement } from "react";
+import { cn } from "../lib/cn.js";
 import SidebarNavItem from "./sidebar/SidebarNavItem";
 
 export default function AppSidebar({
@@ -7,13 +8,28 @@ export default function AppSidebar({
   footer,
   asideClassName = "",
   navClassName = "",
+  collapsed = false,
+  mobileOpen,
 }) {
+  const mobileEnabled = typeof mobileOpen === "boolean";
+
   return (
     <aside
-      className={`fixed left-0 top-0 w-72 h-screen bg-white border-r border-gray-200 z-50 flex flex-col ${asideClassName}`}
+      className={cn(
+        "fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-50 flex flex-col transition-[width,transform] duration-300 ease-out",
+        collapsed ? "w-20" : "w-72",
+        mobileEnabled ? (mobileOpen ? "translate-x-0" : "-translate-x-full") : "",
+        mobileEnabled ? "lg:translate-x-0" : "",
+        asideClassName
+      )}
     >
       {brand ? (
-        <div className="h-20 flex items-center px-6 border-b border-gray-200 gap-3">
+        <div
+          className={cn(
+            "h-20 flex items-center border-b border-gray-200",
+            collapsed ? "px-4 justify-center" : "px-6 gap-3"
+          )}
+        >
           {brand.logoSrc ? (
             <img
               className={brand.logoClassName ?? "h-10 w-auto object-contain rounded-xl"}
@@ -21,7 +37,7 @@ export default function AppSidebar({
               alt={brand.logoAlt ?? brand.title ?? "App Logo"}
             />
           ) : null}
-          {brand.title ? (
+          {brand.title && !collapsed ? (
             <span className="text-2xl font-bold text-green-700 tracking-tight">
               {brand.title}
             </span>
@@ -29,7 +45,7 @@ export default function AppSidebar({
         </div>
       ) : null}
 
-      <nav className={`flex-1 py-8 px-4 space-y-2 overflow-y-auto ${navClassName}`}>
+      <nav className={cn("flex-1 py-8 space-y-2 overflow-y-auto", collapsed ? "px-3" : "px-4", navClassName)}>
         {(navItems ?? []).map((item, idx) => {
           if (isValidElement(item)) {
             return item.key == null ? cloneElement(item, { key: idx }) : item;
@@ -38,14 +54,18 @@ export default function AppSidebar({
           if (!item) return null;
 
           return (
-            <SidebarNavItem key={item.key ?? item.name ?? idx} to={item.to} end={item.end} icon={item.icon}>
+            <SidebarNavItem key={item.key ?? item.name ?? idx} to={item.to} end={item.end} icon={item.icon} collapsed={collapsed}>
               {item.name}
             </SidebarNavItem>
           );
         })}
       </nav>
 
-      {footer ? <div className="p-6 border-t border-gray-200 space-y-2">{footer}</div> : null}
+      {footer ? (
+        <div className={cn("border-t border-gray-200 space-y-2", collapsed ? "p-3" : "p-6")}>
+          {typeof footer === "function" ? footer({ collapsed }) : footer}
+        </div>
+      ) : null}
     </aside>
   );
 }
