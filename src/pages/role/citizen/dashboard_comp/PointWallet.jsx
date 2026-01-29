@@ -1,6 +1,8 @@
+import { Card } from "../../../../components/ui/Card.jsx";
+
 export default function PointWallet() {
   return (
-    <div className="relative overflow-hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-8 transition-all duration-300 hover:shadow-lg group">
+    <Card className="relative overflow-hidden p-8 group">
       {/* Wait API Overlay */}
       <div className="absolute inset-0 z-20 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center transition-opacity duration-500">
          <div className="bg-white/90 p-5 rounded-2xl shadow-xl border border-gray-100 flex flex-col items-center animate-fade-in-up">
@@ -37,6 +39,6 @@ export default function PointWallet() {
         </svg>
         <span className="relative">Point history</span>
       </button>
-    </div>
+    </Card>
   );
 }

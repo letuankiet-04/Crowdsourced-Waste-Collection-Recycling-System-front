@@ -3,14 +3,12 @@ import { useMemo, useState } from 'react'
 import { Login } from '../../../api/fakeApi/authApi.js'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import foliageBackground from '../../../assets/foliage-bg.svg'
-import LoginForm from '../LoginForm.jsx'
-import SignupForm from '../SignupForm.jsx'
+import LoginForm from '../components/LoginForm.jsx'
+import SignupForm from '../components/SignupForm.jsx'
+import { cn } from '../../../lib/cn.js'
+import { PATHS } from '../../../routes/paths.js'
 
 const APP_NAME = 'CrowdRecycle'
-
-function cn(...parts) {
-  return parts.filter(Boolean).join(' ')
-}
 
 function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
   return (
@@ -34,9 +32,7 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
               <Leaf className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="text-3xl font-semibold tracking-tight">Welcome back</div>
-            <div className="mt-3 text-sm text-white/80">
-              Login to keep tracking collections, pickups, and rewards.
-            </div>
+            <div className="mt-3 text-sm text-white/80">Login to keep tracking collections, pickups, and rewards.</div>
             <button
               type="button"
               className="relative mt-8 inline-flex items-center justify-center overflow-hidden rounded-xl px-5 py-2 text-lg font-semibold text-white shadow-[0_12px_24px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/25 backdrop-blur transition-all duration-200 before:absolute before:inset-0 before:content-[''] before:bg-gradient-to-b before:from-white/25 before:to-white/0 before:opacity-40 hover:-translate-y-0.5 hover:bg-white/10 hover:ring-white/35 hover:shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)] focus:outline-none focus:ring-2 focus:ring-white/35 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-0"
@@ -55,9 +51,7 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
               <Recycle className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="text-3xl font-semibold tracking-tight">Create your account</div>
-            <div className="mt-3 text-sm text-white/80">
-              Join the community and start contributing to cleaner cities.
-            </div>
+            <div className="mt-3 text-sm text-white/80">Join the community and start contributing to cleaner cities.</div>
             <button
               type="button"
               className="relative mt-8 inline-flex items-center justify-center overflow-hidden rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/25 backdrop-blur transition-all duration-200 before:absolute before:inset-0 before:content-[''] before:bg-gradient-to-b before:from-white/25 before:to-white/0 before:opacity-40 hover:-translate-y-0.5 hover:bg-white/10 hover:ring-white/35 hover:shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)] focus:outline-none focus:ring-2 focus:ring-white/35 focus:ring-offset-2 focus:ring-offset-transparent active:translate-y-0"
@@ -76,10 +70,8 @@ export default function AnimatedAuth() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const mode = location.pathname.includes('/auth/signup') ? 'signup' : 'login'
-
+  const mode = location.pathname.includes(PATHS.auth.signup) ? 'signup' : 'login'
   const [pending, setPending] = useState(false)
-
   const imageSrc = useMemo(() => foliageBackground, [])
 
   async function simulate(action) {
@@ -87,7 +79,7 @@ export default function AnimatedAuth() {
     try {
       await new Promise((r) => setTimeout(r, 900))
       if (action === 'signup') {
-        setTimeout(() => navigate('/auth/login'), 600)
+        setTimeout(() => navigate(PATHS.auth.login), 600)
       }
     } finally {
       setPending(false)
@@ -95,12 +87,13 @@ export default function AnimatedAuth() {
   }
 
   function goLogin() {
-    if (mode !== 'login') navigate('/auth/login')
+    if (mode !== 'login') navigate(PATHS.auth.login)
   }
 
   function goSignup() {
-    if (mode !== 'signup') navigate('/auth/signup')
+    if (mode !== 'signup') navigate(PATHS.auth.signup)
   }
+
   async function handleLogin({ email, password }) {
     setPending(true)
     try {
@@ -115,20 +108,19 @@ export default function AnimatedAuth() {
 
       switch (res.user.role) {
         case 'Citizen':
-          navigate('/citizen/dashboard')
+          navigate(PATHS.citizen.dashboard)
           break
         case 'Enterprise':
-          navigate('/enterprise/dashboard')
+          navigate(PATHS.enterprise.dashboard)
           break
         case 'Collector':
-          navigate('/collector/dashboard')
+          navigate(PATHS.collector.dashboard)
           break
         case 'Admin':
-          navigate('/admin/dashboard')
+          navigate(PATHS.admin.dashboard)
           break
       }
-    }
-    finally {
+    } finally {
       setPending(false)
     }
   }
@@ -139,11 +131,7 @@ export default function AnimatedAuth() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950">
-      <img
-        src={imageSrc}
-        alt=""
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25"
-      />
+      <img src={imageSrc} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/55 to-slate-950/85" />
 
       <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10">
@@ -157,11 +145,7 @@ export default function AnimatedAuth() {
 
           <div className="relative mx-auto w-full overflow-hidden rounded-3xl bg-white/90 shadow-2xl ring-1 ring-white/15 backdrop-blur">
             <div className="relative min-h-[680px] lg:min-h-[620px]">
-              <DesktopOverlay
-                mode={mode}
-                onGoLogin={goLogin}
-                onGoSignup={goSignup}
-              />
+              <DesktopOverlay mode={mode} onGoLogin={goLogin} onGoSignup={goSignup} />
 
               <div
                 className={cn(
@@ -177,24 +161,16 @@ export default function AnimatedAuth() {
                           {mode === 'signup' ? 'Create account' : 'Login'}
                         </div>
                         <div className="mt-1 text-sm text-slate-600">
-                          {mode === 'signup'
-                            ? 'Create an account to start contributing.'
-                            : 'Login to access your account.'}
+                          {mode === 'signup' ? 'Create an account to start contributing.' : 'Login to access your account.'}
                         </div>
                       </div>
                       <div
                         className={cn(
                           'flex h-11 w-11 items-center justify-center rounded-2xl ring-1',
-                          mode === 'signup'
-                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-                            : 'bg-indigo-50 text-indigo-700 ring-indigo-100'
+                          mode === 'signup' ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' : 'bg-indigo-50 text-indigo-700 ring-indigo-100'
                         )}
                       >
-                        {mode === 'signup' ? (
-                          <Recycle className="h-5 w-5" aria-hidden="true" />
-                        ) : (
-                          <Leaf className="h-5 w-5" aria-hidden="true" />
-                        )}
+                        {mode === 'signup' ? <Recycle className="h-5 w-5" aria-hidden="true" /> : <Leaf className="h-5 w-5" aria-hidden="true" />}
                       </div>
                     </div>
 
@@ -228,18 +204,8 @@ export default function AnimatedAuth() {
                     </div>
 
                     <div className="relative">
-                      <LoginForm
-                        mode={mode}
-                        pending={pending}
-                        onLogin={handleLogin}
-                        onSwitchToSignup={goSignup}
-                      />
-                      <SignupForm
-                        mode={mode}
-                        pending={pending}
-                        onSignup={handleSignup}
-                        onSwitchToLogin={goLogin}
-                      />
+                      <LoginForm mode={mode} pending={pending} onLogin={handleLogin} onSwitchToSignup={goSignup} />
+                      <SignupForm mode={mode} pending={pending} onSignup={handleSignup} onSwitchToLogin={goLogin} />
                     </div>
 
                     <div className="mt-8 text-xs text-slate-500" />
@@ -255,11 +221,11 @@ export default function AnimatedAuth() {
 
           <div className="mt-6 text-center text-xs text-white/70">
             By continuing you agree to the{' '}
-            <Link className="underline-offset-4 hover:underline" to="/">
+            <Link className="underline-offset-4 hover:underline" to={PATHS.home}>
               Terms
             </Link>{' '}
             and{' '}
-            <Link className="underline-offset-4 hover:underline" to="/">
+            <Link className="underline-offset-4 hover:underline" to={PATHS.home}>
               Privacy Policy
             </Link>
             .
@@ -269,3 +235,4 @@ export default function AnimatedAuth() {
     </div>
   )
 }
+
