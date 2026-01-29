@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import MapPicker from "../../../../components/MapPicker.jsx";
-import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
 
 export default function CreateReportForm() {
   const [images, setImages] = useState([]);
@@ -280,7 +279,12 @@ export default function CreateReportForm() {
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Additional Details</h4>
-          <DescriptionTextarea value={notes} onChange={setNotes} />
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full min-h-[120px] px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-200 resize-y"
+            placeholder="Describe the situation or provide extra context..."
+          />
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-100">
