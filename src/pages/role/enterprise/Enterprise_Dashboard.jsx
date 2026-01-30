@@ -1,11 +1,12 @@
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
-import ActionCardGrid from "../../../components/ui/ActionCardGrid";
+import ActionCard from "../../../components/ui/ActionCard.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
 import Button from "../../../components/ui/Button.jsx";
 import useStoredUser from "../../../hooks/useStoredUser.js";
-import { enterpriseDashboardActions, enterpriseQuickActions } from "./enterpriseDashboardActions.jsx";
 import { enterpriseRightPanelCards } from "./enterpriseDashboardRightPanelCards.jsx";
+import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
+import { PATHS } from "../../../routes/paths.js";
 
 function StatusPill({ children }) {
   return (
@@ -14,6 +15,12 @@ function StatusPill({ children }) {
     </span>
   );
 }
+
+const enterpriseQuickActions = [
+  { key: "create-rule", label: "Create request rule" },
+  { key: "assign-collector", label: "Assign collector" },
+  { key: "analytics", label: "View analytics" },
+];
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
@@ -33,10 +40,32 @@ export default function EnterpriseDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
           <div className="lg:col-span-2 space-y-8">
-            <ActionCardGrid
-              items={enterpriseDashboardActions}
-              gridClassName="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
+              <ActionCard
+                to={PATHS.enterprise.reports}
+                title="Active collectors"
+                variant="green"
+                icon={<Users className="h-10 w-10" aria-hidden="true" />}
+              />
+              <ActionCard
+                to={PATHS.enterprise.reports}
+                title="All reports"
+                variant="green"
+                icon={<FileText className="h-10 w-10" aria-hidden="true" />}
+              />
+              <ActionCard
+                to={PATHS.enterprise.reports}
+                title="View feedback"
+                variant="blue"
+                icon={<MessageSquareText className="h-10 w-10" aria-hidden="true" />}
+              />
+              <ActionCard
+                to={PATHS.enterprise.adminPanel}
+                title="Create collector account"
+                variant="orange"
+                icon={<UserPlus className="h-10 w-10" aria-hidden="true" />}
+              />
+            </div>
 
             <Card>
               <CardHeader className="py-6 px-8">

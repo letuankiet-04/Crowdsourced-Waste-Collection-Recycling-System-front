@@ -1,12 +1,12 @@
 import Sidebar from "./Sidebar";
 import ActionCards from "./dashboard_comp/ActionCards";
-import Header from "./dashboard_comp/CD_Header";
+import Header from "../../../components/layout/CD_Header.jsx";
 import Navbar from "./CD_Navbar";
 import RecentReports from "./dashboard_comp/RecentReports";
 import PointWallet from "./dashboard_comp/PointWallet";
 import TopRank from "./dashboard_comp/TopRank";
 import QuickTips from "./dashboard_comp/QuickTips";
-import CD_Footer from "./CD_Footer";
+import CD_Footer from "../../../components/layout/CD_Footer.jsx";
 import RoleLayout from "../../../components/layout/RoleLayout.jsx";
 
 export default function CitizenDashboard() {

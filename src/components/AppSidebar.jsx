@@ -9,17 +9,12 @@ export default function AppSidebar({
   asideClassName = "",
   navClassName = "",
   collapsed = false,
-  mobileOpen,
 }) {
-  const mobileEnabled = typeof mobileOpen === "boolean";
-
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-50 flex flex-col transition-[width,transform] duration-300 ease-out",
+        "fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-50 flex flex-col transition-[width] duration-300 ease-out",
         collapsed ? "w-20" : "w-72",
-        mobileEnabled ? (mobileOpen ? "translate-x-0" : "-translate-x-full") : "",
-        mobileEnabled ? "lg:translate-x-0" : "",
         asideClassName
       )}
     >

@@ -1,4 +1,4 @@
-export default function CD_Footer() {
+export default function CD_Footer({ portalName = "Citizen Portal" }) {
   const year = new Date().getFullYear();
 
   return (
@@ -7,7 +7,7 @@ export default function CD_Footer() {
         
         {/* Left */}
         <span>
-          © {year} Citizen Portal. All rights reserved.
+          © {year} {portalName}. All rights reserved.
         </span>
 
         {/* Right */}

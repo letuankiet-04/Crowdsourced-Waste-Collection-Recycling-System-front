@@ -1,4 +1,3 @@
-import { useCallback, useState } from "react";
 import { FileText, LayoutDashboard, Settings, User } from "lucide-react";
 import RoleSidebar from "../../../../components/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../../components/sidebar/SidebarNavItem.jsx";
@@ -7,19 +6,14 @@ import RoleLayout from "../../../../components/layout/RoleLayout.jsx";
 import logo from "../../../../assets/app-logo.jpg";
 import { PATHS } from "../../../../routes/paths.js";
 import EnterpriseNavbar from "../navbar/EnterpriseNavbar.jsx";
+import CD_Footer from "../../../../components/layout/CD_Footer.jsx";
+import CD_Header from "../../../../components/layout/CD_Header.jsx";
 
 export default function EnterpriseLayout({ children }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
-  const openMobile = useCallback(() => setMobileOpen(true), []);
-  const closeMobile = useCallback(() => setMobileOpen(false), []);
-
   return (
     <RoleLayout
       sidebar={
         <RoleSidebar
-          mobileOpen={mobileOpen}
-          onCloseMobile={closeMobile}
           brand={{
             logoSrc: logo,
             logoAlt: "Enterprise Portal Logo",
@@ -42,11 +36,21 @@ export default function EnterpriseLayout({ children }) {
           footer={<SidebarLogoutButton />}
         />
       }
-      navbar={<EnterpriseNavbar onOpenMobile={openMobile} />}
-      contentOffsetClassName="ml-0 lg:ml-72"
+      navbar={<EnterpriseNavbar />}
       showBackgroundEffects={false}
+      footer={
+        <div className="mt-10">
+          <CD_Footer portalName="Enterprise Portal" />
+        </div>
+      }
     >
+      <CD_Header
+        title="Enterprise Portal"
+        description="Welcome back! Manage recycling operations and review incoming requests."
+        showBadge={false}
+      />
       {children}
     </RoleLayout>
+
   );
 }
