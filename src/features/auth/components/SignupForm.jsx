@@ -39,7 +39,9 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
       setError('Passwords do not match.')
       return
     }
-    onSignup({ name, email, password })
+    Promise.resolve(onSignup({ name, email, password })).catch((err) => {
+      setError(err?.message || 'Signup failed. Please try again.')
+    })
   }
 
   return (

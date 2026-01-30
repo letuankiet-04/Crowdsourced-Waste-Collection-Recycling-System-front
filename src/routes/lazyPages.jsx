@@ -8,6 +8,7 @@ export const CreateReport = lazy(() => import('../pages/role/citizen/CreateRepor
 export const CollectorDashboard = lazy(() => import('../pages/role/collector/Collector_Dashboard.jsx'))
 export const AdminDashboard = lazy(() => import('../pages/role/admin/Admin_Dashboard.jsx'))
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))
+export const ApiTest = lazy(() => import('../pages/common/ApiTest.jsx'))
 
 export const EnterpriseDashboard = lazy(() => import('../pages/role/enterprise/Enterprise_Dashboard.jsx'))
 export const EnterpriseReports = lazy(() => import('../pages/role/enterprise/Enterprise_Reports.jsx'))

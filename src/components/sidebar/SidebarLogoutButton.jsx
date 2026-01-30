@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { logout } from "../../api/auth.js";
 import useStoredUser from "../../hooks/useStoredUser.js";
 import { PATHS } from "../../routes/paths.js";
 
@@ -24,9 +25,16 @@ export default function SidebarLogoutButton({
       className={`${baseButtonClassName} ${className}`.trim()}
       type="button"
       onClick={() => {
-        clearAuth();
-        onLoggedOut?.();
-        navigate(to, { replace });
+        void (async () => {
+          try {
+            await logout();
+          } catch (err) {
+            void err;
+          }
+          clearAuth();
+          onLoggedOut?.();
+          navigate(to, { replace });
+        })();
       }}
       aria-label={typeof label === "string" ? label : "Logout"}
     >

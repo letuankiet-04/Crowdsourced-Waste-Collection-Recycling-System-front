@@ -1,6 +1,6 @@
 import { Leaf, Recycle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Login } from '../../../api/fakeApi/authApi.js'
+import { buildStoredUserFromToken, login, register } from '../../../api/auth.js'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import foliageBackground from '../../../assets/foliage-bg.svg'
 import LoginForm from '../components/LoginForm.jsx'
@@ -25,7 +25,7 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
         )}
       >
         <div className="relative flex w-1/2 items-center justify-center px-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-700 to-slate-950" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_55%)]" />
           <div className="relative max-w-sm text-center text-white">
             <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
@@ -74,18 +74,6 @@ export default function AnimatedAuth() {
   const [pending, setPending] = useState(false)
   const imageSrc = useMemo(() => foliageBackground, [])
 
-  async function simulate(action) {
-    setPending(true)
-    try {
-      await new Promise((r) => setTimeout(r, 900))
-      if (action === 'signup') {
-        setTimeout(() => navigate(PATHS.auth.login), 600)
-      }
-    } finally {
-      setPending(false)
-    }
-  }
-
   function goLogin() {
     if (mode !== 'login') navigate(PATHS.auth.login)
   }
@@ -97,36 +85,63 @@ export default function AnimatedAuth() {
   async function handleLogin({ email, password }) {
     setPending(true)
     try {
-      const res = await Login(email, password)
-
+      const res = await login({ email, password })
       localStorage.setItem('token', res.token)
-      const userToStore = {
-        ...res.user,
-        role: typeof res.user?.role === 'string' ? res.user.role.toLowerCase() : res.user?.role,
-      }
+      const userToStore = buildStoredUserFromToken(res.token)
       localStorage.setItem('user', JSON.stringify(userToStore))
 
-      switch (res.user.role) {
-        case 'Citizen':
+      switch (userToStore.role) {
+        case 'citizen':
           navigate(PATHS.citizen.dashboard)
           break
-        case 'Enterprise':
+        case 'enterprise':
           navigate(PATHS.enterprise.dashboard)
           break
-        case 'Collector':
+        case 'collector':
           navigate(PATHS.collector.dashboard)
           break
-        case 'Admin':
+        case 'admin':
           navigate(PATHS.admin.dashboard)
           break
+        default:
+          navigate(PATHS.home)
       }
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Login failed')
     } finally {
       setPending(false)
     }
   }
 
-  function handleSignup() {
-    simulate('signup')
+  async function handleSignup({ name, email, password }) {
+    setPending(true)
+    try {
+      const res = await register({ name, email, password })
+      localStorage.setItem('token', res.token)
+      const userToStore = buildStoredUserFromToken(res.token)
+      localStorage.setItem('user', JSON.stringify(userToStore))
+
+      switch (userToStore.role) {
+        case 'citizen':
+          navigate(PATHS.citizen.dashboard)
+          break
+        case 'enterprise':
+          navigate(PATHS.enterprise.dashboard)
+          break
+        case 'collector':
+          navigate(PATHS.collector.dashboard)
+          break
+        case 'admin':
+          navigate(PATHS.admin.dashboard)
+          break
+        default:
+          navigate(PATHS.home)
+      }
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Signup failed')
+    } finally {
+      setPending(false)
+    }
   }
 
   return (

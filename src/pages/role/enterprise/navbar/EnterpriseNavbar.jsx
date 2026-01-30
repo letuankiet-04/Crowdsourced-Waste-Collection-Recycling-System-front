@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { logout } from "../../../../api/auth.js";
 import useStoredUser from "../../../../hooks/useStoredUser.js";
 import { PATHS } from "../../../../routes/paths.js";
 import UserMenu from "./UserMenu.jsx";
@@ -26,8 +27,15 @@ export default function EnterpriseNavbar() {
               displayName={displayName}
               roleLabel={roleLabel}
               onLogout={() => {
-                clearAuth();
-                navigate(PATHS.auth.login, { replace: true });
+                void (async () => {
+                  try {
+                    await logout();
+                  } catch (err) {
+                    void err;
+                  }
+                  clearAuth();
+                  navigate(PATHS.auth.login, { replace: true });
+                })();
               }}
             />
           </div>

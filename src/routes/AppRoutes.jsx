@@ -15,6 +15,7 @@ import {
   EnterpriseRewards,
   EnterpriseSettings,
   Home,
+  ApiTest,
   Unauthorized,
 } from './lazyPages.jsx'
 
@@ -24,6 +25,7 @@ export default function AppRoutes() {
       <Route path={PATHS.auth.login} element={<AnimatedAuth />} />
       <Route path={PATHS.auth.signup} element={<AnimatedAuth />} />
       <Route path={PATHS.home} element={<Home />} />
+      <Route path={PATHS.dev.apiTest} element={<ApiTest />} />
 
       <Route
         path={PATHS.citizen.dashboard}
