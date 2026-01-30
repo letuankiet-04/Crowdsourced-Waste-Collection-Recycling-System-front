@@ -1,14 +1,12 @@
-import { Link } from "react-router-dom";
-
 export default function CD_Navbar() {
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12">
+      <div className="w-full pl-0 pr-6 sm:pr-8 lg:pr-12">
         <div className="flex justify-end h-20">
           {/* Right Side Actions */}
           <div className="flex items-center gap-8">
             {/* Notification Bell */}
-            <button className="p-3 text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded-full transition-all duration-200 hover:scale-110 active:scale-95 relative">
+            <button className="group p-3 text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded-full transition-all duration-200 ease-in-out hover:scale-110 active:scale-95 relative">
               <span className="sr-only">View notifications</span>
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -34,7 +32,7 @@ export default function CD_Navbar() {
                 <span className="text-base font-semibold text-gray-900">User Name</span>
                 <span className="text-sm text-gray-500">Citizen Level 4</span>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xl border-2 border-white shadow-sm transition-transform duration-200 hover:scale-105">
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xl border-2 border-white shadow-sm transition-transform duration-200 ease-in-out hover:scale-105">
                 U
               </div>
             </div>

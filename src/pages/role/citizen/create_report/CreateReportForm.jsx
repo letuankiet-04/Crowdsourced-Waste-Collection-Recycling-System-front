@@ -1,10 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { PATHS } from "../../../../routes/paths.js";
 import MapPicker from "../../../../components/MapPicker.jsx";
 import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
+<<<<<<< Updated upstream
 
 export default function CreateReportForm() {
   const [images, setImages] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
+=======
+import { Card } from "../../../../components/ui/Card.jsx";
+import PillSelect from "../../../../components/ui/PillSelect.jsx";
+import ImageUploader from "../../../../components/ui/ImageUploader.jsx";
+
+const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
+
+export default function CreateReportForm() {
+  const navigate = useNavigate();
+>>>>>>> Stashed changes
   const [types, setTypes] = useState([]);
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
@@ -13,7 +26,29 @@ export default function CreateReportForm() {
   const [addrLoading, setAddrLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [geoError, setGeoError] = useState("");
+  const [images, setImages] = useState([]);
   const sourceRef = useRef(null);
+
+  const handleDiscard = () => {
+    setTypes([]);
+    setAddress("");
+    setWeight("1 - 5 kg");
+    setNotes("");
+    setCoords(null);
+    setAddrLoading(false);
+    setGpsLoading(false);
+    setGeoError("");
+    setImages([]);
+    sourceRef.current = null;
+    navigate(PATHS.citizen.dashboard);
+  };
+
+  const canSubmit = useMemo(() => {
+    const hasTypes = types.length > 0
+    const hasImages = images.length > 0
+    const hasLocation = coords != null && address.trim().length >= 3 && !geoError
+    return hasTypes && hasImages && hasLocation
+  }, [types, images, coords, address, geoError])
 
   useEffect(() => {
     if (sourceRef.current !== "address") return;
@@ -74,6 +109,7 @@ export default function CreateReportForm() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* LEFT COLUMN */}
+
       <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-lg">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Visual Evidence</h4>
@@ -134,6 +170,10 @@ export default function CreateReportForm() {
           </label>
         </div>
 
+      <Card as="section" className="p-6">
+        <ImageUploader title="Visual Evidence" max={6} multiple addLabel="+ Add Photo" onItemsChange={setImages} />
+
+
         <div className="mt-4 rounded-xl bg-green-50 text-green-800 border border-green-100 p-4 text-sm">
           Photos help authorities identify the waste type and equipment needed
           for collection more quickly.
@@ -167,6 +207,7 @@ export default function CreateReportForm() {
             </button>
           ))}
         </div>
+
         {types.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {types.map((t) => (
@@ -190,6 +231,7 @@ export default function CreateReportForm() {
             ))}
           </div>
         )}
+
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Location</h4>
@@ -284,10 +326,18 @@ export default function CreateReportForm() {
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-100">
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98]">
+          <button
+            type="button"
+            onClick={handleDiscard}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98]"
+          >
             Discard Draft
           </button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm">
+          <button
+            type="button"
+            disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+          >
             Submit Report
           </button>
         </div>
