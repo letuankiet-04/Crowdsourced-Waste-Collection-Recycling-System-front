@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import AppRoutes from './routes/AppRoutes.jsx'
+import { NotifyProvider } from './components/ui/NotifyProvider.jsx'
 
 function RouteFallback() {
   return (
@@ -11,9 +12,11 @@ function RouteFallback() {
 
 function App() {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <AppRoutes />
-    </Suspense>
+    <NotifyProvider>
+      <Suspense fallback={<RouteFallback />}>
+        <AppRoutes />
+      </Suspense>
+    </NotifyProvider>
   )
 }
 

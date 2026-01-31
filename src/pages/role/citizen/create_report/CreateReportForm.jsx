@@ -1,22 +1,30 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import useNotify from "../../../../hooks/useNotify.js";
+import { publishReportSubmitted } from "../../../../events/reportEvents.js";
+import { addMockReport } from "../../../../mock/reportStore.js";
 import MapPicker from "../../../../components/MapPicker.jsx";
 import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
 import { Card } from "../../../../components/ui/Card.jsx";
 import PillSelect from "../../../../components/ui/PillSelect.jsx";
-import SelectedChips from "../../../../components/ui/SelectedChips.jsx";
 import ImageUploader from "../../../../components/ui/ImageUploader.jsx";
 
 const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
 
 export default function CreateReportForm() {
+  const navigate = useNavigate();
+  const notify = useNotify();
   const [types, setTypes] = useState([]);
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
   const [notes, setNotes] = useState("");
   const [coords, setCoords] = useState(null);
+  const [images, setImages] = useState([]);
+  const [imageUploaderKey, setImageUploaderKey] = useState(0);
   const [addrLoading, setAddrLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [geoError, setGeoError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const sourceRef = useRef(null);
 
   useEffect(() => {
@@ -55,7 +63,14 @@ export default function CreateReportForm() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* LEFT COLUMN */}
       <Card as="section" className="p-6">
-        <ImageUploader title="Visual Evidence" max={6} multiple addLabel="+ Add Photo" />
+        <ImageUploader
+          key={imageUploaderKey}
+          title="Visual Evidence"
+          max={6}
+          multiple
+          addLabel="+ Add Photo"
+          onFilesChange={setImages}
+        />
 
         <div className="mt-4 rounded-xl bg-green-50 text-green-800 border border-green-100 p-4 text-sm">
           Photos help authorities identify the waste type and equipment needed
@@ -69,7 +84,6 @@ export default function CreateReportForm() {
         <div className="mt-3">
           <PillSelect options={WASTE_TYPES} selected={types} onToggle={toggleType} />
         </div>
-        <SelectedChips items={types} onRemove={(t) => setTypes((prev) => prev.filter((x) => x !== t))} className="mt-4" />
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Location</h4>
@@ -164,10 +178,86 @@ export default function CreateReportForm() {
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-100">
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98]">
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => {
+              setTypes([]);
+              setAddress("");
+              setWeight("1 - 5 kg");
+              setNotes("");
+              setCoords(null);
+              setImages([]);
+              setImageUploaderKey((x) => x + 1);
+              setGeoError("");
+              notify.info("Draft cleared", "Your draft has been cleared.");
+            }}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
+          >
             Discard Draft
           </button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm">
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={async () => {
+              if (submitting) return;
+              if (!images.length) {
+                notify.error("Missing photo", "Please add at least one photo.");
+                return;
+              }
+              if (!types.length) {
+                notify.error("Missing waste type", "Please select at least one waste type.");
+                return;
+              }
+              if (!coords) {
+                notify.error("Missing location", "Please choose a location using GPS, map, or address.");
+                return;
+              }
+              if (geoError) {
+                notify.warning("Fix location error", geoError);
+                return;
+              }
+
+              setSubmitting(true);
+              try {
+                const report = {
+                  id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+                  address: address.trim(),
+                  types: [...types],
+                  weight,
+                  notes,
+                  coords,
+                  createdAt: new Date().toISOString(),
+                  status: "New",
+                };
+
+                await notify.promise(
+                  new Promise((resolve) => setTimeout(resolve, 800)),
+                  {
+                    loadingTitle: "Sending report...",
+                    successTitle: "Report submitted",
+                    successMessage: "Thank you for helping keep the city clean.",
+                    errorTitle: "Submit failed",
+                    errorMessage: (err) => err?.message || "Unable to submit your report.",
+                  }
+                );
+                addMockReport(report);
+                publishReportSubmitted(report);
+                setTypes([]);
+                setAddress("");
+                setWeight("1 - 5 kg");
+                setNotes("");
+                setCoords(null);
+                setImages([]);
+                setImageUploaderKey((x) => x + 1);
+                setGeoError("");
+                navigate("/citizen/dashboard");
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm disabled:opacity-60"
+          >
             Submit Report
           </button>
         </div>

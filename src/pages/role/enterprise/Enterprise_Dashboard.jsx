@@ -1,12 +1,16 @@
+import { useEffect, useMemo, useState } from "react";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
 import ActionCard from "../../../components/ui/ActionCard.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
 import Button from "../../../components/ui/Button.jsx";
 import useStoredUser from "../../../hooks/useStoredUser.js";
+import useNotify from "../../../hooks/useNotify.js";
 import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PATHS } from "../../../routes/paths.js";
+import { subscribeReportSubmitted } from "../../../events/reportEvents.js";
+import { getMockReports } from "../../../mock/reportStore.js";
 
 function StatusPill({ children }) {
   return (
@@ -18,6 +22,20 @@ function StatusPill({ children }) {
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
+  const notify = useNotify();
+  const [reports, setReports] = useState(() => getMockReports());
+
+  const pendingReports = useMemo(() => {
+    return reports.filter((r) => r && r.status !== "Closed").slice(0, 8);
+  }, [reports]);
+
+  useEffect(() => {
+    return subscribeReportSubmitted((report) => {
+      if (!report) return;
+      setReports((prev) => [report, ...prev]);
+      notify.info("New request received", `${report.id} · ${report.address || "Unknown location"}`);
+    });
+  }, [notify]);
 
   return (
     <EnterpriseLayout>
@@ -27,7 +45,7 @@ export default function EnterpriseDashboard() {
           description={
             <>
               Welcome back to your dashboard. All systems are operational. You have{" "}
-              <span className="font-bold text-emerald-700">Wait API</span> pending requests waiting for review in your region.
+              <span className="font-bold text-emerald-700">{pendingReports.length}</span> pending requests waiting for review in your region.
             </>
           }
         />
@@ -79,14 +97,28 @@ export default function EnterpriseDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    <tr className="hover:bg-gray-50/40">
-                      <td className="px-8 py-5 text-sm font-semibold text-gray-900">Wait API</td>
-                      <td className="px-8 py-5 text-sm text-gray-600">Wait API</td>
-                      <td className="px-8 py-5 text-sm text-gray-600">Wait API</td>
-                      <td className="px-8 py-5 text-sm text-right">
-                        <StatusPill>Wait API</StatusPill>
-                      </td>
-                    </tr>
+                    {pendingReports.length ? (
+                      pendingReports.map((r) => (
+                        <tr key={r.id} className="hover:bg-gray-50/40">
+                          <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
+                          <td className="px-8 py-5 text-sm text-gray-600">
+                            {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}
+                          </td>
+                          <td className="px-8 py-5 text-sm text-gray-600">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
+                          </td>
+                          <td className="px-8 py-5 text-sm text-right">
+                            <StatusPill>{r.status || "New"}</StatusPill>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
+                          No pending requests yet.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
