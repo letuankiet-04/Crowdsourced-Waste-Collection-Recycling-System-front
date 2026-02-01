@@ -5,6 +5,7 @@ export const Home = lazy(() => import('../features/home/pages/Home.jsx'))
 
 export const CitizenDashboard = lazy(() => import('../pages/role/citizen/Citizen_Dashboard.jsx'))
 export const CreateReport = lazy(() => import('../pages/role/citizen/CreateReport.jsx'))
+export const CitizenReports = lazy(() => import('../pages/role/citizen/Citizen_Reports.jsx'))
 export const CollectorDashboard = lazy(() => import('../pages/role/collector/Collector_Dashboard.jsx'))
 export const AdminDashboard = lazy(() => import('../pages/role/admin/Admin_Dashboard.jsx'))
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))

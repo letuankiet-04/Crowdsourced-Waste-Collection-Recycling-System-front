@@ -9,16 +9,10 @@ import useNotify from "../../../hooks/useNotify.js";
 import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PATHS } from "../../../routes/paths.js";
-import { subscribeReportSubmitted } from "../../../events/reportEvents.js";
+import { subscribeReportSubmitted, subscribeReportsCleared } from "../../../events/reportEvents.js";
 import { getMockReports } from "../../../mock/reportStore.js";
-
-function StatusPill({ children }) {
-  return (
-    <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border border-gray-200 bg-gray-50 text-gray-600">
-      {children}
-    </span>
-  );
-}
+import StatusPill from "../../../components/ui/StatusPill.jsx";
+import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
@@ -26,15 +20,20 @@ export default function EnterpriseDashboard() {
   const [reports, setReports] = useState(() => getMockReports());
 
   const pendingReports = useMemo(() => {
-    return reports.filter((r) => r && r.status !== "Closed").slice(0, 8);
+    return reports.filter((r) => r && normalizeReportStatus(r.status) !== "closed").slice(0, 8);
   }, [reports]);
 
   useEffect(() => {
-    return subscribeReportSubmitted((report) => {
+    const unsubSubmitted = subscribeReportSubmitted((report) => {
       if (!report) return;
       setReports((prev) => [report, ...prev]);
       notify.info("New request received", `${report.id} · ${report.address || "Unknown location"}`);
     });
+    const unsubCleared = subscribeReportsCleared(() => setReports([]));
+    return () => {
+      unsubSubmitted();
+      unsubCleared();
+    };
   }, [notify]);
 
   return (
@@ -47,6 +46,21 @@ export default function EnterpriseDashboard() {
               Welcome back to your dashboard. All systems are operational. You have{" "}
               <span className="font-bold text-emerald-700">{pendingReports.length}</span> pending requests waiting for review in your region.
             </>
+          }
+          right={
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={() => {
+                const ok = window.confirm("Clear dashboard list? This will not delete saved reports.");
+                if (!ok) return;
+                setReports([]);
+                notify.success("Dashboard cleared", "Report list cleared for this dashboard only.");
+              }}
+            >
+              Clear reports
+            </Button>
           }
         />
 
@@ -108,7 +122,7 @@ export default function EnterpriseDashboard() {
                             {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
                           </td>
                           <td className="px-8 py-5 text-sm text-right">
-                            <StatusPill>{r.status || "New"}</StatusPill>
+                            <StatusPill variant={reportStatusToPillVariant(r.status)}>{normalizeReportStatus(r.status)}</StatusPill>
                           </td>
                         </tr>
                       ))
@@ -128,9 +142,11 @@ export default function EnterpriseDashboard() {
                   Load more requests
                 </Button>
                 <div className="flex items-center gap-2">
-                  <StatusPill>New</StatusPill>
-                  <StatusPill>Open</StatusPill>
-                  <StatusPill>Closed</StatusPill>
+                  <StatusPill variant="yellow">pending</StatusPill>
+                  <StatusPill variant="blue">on the way</StatusPill>
+                  <StatusPill variant="red">rejected</StatusPill>
+                  <StatusPill variant="green">accepted</StatusPill>
+                  <StatusPill variant="green">collected</StatusPill>
                 </div>
               </div>
             </CardBody>

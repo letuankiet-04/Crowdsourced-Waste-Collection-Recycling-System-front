@@ -32,8 +32,8 @@ export default function ApiTest() {
     setPending(true)
     try {
       const res = await login({ email: values.email.trim(), password: values.password })
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token)))
+      sessionStorage.setItem('token', res.token)
+      sessionStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token)))
       print('LOGIN OK', res)
     } catch (err) {
       print('LOGIN ERROR', { message: err?.message || String(err) })
@@ -50,8 +50,8 @@ export default function ApiTest() {
         email: values.email.trim(),
         password: values.password,
       })
-      localStorage.setItem('token', res.token)
-      localStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token)))
+      sessionStorage.setItem('token', res.token)
+      sessionStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token)))
       print('REGISTER OK', res)
     } catch (err) {
       print('REGISTER ERROR', { message: err?.message || String(err) })
@@ -68,8 +68,8 @@ export default function ApiTest() {
     } catch (err) {
       print('LOGOUT ERROR', { message: err?.message || String(err) })
     } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       setPending(false)
     }
   }
@@ -123,14 +123,14 @@ export default function ApiTest() {
   }
 
   function showStored() {
-    const token = localStorage.getItem('token')
-    const user = localStorage.getItem('user')
-    print('LOCAL STORAGE', { token, user: user ? JSON.parse(user) : null })
+    const token = sessionStorage.getItem('token')
+    const user = sessionStorage.getItem('user')
+    print('SESSION STORAGE', { token, user: user ? JSON.parse(user) : null })
   }
 
   function clearStored() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     print('CLEARED', { ok: true })
   }
 

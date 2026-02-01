@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useNotify from "../../../../hooks/useNotify.js";
+import useStoredUser from "../../../../hooks/useStoredUser.js";
 import { publishReportSubmitted } from "../../../../events/reportEvents.js";
 import { addMockReport } from "../../../../mock/reportStore.js";
 import MapPicker from "../../../../components/MapPicker.jsx";
@@ -14,6 +15,7 @@ const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
 export default function CreateReportForm() {
   const navigate = useNavigate();
   const notify = useNotify();
+  const { user } = useStoredUser();
   const [types, setTypes] = useState([]);
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
@@ -220,6 +222,11 @@ export default function CreateReportForm() {
 
               setSubmitting(true);
               try {
+                const createdBy = user?.email ?? null;
+                if (!createdBy) {
+                  notify.error("Not logged in", "Please log in again and retry submitting your report.");
+                  return;
+                }
                 const report = {
                   id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
                   address: address.trim(),
@@ -228,7 +235,8 @@ export default function CreateReportForm() {
                   notes,
                   coords,
                   createdAt: new Date().toISOString(),
-                  status: "New",
+                  status: "pending",
+                  createdBy,
                 };
 
                 await notify.promise(

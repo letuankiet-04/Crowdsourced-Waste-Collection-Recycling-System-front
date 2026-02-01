@@ -1,9 +1,10 @@
 import SidebarNavItem from "../../../components/sidebar/SidebarNavItem";
+import { PATHS } from "../../../routes/paths.js";
 
 export const citizenNavItems = [
   <SidebarNavItem
     key="dashboard"
-    to="/citizen/dashboard"
+    to={PATHS.citizen.dashboard}
     icon={
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -25,7 +26,7 @@ export const citizenNavItems = [
   </SidebarNavItem>,
   <SidebarNavItem
     key="my-reports"
-    to="/reports"
+    to={PATHS.citizen.reports}
     icon={
       <svg
         xmlns="http://www.w3.org/2000/svg"

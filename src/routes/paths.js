@@ -10,6 +10,7 @@ export const PATHS = {
   citizen: {
     dashboard: '/citizen/dashboard',
     createReport: '/create-report',
+    reports: '/citizen/reports',
   },
   collector: {
     dashboard: '/collector/dashboard',

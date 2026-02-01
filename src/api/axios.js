@@ -15,7 +15,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const url = String(config?.url || '')
   const isAuthRequest = url.includes('/api/auth/')
-  const token = localStorage.getItem('token')
+  const token = typeof window !== 'undefined' ? window.sessionStorage.getItem('token') : null
   if (!isAuthRequest && token && !config.headers?.Authorization) {
     config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`

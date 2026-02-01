@@ -2,11 +2,11 @@ import { Navigate } from 'react-router-dom'
 import { PATHS } from '../routes/paths.js'
 
 export default function ProtectedRoute({ children, role }) {
-  const token = localStorage.getItem('token')
+  const token = typeof window !== 'undefined' ? window.sessionStorage.getItem('token') : null
 
   let user = null
   try {
-    const rawUser = localStorage.getItem('user')
+    const rawUser = typeof window !== 'undefined' ? window.sessionStorage.getItem('user') : null
     user = rawUser ? JSON.parse(rawUser) : null
   } catch {
     user = null

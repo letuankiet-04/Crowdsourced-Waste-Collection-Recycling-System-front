@@ -86,9 +86,9 @@ export default function AnimatedAuth() {
     setPending(true)
     try {
       const res = await login({ email, password })
-      localStorage.setItem('token', res.token)
+      sessionStorage.setItem('token', res.token)
       const userToStore = buildStoredUserFromToken(res.token)
-      localStorage.setItem('user', JSON.stringify(userToStore))
+      sessionStorage.setItem('user', JSON.stringify(userToStore))
 
       switch (userToStore.role) {
         case 'citizen':
@@ -117,9 +117,9 @@ export default function AnimatedAuth() {
     setPending(true)
     try {
       const res = await register({ name, email, password })
-      localStorage.setItem('token', res.token)
+      sessionStorage.setItem('token', res.token)
       const userToStore = buildStoredUserFromToken(res.token)
-      localStorage.setItem('user', JSON.stringify(userToStore))
+      sessionStorage.setItem('user', JSON.stringify(userToStore))
 
       switch (userToStore.role) {
         case 'citizen':

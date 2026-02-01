@@ -12,7 +12,7 @@ function safeParse(json, fallback) {
 
 export function getMockReports() {
   if (typeof window === 'undefined') return []
-  const raw = window.localStorage.getItem(REPORTS_KEY)
+  const raw = window.sessionStorage.getItem(REPORTS_KEY)
   const list = safeParse(raw, [])
   return Array.isArray(list) ? list : []
 }
@@ -21,7 +21,13 @@ export function addMockReport(report) {
   if (typeof window === 'undefined') return []
   const prev = getMockReports()
   const next = [report, ...prev].slice(0, MAX_REPORTS)
-  window.localStorage.setItem(REPORTS_KEY, JSON.stringify(next))
+  window.sessionStorage.setItem(REPORTS_KEY, JSON.stringify(next))
   return next
+}
+
+export function clearMockReports() {
+  if (typeof window === 'undefined') return []
+  window.sessionStorage.removeItem(REPORTS_KEY)
+  return []
 }
 

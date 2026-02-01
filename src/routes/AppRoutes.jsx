@@ -5,6 +5,7 @@ import {
   AdminDashboard,
   AnimatedAuth,
   CitizenDashboard,
+  CitizenReports,
   CollectorDashboard,
   CreateReport,
   EnterpriseAdminPanel,
@@ -35,7 +36,22 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path={PATHS.citizen.createReport} element={<CreateReport />} />
+      <Route
+        path={PATHS.citizen.reports}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.citizen.createReport}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CreateReport />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path={PATHS.collector.dashboard}
