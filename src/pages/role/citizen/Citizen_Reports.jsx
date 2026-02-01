@@ -10,7 +10,13 @@ import Button from "../../../components/ui/Button.jsx";
 import StatusPill from "../../../components/ui/StatusPill.jsx";
 import useStoredUser from "../../../hooks/useStoredUser.js";
 import useNotify from "../../../hooks/useNotify.js";
-import { publishReportsCleared, subscribeReportSubmitted, subscribeReportsCleared } from "../../../events/reportEvents.js";
+import {
+  publishReportsCleared,
+  subscribeReportDeleted,
+  subscribeReportSubmitted,
+  subscribeReportsCleared,
+  subscribeReportUpdated,
+} from "../../../events/reportEvents.js";
 import { clearMockReports, getMockReports } from "../../../mock/reportStore.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 import { PATHS } from "../../../routes/paths.js";
@@ -34,9 +40,19 @@ export default function CitizenReports() {
       if (!report) return;
       setReports((prev) => [report, ...prev]);
     });
+    const unsubUpdated = subscribeReportUpdated((nextReport) => {
+      if (!nextReport || !nextReport.id) return;
+      setReports((prev) => prev.map((r) => (r && r.id === nextReport.id ? nextReport : r)));
+    });
+    const unsubDeleted = subscribeReportDeleted((reportId) => {
+      if (!reportId) return;
+      setReports((prev) => prev.filter((r) => !(r && r.id === reportId)));
+    });
     const unsubCleared = subscribeReportsCleared(() => setReports([]));
     return () => {
       unsubSubmitted();
+      unsubUpdated();
+      unsubDeleted();
       unsubCleared();
     };
   }, []);
@@ -102,7 +118,14 @@ export default function CitizenReports() {
                   {myReports.length ? (
                     myReports.map((r) => (
                       <tr key={r.id} className="hover:bg-gray-50/40">
-                        <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
+                        <td className="px-8 py-5 text-sm font-semibold">
+                          <Link
+                            to={`${PATHS.citizen.reports}/${r.id}`}
+                            className="text-gray-900 hover:text-green-700 underline"
+                          >
+                            {r.id}
+                          </Link>
+                        </td>
                         <td className="px-8 py-5 text-sm text-gray-600">
                           {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}
                         </td>

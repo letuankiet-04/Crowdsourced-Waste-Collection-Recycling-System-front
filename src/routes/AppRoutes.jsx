@@ -18,6 +18,7 @@ import {
   Home,
   ApiTest,
   Unauthorized,
+  CitizenReportDetail,
 } from './lazyPages.jsx'
 
 export default function AppRoutes() {
@@ -127,6 +128,16 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path={PATHS.citizen.reportDetail}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenReportDetail />
+          </ProtectedRoute>
+        }
+      />
+
 
       <Route path={PATHS.unauthorized} element={<Unauthorized />} />
 

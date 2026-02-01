@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle } from "../../../../components/ui/Card.jsx";
 import useStoredUser from "../../../../hooks/useStoredUser.js";
-import { subscribeReportSubmitted, subscribeReportsCleared } from "../../../../events/reportEvents.js";
+import { subscribeReportDeleted, subscribeReportSubmitted, subscribeReportsCleared, subscribeReportUpdated } from "../../../../events/reportEvents.js";
 import { getMockReports } from "../../../../mock/reportStore.js";
 import StatusPill from "../../../../components/ui/StatusPill.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../../lib/reportStatus.js";
@@ -10,6 +10,7 @@ import { PATHS } from "../../../../routes/paths.js";
 
 export default function RecentReports() {
   const { user } = useStoredUser();
+  const navigate = useNavigate();
   const [reports, setReports] = useState(() => getMockReports());
 
   const myReports = useMemo(() => {
@@ -26,9 +27,19 @@ export default function RecentReports() {
       if (!report) return;
       setReports((prev) => [report, ...prev]);
     });
+    const unsubUpdated = subscribeReportUpdated((nextReport) => {
+      if (!nextReport || !nextReport.id) return;
+      setReports((prev) => prev.map((r) => (r && r.id === nextReport.id ? nextReport : r)));
+    });
+    const unsubDeleted = subscribeReportDeleted((reportId) => {
+      if (!reportId) return;
+      setReports((prev) => prev.filter((r) => !(r && r.id === reportId)));
+    });
     const unsubCleared = subscribeReportsCleared(() => setReports([]));
     return () => {
       unsubSubmitted();
+      unsubUpdated();
+      unsubDeleted();
       unsubCleared();
     };
   }, []);
@@ -60,7 +71,16 @@ export default function RecentReports() {
           <tbody className="divide-y divide-gray-100">
             {myReports.length ? (
               myReports.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50/40">
+                <tr
+                  key={r.id}
+                  className="hover:bg-gray-50/40 cursor-pointer"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => navigate(`${PATHS.citizen.reports}/${r.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") navigate(`${PATHS.citizen.reports}/${r.id}`);
+                  }}
+                >
                   <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
                   <td className="px-8 py-5 text-sm text-gray-600">
                     {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}

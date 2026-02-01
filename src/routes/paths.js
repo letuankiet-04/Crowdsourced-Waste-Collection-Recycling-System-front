@@ -11,13 +11,16 @@ export const PATHS = {
     dashboard: '/citizen/dashboard',
     createReport: '/create-report',
     reports: '/citizen/reports',
+    reportDetail: '/citizen/reports/:reportId',
   },
   collector: {
     dashboard: '/collector/dashboard',
+    reportDetail: '/collector/reports/:reportId',
   },
   enterprise: {
     dashboard: '/enterprise/dashboard',
     reports: '/enterprise/reports',
+    reportDetail: '/enterprise/reports/:reportId',
     rewards: '/enterprise/rewards',
     map: '/enterprise/map',
     profile: '/enterprise/profile',
@@ -26,6 +29,7 @@ export const PATHS = {
   },
   admin: {
     dashboard: '/admin/dashboard',
+    reportDetail: '/admin/reports/:reportId',
   },
   unauthorized: '/unauthorized',
   contact: '/home#contact',
