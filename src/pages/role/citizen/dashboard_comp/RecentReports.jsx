@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle } from "../../../../components/ui/Card.jsx";
 import useStoredUser from "../../../../hooks/useStoredUser.js";
 import { subscribeReportDeleted, subscribeReportSubmitted, subscribeReportsCleared, subscribeReportUpdated } from "../../../../events/reportEvents.js";
-import { getMockReports } from "../../../../mock/reportStore.js";
+import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../../mock/reportStore.js";
 import StatusPill from "../../../../components/ui/StatusPill.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../../lib/reportStatus.js";
 import { PATHS } from "../../../../routes/paths.js";
@@ -25,17 +25,23 @@ export default function RecentReports() {
   useEffect(() => {
     const unsubSubmitted = subscribeReportSubmitted((report) => {
       if (!report) return;
-      setReports((prev) => [report, ...prev]);
+      const next = upsertMockReport(report);
+      setReports(next);
     });
     const unsubUpdated = subscribeReportUpdated((nextReport) => {
       if (!nextReport || !nextReport.id) return;
-      setReports((prev) => prev.map((r) => (r && r.id === nextReport.id ? nextReport : r)));
+      const next = upsertMockReport(nextReport);
+      setReports(next);
     });
     const unsubDeleted = subscribeReportDeleted((reportId) => {
       if (!reportId) return;
-      setReports((prev) => prev.filter((r) => !(r && r.id === reportId)));
+      const next = deleteMockReport(reportId);
+      setReports(next);
     });
-    const unsubCleared = subscribeReportsCleared(() => setReports([]));
+    const unsubCleared = subscribeReportsCleared(() => {
+      clearMockReports();
+      setReports([]);
+    });
     return () => {
       unsubSubmitted();
       unsubUpdated();

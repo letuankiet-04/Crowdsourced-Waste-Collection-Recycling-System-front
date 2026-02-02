@@ -17,6 +17,7 @@ export const CitizenReportDetail = lazy(() => import('../pages/role/citizen/Citi
 //enterprise
 export const EnterpriseDashboard = lazy(() => import('../pages/role/enterprise/Enterprise_Dashboard.jsx'))
 export const EnterpriseReports = lazy(() => import('../pages/role/enterprise/Enterprise_Reports.jsx'))
+export const EnterpriseReportDetail = lazy(() => import('../pages/role/enterprise/Enterprise_ReportDetail.jsx'))
 export const EnterpriseRewards = lazy(() => import('../pages/role/enterprise/Enterprise_Rewards.jsx'))
 export const EnterpriseMap = lazy(() => import('../pages/role/enterprise/Enterprise_Map.jsx'))
 export const EnterpriseProfile = lazy(() => import('../pages/role/enterprise/Enterprise_Profile.jsx'))

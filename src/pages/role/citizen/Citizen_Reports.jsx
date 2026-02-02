@@ -17,7 +17,7 @@ import {
   subscribeReportsCleared,
   subscribeReportUpdated,
 } from "../../../events/reportEvents.js";
-import { clearMockReports, getMockReports } from "../../../mock/reportStore.js";
+import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 import { PATHS } from "../../../routes/paths.js";
 
@@ -38,17 +38,23 @@ export default function CitizenReports() {
   useEffect(() => {
     const unsubSubmitted = subscribeReportSubmitted((report) => {
       if (!report) return;
-      setReports((prev) => [report, ...prev]);
+      const next = upsertMockReport(report);
+      setReports(next);
     });
     const unsubUpdated = subscribeReportUpdated((nextReport) => {
       if (!nextReport || !nextReport.id) return;
-      setReports((prev) => prev.map((r) => (r && r.id === nextReport.id ? nextReport : r)));
+      const next = upsertMockReport(nextReport);
+      setReports(next);
     });
     const unsubDeleted = subscribeReportDeleted((reportId) => {
       if (!reportId) return;
-      setReports((prev) => prev.filter((r) => !(r && r.id === reportId)));
+      const next = deleteMockReport(reportId);
+      setReports(next);
     });
-    const unsubCleared = subscribeReportsCleared(() => setReports([]));
+    const unsubCleared = subscribeReportsCleared(() => {
+      clearMockReports();
+      setReports([]);
+    });
     return () => {
       unsubSubmitted();
       unsubUpdated();

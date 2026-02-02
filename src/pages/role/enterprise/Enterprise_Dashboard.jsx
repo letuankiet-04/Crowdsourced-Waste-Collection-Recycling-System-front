@@ -7,16 +7,22 @@ import Button from "../../../components/ui/Button.jsx";
 import useStoredUser from "../../../hooks/useStoredUser.js";
 import useNotify from "../../../hooks/useNotify.js";
 import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PATHS } from "../../../routes/paths.js";
-import { subscribeReportSubmitted, subscribeReportsCleared } from "../../../events/reportEvents.js";
-import { getMockReports } from "../../../mock/reportStore.js";
+import {
+  subscribeReportDeleted,
+  subscribeReportSubmitted,
+  subscribeReportsCleared,
+  subscribeReportUpdated,
+} from "../../../events/reportEvents.js";
+import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import StatusPill from "../../../components/ui/StatusPill.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
   const notify = useNotify();
+  const navigate = useNavigate();
   const [reports, setReports] = useState(() => getMockReports());
 
   const pendingReports = useMemo(() => {
@@ -26,12 +32,28 @@ export default function EnterpriseDashboard() {
   useEffect(() => {
     const unsubSubmitted = subscribeReportSubmitted((report) => {
       if (!report) return;
-      setReports((prev) => [report, ...prev]);
+      const next = upsertMockReport(report);
+      setReports(next);
       notify.info("New request received", `${report.id} · ${report.address || "Unknown location"}`);
     });
-    const unsubCleared = subscribeReportsCleared(() => setReports([]));
+    const unsubUpdated = subscribeReportUpdated((nextReport) => {
+      if (!nextReport || !nextReport.id) return;
+      const next = upsertMockReport(nextReport);
+      setReports(next);
+    });
+    const unsubDeleted = subscribeReportDeleted((reportId) => {
+      if (!reportId) return;
+      const next = deleteMockReport(reportId);
+      setReports(next);
+    });
+    const unsubCleared = subscribeReportsCleared(() => {
+      clearMockReports();
+      setReports([]);
+    });
     return () => {
       unsubSubmitted();
+      unsubUpdated();
+      unsubDeleted();
       unsubCleared();
     };
   }, [notify]);
@@ -113,7 +135,11 @@ export default function EnterpriseDashboard() {
                   <tbody className="divide-y divide-gray-100">
                     {pendingReports.length ? (
                       pendingReports.map((r) => (
-                        <tr key={r.id} className="hover:bg-gray-50/40">
+                        <tr
+                          key={r.id}
+                          className="hover:bg-gray-50/40 cursor-pointer"
+                          onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
+                        >
                           <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
                           <td className="px-8 py-5 text-sm text-gray-600">
                             {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}

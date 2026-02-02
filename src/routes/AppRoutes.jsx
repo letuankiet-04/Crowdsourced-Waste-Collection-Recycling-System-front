@@ -5,6 +5,7 @@ import {
   AdminDashboard,
   AnimatedAuth,
   CitizenDashboard,
+  CitizenReportDetail,
   CitizenReports,
   CollectorDashboard,
   CreateReport,
@@ -13,12 +14,12 @@ import {
   EnterpriseMap,
   EnterpriseProfile,
   EnterpriseReports,
+  EnterpriseReportDetail,
   EnterpriseRewards,
   EnterpriseSettings,
   Home,
   ApiTest,
   Unauthorized,
-  CitizenReportDetail,
 } from './lazyPages.jsx'
 
 export default function AppRoutes() {
@@ -76,6 +77,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['enterprise']}>
             <EnterpriseReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.enterprise.reportDetail}
+        element={
+          <ProtectedRoute role={['enterprise']}>
+            <EnterpriseReportDetail />
           </ProtectedRoute>
         }
       />

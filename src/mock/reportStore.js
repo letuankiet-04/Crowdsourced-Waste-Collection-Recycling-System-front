@@ -25,6 +25,18 @@ export function addMockReport(report) {
   return next
 }
 
+export function upsertMockReport(report) {
+  if (typeof window === 'undefined') return []
+  if (!report || !report.id) return getMockReports()
+  const prev = getMockReports()
+  const id = String(report.id)
+  const idx = prev.findIndex((r) => r && r.id === id)
+  const next = idx >= 0 ? prev.map((r) => (r && r.id === id ? report : r)) : [report, ...prev]
+  const limited = next.slice(0, MAX_REPORTS)
+  window.sessionStorage.setItem(REPORTS_KEY, JSON.stringify(limited))
+  return limited
+}
+
 export function updateMockReport(nextReport) {
   if (typeof window === 'undefined') return []
   if (!nextReport || !nextReport.id) return getMockReports()
