@@ -1,23 +1,10 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { PATHS } from "../../../../routes/paths.js";
-import MapPicker from "../../../../components/MapPicker.jsx";
-import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
-<<<<<<< Updated upstream
-
-export default function CreateReportForm() {
-  const [images, setImages] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-=======
-import { Card } from "../../../../components/ui/Card.jsx";
-import PillSelect from "../../../../components/ui/PillSelect.jsx";
-import ImageUploader from "../../../../components/ui/ImageUploader.jsx";
+import { PATHS } from "../../../../routes/paths.js";import MapPicker from "../../../../components/MapPicker.jsx";import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
 
 const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
 
-export default function CreateReportForm() {
-  const navigate = useNavigate();
->>>>>>> Stashed changes
+export default function CreateReportForm() {  const navigate = useNavigate();  const [activeIndex, setActiveIndex] = useState(0);
   const [types, setTypes] = useState([]);
   const [address, setAddress] = useState("");
   const [weight, setWeight] = useState("1 - 5 kg");
@@ -167,17 +154,7 @@ export default function CreateReportForm() {
               onChange={handleAddPhotos}
             />
             + Add Photo
-          </label>
-        </div>
-
-      <Card as="section" className="p-6">
-        <ImageUploader title="Visual Evidence" max={6} multiple addLabel="+ Add Photo" onItemsChange={setImages} />
-
-
-        <div className="mt-4 rounded-xl bg-green-50 text-green-800 border border-green-100 p-4 text-sm">
-          Photos help authorities identify the waste type and equipment needed
-          for collection more quickly.
-        </div>
+          </label>        </div>
       </section>
 
       {/* RIGHT COLUMN */}

@@ -1,5 +1,5 @@
 import Navbar from "../citizen/CD_Navbar";
-import CD_Footer from "../../../components/layout/CD_Footer.jsx";
+import CD_Footer from "../citizen/CD_Footer.jsx";
 import RoleLayout from "../../../components/layout/RoleLayout.jsx";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";

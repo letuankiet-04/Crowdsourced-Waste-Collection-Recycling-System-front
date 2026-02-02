@@ -4,6 +4,7 @@ import Home from './pages/home/Home.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import CitizenDashboard from './pages/role/citizen/Citizen_Dashboard.jsx'
 import CreateReport from './pages/role/citizen/CreateReport.jsx'
+import FeedbackPage from './pages/role/citizen/Feedback.jsx'
 import CollectorDashboard from './pages/role/collector/Collector_Dashboard.jsx'
 import EnterpriseDashboard from './pages/role/enterprise/Enterprise_Dashboard.jsx'
 import AdminDashboard from './pages/role/admin/Admin_Dashboard.jsx'
@@ -20,6 +21,7 @@ function App() {
       <Route path="/citizen/dashboard" element={<ProtectedRoute role={['citizen']}><CitizenDashboard /></ProtectedRoute>} />
      
       <Route path="/create-report" element={<CreateReport />} />
+      <Route path="/feedback" element={<ProtectedRoute role={['citizen']}><FeedbackPage /></ProtectedRoute>} />
       <Route path="/collector/dashboard" element={<ProtectedRoute role={['collector']}><CollectorDashboard /></ProtectedRoute>} />
       <Route path="/enterprise/dashboard" element={<ProtectedRoute role={['enterprise']}><EnterpriseDashboard /></ProtectedRoute>} />
       <Route path="/admin/dashboard" element={<ProtectedRoute role={['admin']}><AdminDashboard /></ProtectedRoute>} />
