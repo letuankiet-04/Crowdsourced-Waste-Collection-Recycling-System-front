@@ -1,6 +1,7 @@
 import Navbar from "../citizen/CD_Navbar";
 import CD_Footer from "../citizen/CD_Footer.jsx";
 import RoleLayout from "../../../components/layout/RoleLayout.jsx";
+import WaitApiPlaceholder from "../../../components/ui/WaitApiPlaceholder.jsx";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
 
@@ -12,14 +13,14 @@ export default function AdminDashboard() {
   return (
     <RoleLayout
       sidebar={<AdminSidebar />}
-      navbar={<Navbar />}
+      navbar={<Navbar brandTitle="Admin Portal" />}
       footer={
         <div className="animate-fade-in-up">
           <CD_Footer />
         </div>
       }
     >
-      <div className="space-y-8">
+      <div className="max-w-screen-xl mx-auto space-y-8">
 
         {/* SUMMARY CARDS */}
         <div className="animate-fade-in-up">
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
                 </span>
               </CardHeader>
               <CardBody className="p-8">
-                <div className="text-gray-600">wait api</div>
+                <WaitApiPlaceholder/>
               </CardBody>
             </Card>
 
@@ -58,7 +59,7 @@ export default function AdminDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardBody className="p-8">
-                <div className="text-gray-600">wait api</div>
+                <WaitApiPlaceholder />
               </CardBody>
             </Card>
 
