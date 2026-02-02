@@ -1,3 +1,4 @@
+
 import { Suspense } from 'react'
 import AppRoutes from './routes/AppRoutes.jsx'
 import { NotifyProvider } from './components/ui/NotifyProvider.jsx'
@@ -17,6 +18,7 @@ function App() {
         <AppRoutes />
       </Suspense>
     </NotifyProvider>
+
   )
 }
 

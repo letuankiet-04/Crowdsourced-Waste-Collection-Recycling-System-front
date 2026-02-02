@@ -1,3 +1,4 @@
+
 import { NavLink } from "react-router-dom";
 
 export default function SidebarNavItem({
@@ -34,6 +35,7 @@ export default function SidebarNavItem({
       ) : null}
       <span className={`relative z-10 ${collapsed ? "sr-only" : ""}`}>{content}</span>
       <div className="absolute inset-0 bg-gradient-to-r from-green-100/0 via-green-100/30 to-green-100/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-[-100%] group-hover:translate-x-[100%] transition-transform" />
+
     </NavLink>
   );
 }

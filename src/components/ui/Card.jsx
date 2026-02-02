@@ -1,3 +1,4 @@
+
 import { createElement } from 'react'
 import { cn } from '../../lib/cn.js'
 
@@ -48,4 +49,5 @@ export function CardFooter({ className, children, ...props }) {
       {children}
     </div>
   )
+
 }

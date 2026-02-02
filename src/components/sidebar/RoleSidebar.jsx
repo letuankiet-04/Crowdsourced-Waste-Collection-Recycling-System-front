@@ -1,3 +1,4 @@
+
 import AppSidebar from "../AppSidebar.jsx";
 
 export default function RoleSidebar({
@@ -17,5 +18,6 @@ export default function RoleSidebar({
       navClassName={navClassName}
       collapsed={collapsed}
     />
+
   );
 }

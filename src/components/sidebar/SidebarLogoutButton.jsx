@@ -1,3 +1,4 @@
+
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../api/auth.js";
@@ -40,6 +41,7 @@ export default function SidebarLogoutButton({
     >
       <LogOut className={`${baseIconClassName} ${iconClassName}`.trim()} aria-hidden="true" />
       {label}
+
     </button>
   );
 }
