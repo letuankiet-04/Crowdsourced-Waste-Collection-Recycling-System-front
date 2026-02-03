@@ -5,7 +5,7 @@ import useStoredUser from "../../../../hooks/useStoredUser.js";
 import { PATHS } from "../../../../routes/paths.js";
 import UserMenu from "../../../../components/ui/UserMenu.jsx";
 
-export default function EnterpriseNavbar() {
+export default function CollectorNavbar() {
   const { displayName, roleLabel, clearAuth } = useStoredUser();
   const navigate = useNavigate();
 
@@ -27,8 +27,8 @@ export default function EnterpriseNavbar() {
               displayName={displayName}
               roleLabel={roleLabel}
               links={[
-                { to: PATHS.enterprise.profile, label: "Profile" },
-                { to: PATHS.enterprise.settings, label: "Settings" },
+                { to: PATHS.collector.profile, label: "Profile" },
+                { to: PATHS.collector.history, label: "Work History" },
               ]}
               onLogout={() => {
                 void (async () => {

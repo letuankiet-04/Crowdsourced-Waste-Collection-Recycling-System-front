@@ -8,6 +8,10 @@ import {
   CitizenReportDetail,
   CitizenReports,
   CollectorDashboard,
+  CollectorHistory,
+  CollectorProfile,
+  CollectorReportDetail,
+  CollectorTasks,
   CreateReport,
   EnterpriseAdminPanel,
   EnterpriseDashboard,
@@ -60,6 +64,38 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['collector']}>
             <CollectorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.tasks}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorTasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.history}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.profile}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.reportDetail}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorReportDetail />
           </ProtectedRoute>
         }
       />

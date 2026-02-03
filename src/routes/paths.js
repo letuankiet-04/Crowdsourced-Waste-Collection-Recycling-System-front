@@ -15,6 +15,9 @@ export const PATHS = {
   },
   collector: {
     dashboard: '/collector/dashboard',
+    tasks: '/collector/tasks',
+    history: '/collector/history',
+    profile: '/collector/profile',
     reportDetail: '/collector/reports/:reportId',
   },
   enterprise: {
