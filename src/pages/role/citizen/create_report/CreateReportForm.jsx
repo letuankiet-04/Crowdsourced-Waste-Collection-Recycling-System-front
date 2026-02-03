@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import useNotify from "../../../../hooks/useNotify.js";
@@ -44,7 +45,29 @@ export default function CreateReportForm() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [geoError, setGeoError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
   const sourceRef = useRef(null);
+
+  const handleDiscard = () => {
+    setTypes([]);
+    setAddress("");
+    setWeight("1 - 5 kg");
+    setNotes("");
+    setCoords(null);
+    setAddrLoading(false);
+    setGpsLoading(false);
+    setGeoError("");
+    setImages([]);
+    sourceRef.current = null;
+    navigate(PATHS.citizen.dashboard);
+  };
+
+  const canSubmit = useMemo(() => {
+    const hasTypes = types.length > 0
+    const hasImages = images.length > 0
+    const hasLocation = coords != null && address.trim().length >= 3 && !geoError
+    return hasTypes && hasImages && hasLocation
+  }, [types, images, coords, address, geoError])
 
   useEffect(() => {
     if (sourceRef.current !== "address") return;
@@ -81,6 +104,7 @@ export default function CreateReportForm() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* LEFT COLUMN */}
+
       <Card as="section" className="p-6">
         <ImageUploader
           key={imageUploaderKey}
@@ -90,6 +114,7 @@ export default function CreateReportForm() {
           addLabel="+ Add Photo"
           onFilesChange={setImages}
         />
+
 
         {existingImages.length ? (
           <div className="mt-6">
@@ -105,6 +130,7 @@ export default function CreateReportForm() {
                 />
               ))}
             </div>
+
           </div>
         ) : null}
 
@@ -216,6 +242,7 @@ export default function CreateReportForm() {
         <div className="mt-8 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-100">
           <button
             type="button"
+
             disabled={submitting}
             onClick={() => {
               setTypes([]);
@@ -230,11 +257,7 @@ export default function CreateReportForm() {
               notify.info("Draft cleared", "Your draft has been cleared.");
             }}
             className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
-          >
-            Discard Draft
-          </button>
-          <button
-            type="button"
+            
             disabled={submitting}
             onClick={async () => {
               if (submitting) return;
@@ -324,6 +347,7 @@ export default function CreateReportForm() {
               }
             }}
             className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm disabled:opacity-60"
+
           >
             Submit Report
           </button>

@@ -1,8 +1,10 @@
 export const PATHS = {
+
   home: '/home',
   dev: {
     apiTest: '/api-test',
   },
+
   auth: {
     login: '/auth/login',
     signup: '/auth/signup',
@@ -37,4 +39,5 @@ export const PATHS = {
   unauthorized: '/unauthorized',
   contact: '/home#contact',
 }
+
 
