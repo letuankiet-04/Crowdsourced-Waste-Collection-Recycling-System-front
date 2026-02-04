@@ -14,6 +14,7 @@ import {
   CollectorTasks,
   CreateReport,
   EnterpriseAdminPanel,
+  EnterpriseActiveCollector,
   EnterpriseDashboard,
   EnterpriseMap,
   EnterpriseProfile,
@@ -105,6 +106,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['enterprise']}>
             <EnterpriseDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.enterprise.activeCollector}
+        element={
+          <ProtectedRoute role={['enterprise']}>
+            <EnterpriseActiveCollector />
           </ProtectedRoute>
         }
       />

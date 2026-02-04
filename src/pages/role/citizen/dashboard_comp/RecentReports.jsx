@@ -4,8 +4,7 @@ import { Card, CardHeader, CardTitle } from "../../../../components/ui/Card.jsx"
 import useStoredUser from "../../../../hooks/useStoredUser.js";
 import { subscribeReportDeleted, subscribeReportSubmitted, subscribeReportsCleared, subscribeReportUpdated } from "../../../../events/reportEvents.js";
 import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../../mock/reportStore.js";
-import StatusPill from "../../../../components/ui/StatusPill.jsx";
-import { normalizeReportStatus, reportStatusToPillVariant } from "../../../../lib/reportStatus.js";
+import ReportRow from "../../../../components/ui/ReportRow.jsx";
 import { PATHS } from "../../../../routes/paths.js";
 
 export default function RecentReports() {
@@ -71,30 +70,17 @@ export default function RecentReports() {
             <tr className="bg-gray-50/50">
               <th className="px-8 py-5 text-sm font-semibold text-gray-500 uppercase tracking-wider">Report</th>
               <th className="px-8 py-5 text-sm font-semibold text-gray-500 uppercase tracking-wider">Created Date</th>
-              <th className="px-8 py-5 text-sm font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-8 py-5 text-sm font-semibold text-gray-500 uppercase tracking-wider text-right">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {myReports.length ? (
               myReports.map((r) => (
-                <tr
+                <ReportRow
                   key={r.id}
-                  className="hover:bg-gray-50/40 cursor-pointer"
-                  role="link"
-                  tabIndex={0}
+                  report={r}
                   onClick={() => navigate(`${PATHS.citizen.reports}/${r.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") navigate(`${PATHS.citizen.reports}/${r.id}`);
-                  }}
-                >
-                  <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
-                  <td className="px-8 py-5 text-sm text-gray-600">
-                    {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
-                  </td>
-                  <td className="px-8 py-5 text-sm">
-                    <StatusPill variant={reportStatusToPillVariant(r.status)}>{normalizeReportStatus(r.status)}</StatusPill>
-                  </td>
-                </tr>
+                />
               ))
             ) : (
               <tr>

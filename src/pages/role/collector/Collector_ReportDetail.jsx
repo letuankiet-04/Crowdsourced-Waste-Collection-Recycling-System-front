@@ -10,8 +10,10 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Ca
 import Button from "../../../components/ui/Button.jsx";
 import { PATHS } from "../../../routes/paths.js";
 import { CheckCircle2, Truck } from "lucide-react";
+import useStoredUser from "../../../hooks/useStoredUser.js";
 
 export default function CollectorReportDetail() {
+  const { user } = useStoredUser();
   const { reportId } = useParams();
   const location = useLocation();
   const id = reportId ? String(reportId) : "";
@@ -48,12 +50,17 @@ export default function CollectorReportDetail() {
   const report =
     reportOverride?.id === id ? reportOverride : stateReport?.id && String(stateReport.id) === id ? stateReport : storedReport;
   const status = normalizeReportStatus(report?.status);
+  const collectorEmail = user?.email ?? null;
+  const assignedEmails = Array.isArray(report?.assignedCollectors) ? report.assignedCollectors.map((c) => c?.email).filter(Boolean) : [];
+  const legacyEmail = report?.assignedCollector?.email ?? report?.assignedCollectorEmail ?? report?.collectorEmail ?? null;
+  const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
+  const isAssignedToMe = !effectiveEmails.length || (collectorEmail && effectiveEmails.includes(collectorEmail));
 
   // Actions based on status
   // accepted -> on the way
   // on the way -> collected
-  const canStart = status === "accepted" || status === "assigned";
-  const canCollect = status === "on the way";
+  const canStart = isAssignedToMe && status === "accepted";
+  const canCollect = isAssignedToMe && status === "on the way";
 
   return (
     <CollectorLayout>
@@ -79,6 +86,11 @@ export default function CollectorReportDetail() {
             </div>
           </CardHeader>
           <CardBody className="p-8">
+             {!isAssignedToMe ? (
+              <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                This task is assigned to a different collector.
+              </div>
+            ) : null}
              <div className="flex flex-wrap justify-end gap-3">
                 {canStart && (
                     <Button
@@ -93,7 +105,7 @@ export default function CollectorReportDetail() {
                     }}
                     >
                     <Truck className="h-5 w-5" aria-hidden="true" />
-                    Start Collection
+                    Accept Task
                     </Button>
                 )}
                  {canCollect && (

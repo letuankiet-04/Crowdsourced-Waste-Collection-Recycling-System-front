@@ -7,7 +7,7 @@ import RoleLayout from "../../../components/layout/RoleLayout.jsx";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
 import Button from "../../../components/ui/Button.jsx";
-import StatusPill from "../../../components/ui/StatusPill.jsx";
+import ReportRow from "../../../components/ui/ReportRow.jsx";
 import useStoredUser from "../../../hooks/useStoredUser.js";
 import useNotify from "../../../hooks/useNotify.js";
 import {
@@ -18,7 +18,6 @@ import {
   subscribeReportUpdated,
 } from "../../../events/reportEvents.js";
 import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
-import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 import { PATHS } from "../../../routes/paths.js";
 
 export default function CitizenReports() {
@@ -123,25 +122,12 @@ export default function CitizenReports() {
                 <tbody className="divide-y divide-gray-100">
                   {myReports.length ? (
                     myReports.map((r) => (
-                      <tr key={r.id} className="hover:bg-gray-50/40">
-                        <td className="px-8 py-5 text-sm font-semibold">
-                          <Link
-                            to={`${PATHS.citizen.reports}/${r.id}`}
-                            className="text-gray-900 hover:text-green-700 underline"
-                          >
-                            {r.id}
-                          </Link>
-                        </td>
-                        <td className="px-8 py-5 text-sm text-gray-600">
-                          {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}
-                        </td>
-                        <td className="px-8 py-5 text-sm text-gray-600">
-                          {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
-                        </td>
-                        <td className="px-8 py-5 text-sm text-right">
-                          <StatusPill variant={reportStatusToPillVariant(r.status)}>{normalizeReportStatus(r.status)}</StatusPill>
-                        </td>
-                      </tr>
+                      <ReportRow
+                        key={r.id}
+                        report={r}
+                        showLocation
+                        idTo={`${PATHS.citizen.reports}/${r.id}`}
+                      />
                     ))
                   ) : (
                     <tr>

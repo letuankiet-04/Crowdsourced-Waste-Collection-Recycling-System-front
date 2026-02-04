@@ -17,7 +17,8 @@ import {
 } from "../../../events/reportEvents.js";
 import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import StatusPill from "../../../components/ui/StatusPill.jsx";
-import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
+import ReportRow from "../../../components/ui/ReportRow.jsx";
+import { normalizeReportStatus } from "../../../lib/reportStatus.js";
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
@@ -89,7 +90,7 @@ export default function EnterpriseDashboard() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
             <ActionCard
-              to={PATHS.enterprise.reports}
+              to={PATHS.enterprise.activeCollector}
               title="Active collectors"
               variant="green"
               icon={<Users className="h-10 w-10" aria-hidden="true" />}
@@ -135,22 +136,12 @@ export default function EnterpriseDashboard() {
                   <tbody className="divide-y divide-gray-100">
                     {pendingReports.length ? (
                       pendingReports.map((r) => (
-                        <tr
+                        <ReportRow
                           key={r.id}
-                          className="hover:bg-gray-50/40 cursor-pointer"
+                          report={r}
+                          showLocation
                           onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
-                        >
-                          <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
-                          <td className="px-8 py-5 text-sm text-gray-600">
-                            {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}
-                          </td>
-                          <td className="px-8 py-5 text-sm text-gray-600">
-                            {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
-                          </td>
-                          <td className="px-8 py-5 text-sm text-right">
-                            <StatusPill variant={reportStatusToPillVariant(r.status)}>{normalizeReportStatus(r.status)}</StatusPill>
-                          </td>
-                        </tr>
+                        />
                       ))
                     ) : (
                       <tr>

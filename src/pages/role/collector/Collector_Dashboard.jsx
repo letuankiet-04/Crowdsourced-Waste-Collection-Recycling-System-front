@@ -13,21 +13,29 @@ import {
   subscribeReportUpdated,
 } from "../../../events/reportEvents.js";
 import { getMockReports, upsertMockReport, deleteMockReport } from "../../../mock/reportStore.js";
-import StatusPill from "../../../components/ui/StatusPill.jsx";
-import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
+import ReportRow from "../../../components/ui/ReportRow.jsx";
+import { normalizeReportStatus } from "../../../lib/reportStatus.js";
 
 export default function CollectorDashboard() {
-  const { displayName } = useStoredUser();
+  const { user, displayName } = useStoredUser();
   const notify = useNotify();
   const navigate = useNavigate();
   const [reports, setReports] = useState(() => getMockReports());
+  const collectorEmail = user?.email ?? null;
 
   const myTasks = useMemo(() => {
     return reports.filter((r) => {
         const status = normalizeReportStatus(r.status);
-        return ["accepted", "assigned", "on the way"].includes(status);
+        if (!["accepted", "on the way"].includes(status)) return false;
+        if (!collectorEmail) return false;
+        const assignedEmails = Array.isArray(r?.assignedCollectors)
+          ? r.assignedCollectors.map((c) => c?.email).filter(Boolean)
+          : [];
+        const legacyEmail = r?.assignedCollector?.email ?? r?.assignedCollectorEmail ?? r?.collectorEmail ?? null;
+        const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
+        return effectiveEmails.includes(collectorEmail);
     }).slice(0, 10);
-  }, [reports]);
+  }, [collectorEmail, reports]);
 
   useEffect(() => {
     const unsubUpdated = subscribeReportUpdated((nextReport) => {
@@ -35,8 +43,13 @@ export default function CollectorDashboard() {
       const next = upsertMockReport(nextReport);
       setReports(next);
       const status = normalizeReportStatus(nextReport.status);
-      if (["accepted", "assigned"].includes(status)) {
-         notify.info("New task assigned", `${nextReport.id} · ${nextReport.address || "Unknown location"}`);
+      const assignedEmails = Array.isArray(nextReport?.assignedCollectors)
+        ? nextReport.assignedCollectors.map((c) => c?.email).filter(Boolean)
+        : [];
+      const legacyEmail = nextReport?.assignedCollector?.email ?? nextReport?.assignedCollectorEmail ?? nextReport?.collectorEmail ?? null;
+      const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
+      if (collectorEmail && effectiveEmails.includes(collectorEmail) && ["accepted"].includes(status)) {
+        notify.info("New task assigned", `${nextReport.id} · ${nextReport.address || "Unknown location"}`);
       }
     });
     const unsubDeleted = subscribeReportDeleted((reportId) => {
@@ -49,7 +62,7 @@ export default function CollectorDashboard() {
       unsubUpdated();
       unsubDeleted();
     };
-  }, [notify]);
+  }, [collectorEmail, notify]);
 
   return (
     <CollectorLayout>
@@ -103,22 +116,12 @@ export default function CollectorDashboard() {
                   <tbody className="divide-y divide-gray-100">
                     {myTasks.length ? (
                       myTasks.map((r) => (
-                        <tr
+                        <ReportRow
                           key={r.id}
-                          className="hover:bg-gray-50/40 cursor-pointer"
-                          onClick={() => navigate(PATHS.collector.reportDetail.replace(':reportId', r.id), { state: { report: r } })}
-                        >
-                          <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
-                          <td className="px-8 py-5 text-sm text-gray-600">
-                            {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}
-                          </td>
-                          <td className="px-8 py-5 text-sm text-gray-600">
-                            {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
-                          </td>
-                          <td className="px-8 py-5 text-sm text-right">
-                            <StatusPill variant={reportStatusToPillVariant(r.status)}>{normalizeReportStatus(r.status)}</StatusPill>
-                          </td>
-                        </tr>
+                          report={r}
+                          showLocation
+                          onClick={() => navigate(PATHS.collector.reportDetail.replace(":reportId", r.id), { state: { report: r } })}
+                        />
                       ))
                     ) : (
                       <tr>

@@ -18,6 +18,11 @@ const variants = {
         bgColor: "bg-blue-500",
         glowBg: "bg-gradient-to-br from-white to-blue-500",
         hoverShadow: "group-hover:shadow-blue-500/50",
+    },
+    orange: {
+        bgColor: "bg-orange-500",
+        glowBg: "bg-gradient-to-br from-white to-orange-500",
+        hoverShadow: "group-hover:shadow-orange-500/50",
     }
 };
 
