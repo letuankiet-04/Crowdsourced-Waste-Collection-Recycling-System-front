@@ -9,7 +9,16 @@ import StatusPill from "../../../components/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
 import Button from "../../../components/ui/Button.jsx";
 import { PATHS } from "../../../routes/paths.js";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Users, X, XCircle } from "lucide-react";
+
+const fallbackCollectors = [
+  {
+    id: "COL-001",
+    name: "Demo Collector",
+    email: "collector@test.com",
+    status: "available",
+  },
+];
 
 export default function EnterpriseReportDetail() {
   const { reportId } = useParams();
@@ -49,6 +58,47 @@ export default function EnterpriseReportDetail() {
     reportOverride?.id === id ? reportOverride : stateReport?.id && String(stateReport.id) === id ? stateReport : storedReport;
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "pending";
+  const canGoAssign = status === "accepted";
+
+  function getAssignedEmailsFromReport(r) {
+    const many = Array.isArray(r?.assignedCollectors) ? r.assignedCollectors : [];
+    const manyEmails = many.map((c) => c?.email).filter(Boolean);
+    if (manyEmails.length) return manyEmails;
+    const singleEmail = r?.assignedCollector?.email ?? r?.assignedCollectorEmail ?? r?.collectorEmail ?? null;
+    return singleEmail ? [singleEmail] : [];
+  }
+
+  const collectors = useMemo(() => {
+    const list = Array.isArray(fallbackCollectors) ? fallbackCollectors : [];
+    return list
+      .map((c, idx) => {
+        const id = c?.id ?? c?._id ?? c?.collectorId ?? idx;
+        const name = c?.name ?? c?.username ?? c?.displayName ?? c?.fullName ?? c?.email ?? `Collector ${idx + 1}`;
+        const email = c?.email ?? c?.mail ?? null;
+        const statusRaw = String(c?.status ?? c?.availability ?? (c?.online ? "online" : "offline")).toLowerCase();
+        const isOnline = c?.online === true || ["online", "active", "available"].includes(statusRaw);
+        return { id, name, email, isOnline };
+      })
+      .filter((c) => Boolean(c.email));
+  }, []);
+
+  const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
+  const assignedLabel = useMemo(() => {
+    if (!assignedEmails.length) return null;
+    const labels = assignedEmails.map((email) => {
+      const match = collectors.find((c) => c.email === email);
+      return match?.name ? `${match.name} (${email})` : email;
+    });
+    return labels.join(", ");
+  }, [assignedEmails, collectors]);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedCollectorEmails, setSelectedCollectorEmails] = useState([]);
+
+  function openAssignDialog(nextReport) {
+    const r = nextReport ?? report;
+    setSelectedCollectorEmails(getAssignedEmailsFromReport(r));
+    setAssignOpen(true);
+  }
 
   return (
     <EnterpriseLayout>
@@ -127,6 +177,7 @@ export default function EnterpriseReportDetail() {
                     updateMockReport(next);
                     publishReportUpdated(next);
                     setReportOverride(next);
+                    openAssignDialog(next);
                   }}
                 >
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -136,12 +187,138 @@ export default function EnterpriseReportDetail() {
             </div>
 
             {!canDecide && report ? (
-              <div className="mt-4 text-xs text-gray-500">
-                This report is already {status}. Accept/Reject is available only while status is pending.
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+                <div>This report is already {status}. Accept/Reject is available only while status is pending.</div>
+                {canGoAssign ? (
+                  <Button variant="outline" size="sm" className="rounded-full" onClick={() => openAssignDialog()}>
+                    Assign collector
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </CardBody>
         </Card>
+
+        {assignOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setAssignOpen(false);
+            }}
+          >
+            <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
+              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
+                <div className="min-w-0">
+                  <div className="text-lg font-semibold text-gray-900">Assign Collector</div>
+                  <div className="mt-1 text-sm text-gray-600">Select a collector for {report?.id ?? "-"}. </div>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-50"
+                  onClick={() => setAssignOpen(false)}
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="px-6 py-6 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm text-gray-700">
+                    Current status: <span className="font-semibold text-gray-900">{status}</span>
+                  </div>
+                  <StatusPill variant={reportStatusToPillVariant(status)}>{status}</StatusPill>
+                </div>
+
+                {assignedEmails.length ? (
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                    Currently assigned to <span className="font-semibold text-gray-900">{assignedLabel}</span>.
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-gray-900">Collectors</div>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-indigo-700 hover:underline disabled:opacity-60"
+                      disabled={!report || !canGoAssign || !collectors.length}
+                      onClick={() => setSelectedCollectorEmails(collectors.map((c) => c.email))}
+                    >
+                      Select all
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
+                    {collectors.length ? (
+                      collectors.map((c) => {
+                        const checked = selectedCollectorEmails.includes(c.email);
+                        return (
+                          <label
+                            key={c.email}
+                            className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold">{c.name}</div>
+                              <div className="truncate text-xs text-gray-600">{c.email}</div>
+                            </div>
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={checked}
+                              disabled={!report || !canGoAssign}
+                              onChange={() => {
+                                setSelectedCollectorEmails((prev) => {
+                                  if (prev.includes(c.email)) return prev.filter((e) => e !== c.email);
+                                  return [...prev, c.email];
+                                });
+                              }}
+                            />
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <div className="px-4 py-5 text-sm text-gray-600">No collectors available.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-3 px-6 py-5 border-t border-gray-100">
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => setAssignOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="rounded-full"
+                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length}
+                  onClick={() => {
+                    if (!report || !canGoAssign) return;
+                    const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
+                    if (!selectedCollectors.length) return;
+                    const ok = window.confirm("Assign this report to selected collectors?");
+                    if (!ok) return;
+                    const primaryCollector = selectedCollectors[0];
+                    const next = {
+                      ...report,
+                      assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
+                      assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+                      updatedAt: new Date().toISOString(),
+                    };
+                    updateMockReport(next);
+                    publishReportUpdated(next);
+                    setReportOverride(next);
+                    setAssignOpen(false);
+                  }}
+                >
+                  <Users className="h-5 w-5" aria-hidden="true" />
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </EnterpriseLayout>
   );

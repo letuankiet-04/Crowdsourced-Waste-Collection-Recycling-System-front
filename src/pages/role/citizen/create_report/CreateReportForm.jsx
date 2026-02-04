@@ -12,7 +12,7 @@ import PillSelect from "../../../../components/ui/PillSelect.jsx";
 import ImageUploader from "../../../../components/ui/ImageUploader.jsx";
 import { PATHS } from "../../../../routes/paths.js";
 
-const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous", "Other"];
+const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous"];
 
 function fileToDataUrl(file) {
   return new Promise((resolve) => {

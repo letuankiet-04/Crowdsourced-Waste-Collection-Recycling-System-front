@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Settings, User } from "lucide-react";
+import { FileText, LayoutDashboard, Settings, User, Users } from "lucide-react";
 import RoleSidebar from "../../../../components/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../../components/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../../components/sidebar/SidebarLogoutButton.jsx";
@@ -22,6 +22,9 @@ export default function EnterpriseLayout({ children }) {
           navItems={[
             <SidebarNavItem key="dashboard" to={PATHS.enterprise.dashboard} end icon={<LayoutDashboard className="h-5 w-5" />}>
               Dashboard
+            </SidebarNavItem>,
+            <SidebarNavItem key="activeCollector" to={PATHS.enterprise.activeCollector} icon={<Users className="h-5 w-5" />}>
+              Active Collectors
             </SidebarNavItem>,
             <SidebarNavItem key="reports" to={PATHS.enterprise.reports} icon={<FileText className="h-5 w-5" />}>
               Reports

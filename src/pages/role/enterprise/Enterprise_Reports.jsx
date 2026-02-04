@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
-import StatusPill from "../../../components/ui/StatusPill.jsx";
+import ReportRow from "../../../components/ui/ReportRow.jsx";
 import {
   subscribeReportDeleted,
   subscribeReportSubmitted,
@@ -11,7 +11,6 @@ import {
   subscribeReportUpdated,
 } from "../../../events/reportEvents.js";
 import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
-import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 import { PATHS } from "../../../routes/paths.js";
 
 export default function EnterpriseReports() {
@@ -77,20 +76,12 @@ export default function EnterpriseReports() {
                 <tbody className="divide-y divide-gray-100">
                   {ordered.length ? (
                     ordered.map((r) => (
-                      <tr
+                      <ReportRow
                         key={r.id}
-                        className="hover:bg-gray-50/40 cursor-pointer"
+                        report={r}
+                        showLocation
                         onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
-                      >
-                        <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.id}</td>
-                        <td className="px-8 py-5 text-sm text-gray-600">
-                          {r.address || (r.coords ? `${r.coords.lat.toFixed(5)}, ${r.coords.lng.toFixed(5)}` : "Unknown")}
-                        </td>
-                        <td className="px-8 py-5 text-sm text-gray-600">{r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}</td>
-                        <td className="px-8 py-5 text-sm text-right">
-                          <StatusPill variant={reportStatusToPillVariant(r.status)}>{normalizeReportStatus(r.status)}</StatusPill>
-                        </td>
-                      </tr>
+                      />
                     ))
                   ) : (
                     <tr>

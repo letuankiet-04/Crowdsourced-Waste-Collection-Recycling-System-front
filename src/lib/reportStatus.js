@@ -3,6 +3,7 @@ export function normalizeReportStatus(status) {
   const normalized = String(status).trim().toLowerCase();
   if (!normalized) return "pending";
   if (normalized === "new") return "pending";
+  if (normalized === "assigned") return "accepted";
   if (normalized === "on_the_way") return "on the way";
   if (normalized === "ontheway") return "on the way";
   return normalized;
