@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import ReportDetail from "../../../components/layout/Report_Detail.jsx";
 import { getMockReports, updateMockReport } from "../../../mock/reportStore.js";
@@ -22,6 +22,7 @@ function normalizeCollectors(payload) {
 export default function EnterpriseReportDetail() {
   const { reportId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const id = reportId ? String(reportId) : "";
   const stateReport = location?.state?.report ?? null;
 
@@ -192,6 +193,7 @@ export default function EnterpriseReportDetail() {
                     updateMockReport(next);
                     publishReportUpdated(next);
                     setReportOverride(next);
+                    navigate(PATHS.enterprise.dashboard, { replace: true });
                   }}
                 >
                   <XCircle className="h-5 w-5" aria-hidden="true" />
@@ -343,6 +345,7 @@ export default function EnterpriseReportDetail() {
                     publishReportUpdated(next);
                     setReportOverride(next);
                     setAssignOpen(false);
+                    navigate(PATHS.enterprise.dashboard, { replace: true });
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
