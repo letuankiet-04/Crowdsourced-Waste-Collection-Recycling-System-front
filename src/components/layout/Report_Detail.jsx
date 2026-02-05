@@ -5,6 +5,8 @@ import { Card, CardBody, CardHeader, CardTitle } from '../ui/Card.jsx'
 import Button from '../ui/Button.jsx'
 import StatusPill from '../ui/StatusPill.jsx'
 import { normalizeReportStatus, reportStatusToPillVariant } from '../../lib/reportStatus.js'
+import ReportLocationCard from './ReportLocationCard.jsx'
+import ReportPhotosCard from './ReportPhotosCard.jsx'
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   year: 'numeric',
@@ -23,12 +25,6 @@ function formatDateTime(value) {
   } catch {
     return '-'
   }
-}
-
-function formatCoord(value) {
-  const n = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(n)) return '-'
-  return n.toFixed(5)
 }
 
 function Field({ label, value }) {
@@ -50,9 +46,6 @@ export default function ReportDetail({
   aside,
 }) {
   const safeReport = report ?? null
-
-  const coords = safeReport?.coords ?? null
-  const collectedCoords = safeReport?.collectedCoords ?? null
 
   const types = useMemo(() => {
     const raw = safeReport?.types
@@ -202,80 +195,14 @@ export default function ReportDetail({
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader className="py-6 px-8">
-              <CardTitle className="text-2xl">Location</CardTitle>
-            </CardHeader>
-            <CardBody className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Reported Address</div>
-                  <div className="mt-1 text-gray-900">{safeReport?.address || '-'}</div>
-                </div>
-                <Field label="Reported Latitude" value={formatCoord(coords?.lat)} />
-                <Field label="Reported Longitude" value={formatCoord(coords?.lng)} />
+          <ReportLocationCard
+            reportedAddress={safeReport?.address}
+            reportedCoords={safeReport?.coords}
+            collectedAddress={safeReport?.collectedAddress}
+            collectedCoords={safeReport?.collectedCoords}
+          />
 
-                {collectedCoords || safeReport?.collectedAddress ? (
-                  <>
-                    <div className="md:col-span-2 border-t border-gray-100 pt-6" />
-                    <div className="md:col-span-2">
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Address</div>
-                      <div className="mt-1 text-gray-900">{safeReport?.collectedAddress || '-'}</div>
-                    </div>
-                    <Field label="Collected Latitude" value={formatCoord(collectedCoords?.lat)} />
-                    <Field label="Collected Longitude" value={formatCoord(collectedCoords?.lng)} />
-                  </>
-                ) : null}
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader className="py-6 px-8">
-              <CardTitle className="text-2xl">Photos</CardTitle>
-            </CardHeader>
-            <CardBody className="p-8">
-              {images.length || collectedImages.length ? (
-                <div className="space-y-6">
-                  {images.length ? (
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Reported Photos</div>
-                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {images.map((src, idx) => (
-                          <img
-                            key={`${src}-${idx}`}
-                            src={src}
-                            alt={`Report photo ${idx + 1}`}
-                            className="w-full h-40 object-cover rounded-xl border border-gray-100"
-                            loading="lazy"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {collectedImages.length ? (
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Photos</div>
-                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {collectedImages.map((src, idx) => (
-                          <img
-                            key={`${src}-${idx}`}
-                            src={src}
-                            alt={`Collected photo ${idx + 1}`}
-                            className="w-full h-40 object-cover rounded-xl border border-gray-100"
-                            loading="lazy"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="text-gray-600 text-sm">No photos attached.</div>
-              )}
-            </CardBody>
-          </Card>
+          <ReportPhotosCard images={images} collectedImages={collectedImages} />
         </div>
 
         {aside ? <div className="space-y-8 lg:sticky lg:top-6 self-start">{aside}</div> : null}
