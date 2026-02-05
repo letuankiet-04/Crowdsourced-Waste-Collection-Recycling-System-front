@@ -1,17 +1,18 @@
-import { Link } from "react-router-dom";
-import logo from "../../../assets/app-logo.jpg";
-import { PATHS } from "../../../routes/paths.js";
+
+import useStoredUser from "../../../hooks/useStoredUser";
 
 export default function CD_Navbar({ brandTitle = "Citizen Portal" }) {
+  const { displayName, roleLabel, user } = useStoredUser();
+
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : "U";
+  const roleDisplay = roleLabel ? roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1).toLowerCase() : "User";
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="w-full pl-6 pr-6 sm:pr-8 lg:pr-12">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center gap-3">
-            <Link to={PATHS.home} className="inline-flex items-center gap-3">
-              <img src={logo} alt="App Logo" className="h-8 w-8 rounded-lg" />
-              <span className="text-xl font-bold text-gray-900">{brandTitle}</span>
-            </Link>
+           
           </div>
           <div className="flex items-center gap-8">
             <button className="group p-3 text-gray-500 hover:text-green-600 hover:bg-gray-100 rounded-full transition-all duration-200 ease-in-out hover:scale-110 active:scale-95 relative">
@@ -35,11 +36,15 @@ export default function CD_Navbar({ brandTitle = "Citizen Portal" }) {
 
             <div className="flex items-center gap-4 pl-8 border-l border-gray-200">
               <div className="hidden md:flex flex-col items-end">
-                <span className="text-base font-semibold text-gray-900">User Name</span>
-                <span className="text-sm text-gray-500">Citizen Level 4</span>
+                <span className="text-base font-semibold text-gray-900">{displayName}</span>
+                <span className="text-sm text-gray-500">{roleDisplay}</span>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xl border-2 border-white shadow-sm transition-transform duration-200 ease-in-out hover:scale-105">
-                U
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xl border-2 border-white shadow-sm transition-transform duration-200 ease-in-out hover:scale-105 overflow-hidden">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={displayName} className="w-full h-full object-cover" />
+                ) : (
+                  initial
+                )}
               </div>
             </div>
           </div>

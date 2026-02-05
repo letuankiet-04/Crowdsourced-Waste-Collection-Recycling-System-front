@@ -7,6 +7,7 @@ import {
   CitizenDashboard,
   CitizenReportDetail,
   CitizenReports,
+  CitizenFeedback,
   CollectorDashboard,
   CollectorHistory,
   CollectorProfile,
@@ -25,6 +26,8 @@ import {
   Home,
   ApiTest,
   Unauthorized,
+  CitizenProfile,
+  AdminProfile,
 } from './lazyPages.jsx'
 
 export default function AppRoutes() {
@@ -56,6 +59,24 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['citizen']}>
             <CreateReport />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.citizen.feedback}
+        element={
+          <ProtectedRoute role={['citizen']}>
+           <CitizenFeedback/>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.citizen.profile}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenProfile />
           </ProtectedRoute>
         }
       />
@@ -179,6 +200,15 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.admin.profile}
+        element={
+          <ProtectedRoute role={['admin']}>
+            <AdminProfile />
           </ProtectedRoute>
         }
       />

@@ -25,7 +25,7 @@ export default function useStoredUser() {
 
   const displayName = useMemo(() => {
     if (!user) return "Loading...";
-    return user.username ?? user.name ?? user.email ?? "Loading...";
+    return user.fullName || "Loading...";
   }, [user]);
 
   const roleLabel = useMemo(() => {

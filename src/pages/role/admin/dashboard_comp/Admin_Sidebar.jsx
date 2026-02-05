@@ -3,7 +3,7 @@ import SidebarNavItem from "../../../../components/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../../components/sidebar/SidebarLogoutButton.jsx";
 import appLogo from "../../../../assets/app-logo.jpg";
 import { PATHS } from "../../../../routes/paths.js";
-import { LayoutDashboard, MessageSquare, Users, BarChart3 } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Users, BarChart3, User } from "lucide-react";
 
 export default function Admin_Sidebar() {
   return (
@@ -25,6 +25,9 @@ export default function Admin_Sidebar() {
         </SidebarNavItem>,
         <SidebarNavItem key="stats" to="#" className="text-lg" icon={<BarChart3 className="h-6 w-6" />}>
           Statistical Report
+        </SidebarNavItem>,
+        <SidebarNavItem key="profile" to={PATHS.admin.profile} className="text-lg" icon={<User className="h-6 w-6" />}>
+          Profile
         </SidebarNavItem>,
       ]}
       footer={
