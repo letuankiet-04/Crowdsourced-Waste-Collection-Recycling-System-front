@@ -19,7 +19,7 @@ export const citizenDashboardActions = [
   />,
   <ActionCard
     key="feedback"
-    to="/feedback"
+    to={PATHS.citizen.feedback}
     title="Feedback"
     variant="orange"
     icon={<MessageSquareText className="h-10 w-10" aria-hidden="true" />}

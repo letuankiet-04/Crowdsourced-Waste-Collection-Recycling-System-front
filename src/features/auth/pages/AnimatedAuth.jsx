@@ -89,8 +89,9 @@ export default function AnimatedAuth() {
     try {
       const res = await login({ email, password })
       sessionStorage.setItem('token', res.token)
-      const fullName = res.fullName ?? res.full_name ?? res.name ?? res.username ?? null
-      const userToStore = buildStoredUserFromToken(res.token, { fullName })
+      const { token: _token, ...restRes } = res
+      const tokenData = buildStoredUserFromToken(res.token, restRes)
+      const userToStore = { ...restRes, ...tokenData }
       sessionStorage.setItem('user', JSON.stringify(userToStore))
 
       switch (userToStore.role) {
@@ -119,11 +120,30 @@ export default function AnimatedAuth() {
   async function handleSignup({ name, email, password }) {
     setPending(true)
     try {
-      await register({ name, email, password })
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
-      notify.success('Account created', 'Please login to continue.')
-      navigate(PATHS.auth.login, { replace: true })
+      const res = await register({ name, email, password })
+      sessionStorage.setItem('token', res.token)
+      const { token: _token, ...restRes } = res
+      const fullName = restRes.fullName ?? restRes.full_name ?? restRes.name ?? restRes.username ?? name ?? null
+      const tokenData = buildStoredUserFromToken(res.token, { ...restRes, fullName })
+      const userToStore = { ...restRes, ...tokenData }
+      sessionStorage.setItem('user', JSON.stringify(userToStore))
+
+      switch (userToStore.role) {
+        case 'citizen':
+          navigate(PATHS.citizen.dashboard)
+          break
+        case 'enterprise':
+          navigate(PATHS.enterprise.dashboard)
+          break
+        case 'collector':
+          navigate(PATHS.collector.dashboard)
+          break
+        case 'admin':
+          navigate(PATHS.admin.dashboard)
+          break
+        default:
+          navigate(PATHS.home)
+      }
     } catch (err) {
       throw err instanceof Error ? err : new Error('Signup failed')
     } finally {

@@ -14,6 +14,8 @@ export const PATHS = {
     createReport: '/create-report',
     reports: '/citizen/reports',
     reportDetail: '/citizen/reports/:reportId',
+    feedback: '/citizen/feedback',
+    profile: '/citizen/profile',
   },
   collector: {
     dashboard: '/collector/dashboard',
@@ -36,6 +38,7 @@ export const PATHS = {
   admin: {
     dashboard: '/admin/dashboard',
     reportDetail: '/admin/reports/:reportId',
+    profile: '/admin/profile',
   },
   unauthorized: '/unauthorized',
   contact: '/home#contact',

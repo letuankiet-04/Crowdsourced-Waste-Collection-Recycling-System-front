@@ -92,7 +92,7 @@ export const citizenNavItems = [
   </SidebarNavItem>,
   <SidebarNavItem
     key="profile"
-    to="/profile"
+    to={PATHS.citizen.profile}
     icon={
       <svg
         xmlns="http://www.w3.org/2000/svg"

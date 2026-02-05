@@ -85,3 +85,15 @@ export async function logout() {
   await api.post('/api/auth/logout')
 }
 
+// Mock update profile function since backend endpoint is missing
+export async function updateProfile(userData) {
+  // In a real app, this would be:
+  // const { data } = await api.put('/api/users/profile', userData);
+  // return unwrapApiResponse(data);
+  
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ ...userData });
+    }, 800);
+  });
+}
