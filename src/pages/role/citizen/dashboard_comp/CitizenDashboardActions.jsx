@@ -12,7 +12,7 @@ export const citizenDashboardActions = [
   />,
   <ActionCard
     key="my-reward"
-    to="/rewards"
+    to={PATHS.citizen.rewards}
     title="My reward"
     variant="blue"
     icon={<Gift className="h-10 w-10" aria-hidden="true" />}
