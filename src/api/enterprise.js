@@ -29,3 +29,8 @@ export async function createCollector({ email, password, fullName, phone, employ
   })
   return unwrapApiResponse(data)
 }
+
+export async function getEnterpriseCollectors() {
+  const { data } = await api.get('/api/enterprise/collectors')
+  return unwrapApiResponse(data)
+}

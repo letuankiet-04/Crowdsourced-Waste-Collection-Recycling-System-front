@@ -205,7 +205,7 @@ export default function EnterpriseAdminPanel() {
                         autoComplete="off"
                         value={values.vehicleType}
                         onChange={handleChange("vehicleType")}
-                        placeholder="Truck / Van / Bike"
+                        placeholder="Truck / Van / Car"
                         disabled={pending}
                         leftIcon={Truck}
                         accent="emerald"
@@ -216,7 +216,7 @@ export default function EnterpriseAdminPanel() {
                         autoComplete="off"
                         value={values.vehiclePlate}
                         onChange={handleChange("vehiclePlate")}
-                        placeholder="ABC-1234"
+                        placeholder="66K3-123.45"
                         disabled={pending}
                         leftIcon={Car}
                         accent="emerald"
@@ -339,7 +339,7 @@ export default function EnterpriseAdminPanel() {
                       <div className="min-w-0">
                         <div className="font-semibold text-slate-900">Tip</div>
                         <div className="mt-1 text-slate-600">
-                          Keep vehicle plate format consistent (for example, ABC-1234) for easier searching.
+                          Keep vehicle plate format consistent (for example, 49AE-123.45) for easier searching.
                         </div>
                       </div>
                     </div>
