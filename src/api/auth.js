@@ -1,4 +1,5 @@
 import api from './axios.js'
+import unwrapApiResponse from './unwrapApiResponse.js'
 
 function decodeBase64Url(input) {
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/')
@@ -28,22 +29,38 @@ export function getRoleFromJwt(token) {
   return roleEntry.slice('ROLE_'.length).toLowerCase()
 }
 
-export function buildStoredUserFromToken(token) {
+export function buildStoredUserFromToken(token, extra = null) {
   const payload = parseJwt(token)
   const role = getRoleFromJwt(token)
   const scope = typeof payload?.scope === 'string' ? payload.scope : ''
   const email = typeof payload?.sub === 'string' ? payload.sub : null
 
+  const tokenName =
+    typeof payload?.fullName === 'string'
+      ? payload.fullName
+      : typeof payload?.full_name === 'string'
+        ? payload.full_name
+        : typeof payload?.name === 'string'
+          ? payload.name
+          : typeof payload?.preferred_username === 'string'
+            ? payload.preferred_username
+            : null
+  const fullNameCandidate =
+    typeof extra?.fullName === 'string'
+      ? extra.fullName
+      : typeof extra?.name === 'string'
+        ? extra.name
+        : tokenName
+  const fullName = typeof fullNameCandidate === 'string' ? fullNameCandidate.trim() || null : null
+  const name = fullName
+
   return {
     email,
+    fullName,
+    name,
     role,
     scope,
   }
-}
-
-function unwrapApiResponse(data) {
-  if (data && typeof data === 'object' && 'result' in data) return data.result
-  return data
 }
 
 export async function login({ email, password }) {

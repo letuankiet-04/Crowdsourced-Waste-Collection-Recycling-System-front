@@ -11,6 +11,24 @@ function readStoredUser() {
   }
 }
 
+function getEmailLocalPart(email) {
+  if (typeof email !== 'string') return null
+  const trimmed = email.trim()
+  if (!trimmed) return null
+  const atIndex = trimmed.indexOf('@')
+  if (atIndex <= 0) return null
+  return trimmed.slice(0, atIndex)
+}
+
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue
+    const trimmed = value.trim()
+    if (trimmed) return trimmed
+  }
+  return null
+}
+
 export default function useStoredUser() {
   const [user, setUser] = useState(() => readStoredUser());
 
@@ -25,7 +43,11 @@ export default function useStoredUser() {
 
   const displayName = useMemo(() => {
     if (!user) return "Loading...";
-    return user.username ?? user.name ?? user.email ?? "Loading...";
+    return (
+      firstNonEmptyString(user.fullName, user.name, user.username) ??
+      firstNonEmptyString(getEmailLocalPart(user.email)) ??
+      "Loading..."
+    )
   }, [user]);
 
   const roleLabel = useMemo(() => {

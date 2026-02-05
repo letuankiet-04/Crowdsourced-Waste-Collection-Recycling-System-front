@@ -10,15 +10,14 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Ca
 import Button from "../../../components/ui/Button.jsx";
 import { PATHS } from "../../../routes/paths.js";
 import { CheckCircle2, Users, X, XCircle } from "lucide-react";
+import { getEnterpriseCollectors } from "../../../api/enterprise.js";
 
-const fallbackCollectors = [
-  {
-    id: "COL-001",
-    name: "Demo Collector",
-    email: "collector@test.com",
-    status: "available",
-  },
-];
+function normalizeCollectors(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== "object") return [];
+  const maybeList = payload.collectors ?? payload.items ?? payload.data ?? payload.users ?? payload.result ?? payload.content ?? [];
+  return Array.isArray(maybeList) ? maybeList : [];
+}
 
 export default function EnterpriseReportDetail() {
   const { reportId } = useParams();
@@ -60,6 +59,37 @@ export default function EnterpriseReportDetail() {
   const canDecide = status === "pending";
   const canGoAssign = status === "accepted";
 
+  const [collectorSource, setCollectorSource] = useState([]);
+  const [collectorsLoading, setCollectorsLoading] = useState(false);
+  const [collectorsError, setCollectorsError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCollectors() {
+      setCollectorsLoading(true);
+      setCollectorsError("");
+      try {
+        const data = await getEnterpriseCollectors();
+        const list = normalizeCollectors(data);
+        if (!cancelled) setCollectorSource(list);
+      } catch (err) {
+        const message = err?.message || "Unable to load collectors. Please try again.";
+        if (!cancelled) {
+          setCollectorSource([]);
+          setCollectorsError(message);
+        }
+      } finally {
+        if (!cancelled) setCollectorsLoading(false);
+      }
+    }
+
+    loadCollectors();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function getAssignedEmailsFromReport(r) {
     const many = Array.isArray(r?.assignedCollectors) ? r.assignedCollectors : [];
     const manyEmails = many.map((c) => c?.email).filter(Boolean);
@@ -69,7 +99,7 @@ export default function EnterpriseReportDetail() {
   }
 
   const collectors = useMemo(() => {
-    const list = Array.isArray(fallbackCollectors) ? fallbackCollectors : [];
+    const list = Array.isArray(collectorSource) ? collectorSource : [];
     return list
       .map((c, idx) => {
         const id = c?.id ?? c?._id ?? c?.collectorId ?? idx;
@@ -80,7 +110,7 @@ export default function EnterpriseReportDetail() {
         return { id, name, email, isOnline };
       })
       .filter((c) => Boolean(c.email));
-  }, []);
+  }, [collectorSource]);
 
   const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
   const assignedLabel = useMemo(() => {
@@ -244,14 +274,17 @@ export default function EnterpriseReportDetail() {
                     <button
                       type="button"
                       className="text-xs font-semibold text-indigo-700 hover:underline disabled:opacity-60"
-                      disabled={!report || !canGoAssign || !collectors.length}
+                      disabled={!report || !canGoAssign || collectorsLoading || !collectors.length}
                       onClick={() => setSelectedCollectorEmails(collectors.map((c) => c.email))}
                     >
                       Select all
                     </button>
                   </div>
+                  {collectorsError ? <div className="text-sm text-red-600">{collectorsError}</div> : null}
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
-                    {collectors.length ? (
+                    {collectorsLoading ? (
+                      <div className="px-4 py-5 text-sm text-gray-600">Loading collectors...</div>
+                    ) : collectors.length ? (
                       collectors.map((c) => {
                         const checked = selectedCollectorEmails.includes(c.email);
                         return (

@@ -6,18 +6,6 @@ import StatusPill from "../../../components/ui/StatusPill.jsx";
 import useNotify from "../../../hooks/useNotify.js";
 import { getEnterpriseCollectors } from "../../../api/enterprise.js";
 
-const fallbackCollectors = import.meta.env.DEV
-  ? [
-      {
-        id: "COL-001",
-        name: "Demo Collector",
-        email: "collector@test.com",
-        status: "available",
-        lastSeen: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      },
-    ]
-  : [];
-
 function normalizeCollectors(payload) {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") return [];
@@ -44,7 +32,7 @@ export default function EnterpriseActiveCollector() {
       } catch (err) {
         const message = err?.message || "Unable to load collectors. Please try again.";
         if (!cancelled) {
-          setCollectors(fallbackCollectors);
+          setCollectors([]);
           setError(message);
         }
         notify.error("Load failed", message);

@@ -33,7 +33,8 @@ export default function ApiTest() {
     try {
       const res = await login({ email: values.email.trim(), password: values.password })
       sessionStorage.setItem('token', res.token)
-      sessionStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token)))
+      const fullName = res.fullName ?? res.full_name ?? res.name ?? res.username ?? null
+      sessionStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token, { fullName })))
       print('LOGIN OK', res)
     } catch (err) {
       print('LOGIN ERROR', { message: err?.message || String(err) })
@@ -51,7 +52,8 @@ export default function ApiTest() {
         password: values.password,
       })
       sessionStorage.setItem('token', res.token)
-      sessionStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token)))
+      const fullName = res.fullName ?? res.full_name ?? res.name ?? res.username ?? values.name.trim()
+      sessionStorage.setItem('user', JSON.stringify(buildStoredUserFromToken(res.token, { fullName })))
       print('REGISTER OK', res)
     } catch (err) {
       print('REGISTER ERROR', { message: err?.message || String(err) })

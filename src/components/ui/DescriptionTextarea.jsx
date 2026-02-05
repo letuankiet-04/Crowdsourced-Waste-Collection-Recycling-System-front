@@ -3,10 +3,10 @@ import { useCallback } from "react"
 export default function DescriptionTextarea({ value = "", onChange, max = 500 }) {
   const handleChange = useCallback(
     (e) => {
-      const next = e.target.value.slice(0, max)
+      const next = e.target.value
       if (onChange) onChange(next)
     },
-    [onChange, max]
+    [onChange]
   )
 
   return (

@@ -7,6 +7,7 @@ import LoginForm from '../components/LoginForm.jsx'
 import SignupForm from '../components/SignupForm.jsx'
 import { cn } from '../../../lib/cn.js'
 import { PATHS } from '../../../routes/paths.js'
+import useNotify from '../../../hooks/useNotify.js'
 
 const APP_NAME = 'CrowdRecycle'
 
@@ -69,6 +70,7 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
 export default function AnimatedAuth() {
   const navigate = useNavigate()
   const location = useLocation()
+  const notify = useNotify()
 
   const mode = location.pathname.includes(PATHS.auth.signup) ? 'signup' : 'login'
   const [pending, setPending] = useState(false)
@@ -87,7 +89,8 @@ export default function AnimatedAuth() {
     try {
       const res = await login({ email, password })
       sessionStorage.setItem('token', res.token)
-      const userToStore = buildStoredUserFromToken(res.token)
+      const fullName = res.fullName ?? res.full_name ?? res.name ?? res.username ?? null
+      const userToStore = buildStoredUserFromToken(res.token, { fullName })
       sessionStorage.setItem('user', JSON.stringify(userToStore))
 
       switch (userToStore.role) {
@@ -116,27 +119,11 @@ export default function AnimatedAuth() {
   async function handleSignup({ name, email, password }) {
     setPending(true)
     try {
-      const res = await register({ name, email, password })
-      sessionStorage.setItem('token', res.token)
-      const userToStore = buildStoredUserFromToken(res.token)
-      sessionStorage.setItem('user', JSON.stringify(userToStore))
-
-      switch (userToStore.role) {
-        case 'citizen':
-          navigate(PATHS.citizen.dashboard)
-          break
-        case 'enterprise':
-          navigate(PATHS.enterprise.dashboard)
-          break
-        case 'collector':
-          navigate(PATHS.collector.dashboard)
-          break
-        case 'admin':
-          navigate(PATHS.admin.dashboard)
-          break
-        default:
-          navigate(PATHS.home)
-      }
+      await register({ name, email, password })
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
+      notify.success('Account created', 'Please login to continue.')
+      navigate(PATHS.auth.login, { replace: true })
     } catch (err) {
       throw err instanceof Error ? err : new Error('Signup failed')
     } finally {

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import ApiError from './ApiError.js'
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL
 const normalizedBaseUrl = typeof configuredBaseUrl === 'string' ? configuredBaseUrl.trim() : ''
@@ -8,15 +9,21 @@ const api = axios.create({
   baseURL,
   headers: {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
   },
 })
 
 api.interceptors.request.use((config) => {
   const url = String(config?.url || '')
-  const isAuthRequest = url.includes('/api/auth/')
+  const isTokenlessAuthRequest = url.includes('/api/auth/login') || url.includes('/api/auth/register')
   const token = typeof window !== 'undefined' ? window.sessionStorage.getItem('token') : null
-  if (!isAuthRequest && token && !config.headers?.Authorization) {
+
+  if (typeof FormData !== 'undefined' && config?.data instanceof FormData) {
+    config.headers = config.headers ?? {}
+    delete config.headers['Content-Type']
+    delete config.headers['content-type']
+  }
+
+  if (!isTokenlessAuthRequest && token && !config.headers?.Authorization) {
     config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -41,7 +48,7 @@ api.interceptors.response.use(
       error?.message ||
       'Request failed'
 
-    return Promise.reject(new Error(message))
+    return Promise.reject(new ApiError(message, { status, data, url: requestUrl }))
   }
 )
 

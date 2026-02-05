@@ -1,9 +1,5 @@
 import api from './axios.js'
-
-function unwrapApiResponse(data) {
-  if (data && typeof data === 'object' && 'result' in data) return data.result
-  return data
-}
+import unwrapApiResponse from './unwrapApiResponse.js'
 
 export async function getEnterpriseRequests() {
   const { data } = await api.get('/api/enterprise/requests')

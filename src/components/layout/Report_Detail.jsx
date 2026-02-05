@@ -52,6 +52,7 @@ export default function ReportDetail({
   const safeReport = report ?? null
 
   const coords = safeReport?.coords ?? null
+  const collectedCoords = safeReport?.collectedCoords ?? null
 
   const types = useMemo(() => {
     const raw = safeReport?.types
@@ -62,6 +63,31 @@ export default function ReportDetail({
     const raw = safeReport?.images
     return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
   }, [safeReport])
+
+  const collectedImages = useMemo(() => {
+    const raw = safeReport?.collectedImages
+    return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
+  }, [safeReport])
+
+  const collectedWeightsEntries = useMemo(() => {
+    const raw = safeReport?.collectedWeights
+    if (!raw || typeof raw !== 'object') return []
+    return Object.entries(raw)
+      .map(([k, v]) => {
+        const key = String(k)
+        const num = typeof v === 'number' ? v : Number(v)
+        return [key, num]
+      })
+      .filter(([key, num]) => Boolean(key) && Number.isFinite(num) && num >= 0)
+  }, [safeReport])
+
+  const collectedTotalWeight = useMemo(() => {
+    const raw = safeReport?.collectedTotalWeight
+    const num = typeof raw === 'number' ? raw : Number(raw)
+    if (Number.isFinite(num)) return num
+    if (collectedWeightsEntries.length) return collectedWeightsEntries.reduce((sum, [, v]) => sum + v, 0)
+    return null
+  }, [safeReport, collectedWeightsEntries])
 
   if (!safeReport) {
     return (
@@ -150,6 +176,24 @@ export default function ReportDetail({
                   </div>
                 </div>
                 <Field label="Estimated Weight" value={safeReport?.weight || '-'} />
+                {collectedTotalWeight !== null ? (
+                  <Field label="Collected Total Weight" value={`${collectedTotalWeight} kg`} />
+                ) : null}
+                {collectedWeightsEntries.length ? (
+                  <div className="md:col-span-2">
+                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Weights</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {collectedWeightsEntries.map(([t, w]) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100"
+                        >
+                          {t}: {w} kg
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="md:col-span-2">
                   <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Notes</div>
                   <div className="mt-2 text-gray-800 whitespace-pre-wrap">{safeReport?.notes ? String(safeReport.notes) : '-'}</div>
@@ -165,11 +209,23 @@ export default function ReportDetail({
             <CardBody className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Address</div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Reported Address</div>
                   <div className="mt-1 text-gray-900">{safeReport?.address || '-'}</div>
                 </div>
-                <Field label="Latitude" value={formatCoord(coords?.lat)} />
-                <Field label="Longitude" value={formatCoord(coords?.lng)} />
+                <Field label="Reported Latitude" value={formatCoord(coords?.lat)} />
+                <Field label="Reported Longitude" value={formatCoord(coords?.lng)} />
+
+                {collectedCoords || safeReport?.collectedAddress ? (
+                  <>
+                    <div className="md:col-span-2 border-t border-gray-100 pt-6" />
+                    <div className="md:col-span-2">
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Address</div>
+                      <div className="mt-1 text-gray-900">{safeReport?.collectedAddress || '-'}</div>
+                    </div>
+                    <Field label="Collected Latitude" value={formatCoord(collectedCoords?.lat)} />
+                    <Field label="Collected Longitude" value={formatCoord(collectedCoords?.lng)} />
+                  </>
+                ) : null}
               </div>
             </CardBody>
           </Card>
@@ -179,17 +235,41 @@ export default function ReportDetail({
               <CardTitle className="text-2xl">Photos</CardTitle>
             </CardHeader>
             <CardBody className="p-8">
-              {images.length ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {images.map((src, idx) => (
-                    <img
-                      key={`${src}-${idx}`}
-                      src={src}
-                      alt={`Report photo ${idx + 1}`}
-                      className="w-full h-40 object-cover rounded-xl border border-gray-100"
-                      loading="lazy"
-                    />
-                  ))}
+              {images.length || collectedImages.length ? (
+                <div className="space-y-6">
+                  {images.length ? (
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Reported Photos</div>
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {images.map((src, idx) => (
+                          <img
+                            key={`${src}-${idx}`}
+                            src={src}
+                            alt={`Report photo ${idx + 1}`}
+                            className="w-full h-40 object-cover rounded-xl border border-gray-100"
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {collectedImages.length ? (
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Photos</div>
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {collectedImages.map((src, idx) => (
+                          <img
+                            key={`${src}-${idx}`}
+                            src={src}
+                            alt={`Collected photo ${idx + 1}`}
+                            className="w-full h-40 object-cover rounded-xl border border-gray-100"
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="text-gray-600 text-sm">No photos attached.</div>
