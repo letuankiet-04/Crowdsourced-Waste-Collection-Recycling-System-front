@@ -8,6 +8,7 @@ export const CollectorTasks = lazy(() => import('../pages/role/collector/Collect
 export const CollectorHistory = lazy(() => import('../pages/role/collector/Collector_History.jsx'))
 export const CollectorProfile = lazy(() => import('../pages/role/collector/Collector_Profile.jsx'))
 export const AdminDashboard = lazy(() => import('../pages/role/admin/Admin_Dashboard.jsx'))
+export const AdminProfile = lazy(() => import('../pages/role/admin/Admin_Profile.jsx'))
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))
 export const ApiTest = lazy(() => import('../pages/common/ApiTest.jsx'))
 
@@ -16,6 +17,9 @@ export const CitizenDashboard = lazy(() => import('../pages/role/citizen/Citizen
 export const CreateReport = lazy(() => import('../pages/role/citizen/CreateReport.jsx'))
 export const CitizenReports = lazy(() => import('../pages/role/citizen/Citizen_Reports.jsx'))
 export const CitizenReportDetail = lazy(() => import('../pages/role/citizen/Citizen_ReportDetail.jsx'))
+export const CitizenFeedback = lazy(() => import('../pages/role/citizen/Feedback.jsx'))
+export const CitizenProfile = lazy(() => import('../pages/role/citizen/Citizen_Profile.jsx'))
+
 
 
 //enterprise

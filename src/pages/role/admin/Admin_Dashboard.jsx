@@ -1,5 +1,6 @@
-import Navbar from "../citizen/CD_Navbar";
+import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
 import CD_Footer from "../../../components/layout/CD_Footer.jsx";
+import CD_Header from "../../../components/layout/CD_Header.jsx";
 import RoleLayout from "../../../components/layout/RoleLayout.jsx";
 import WaitApiPlaceholder from "../../../components/ui/WaitApiPlaceholder.jsx";
 
@@ -13,7 +14,7 @@ export default function AdminDashboard() {
   return (
     <RoleLayout
       sidebar={<AdminSidebar />}
-      navbar={<Navbar brandTitle="Admin Portal" />}
+      navbar={<AdminNavbar />}
       footer={
         <div className="animate-fade-in-up">
           <CD_Footer />
@@ -21,6 +22,13 @@ export default function AdminDashboard() {
       }
     >
       <div className="max-w-screen-xl mx-auto space-y-8">
+        <div className="animate-fade-in-up">
+           <CD_Header
+             description="Welcome back! Monitor system performance and manage user activities."
+             badgeText="System running normally"
+             showBadge={true}
+           />
+        </div>
 
         {/* SUMMARY CARDS */}
         <div className="animate-fade-in-up">

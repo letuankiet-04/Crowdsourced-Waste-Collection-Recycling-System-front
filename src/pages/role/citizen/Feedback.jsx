@@ -2,7 +2,7 @@ import RoleLayout from "../../../components/layout/RoleLayout.jsx";
 import FeedbackForm from "../../../components/feedback/FeedbackForm.jsx";
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
-import CD_Footer from "./CD_Footer.jsx";
+import CD_Footer from "../../../components/layout/CD_Footer.jsx";
 import PageHeader from "../../../components/ui/PageHeader.jsx";
 
 export default function FeedbackPage() {

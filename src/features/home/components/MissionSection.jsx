@@ -34,16 +34,16 @@ export default function MissionSection() {
           </div>
         </div>
 
-        <div className="flex justify-center gap-6">
+        <div className="flex justify-end gap-6 r">
           <img
             src={img01}
             alt="Waste management"
-            className="h-[420px] w-[320px] rounded-2xl object-cover shadow-lg shadow-slate-900/10"
+            className="h-[360px] w-[260px] rounded-2xl object-cover shadow-lg shadow-slate-900/10"
           />
           <img
             src={img02}
             alt="Community"
-            className="mt-14 hidden h-[420px] w-[320px] rounded-2xl object-cover shadow-lg shadow-slate-900/10 sm:block"
+            className="mt-14 hidden h-[360px] w-[260px] rounded-2xl object-cover shadow-lg shadow-slate-900/10 sm:block"
           />
         </div>
       </div>

@@ -87,7 +87,9 @@ export default function AnimatedAuth() {
     try {
       const res = await login({ email, password })
       sessionStorage.setItem('token', res.token)
-      const userToStore = buildStoredUserFromToken(res.token)
+      const tokenData = buildStoredUserFromToken(res.token)
+      // Merge token data with API response to capture fullName and other IDs
+      const userToStore = { ...tokenData, ...res }
       sessionStorage.setItem('user', JSON.stringify(userToStore))
 
       switch (userToStore.role) {
@@ -118,7 +120,9 @@ export default function AnimatedAuth() {
     try {
       const res = await register({ name, email, password })
       sessionStorage.setItem('token', res.token)
-      const userToStore = buildStoredUserFromToken(res.token)
+      const tokenData = buildStoredUserFromToken(res.token)
+      // Merge token data with API response to capture fullName and other IDs
+      const userToStore = { ...tokenData, ...res }
       sessionStorage.setItem('user', JSON.stringify(userToStore))
 
       switch (userToStore.role) {
