@@ -23,7 +23,7 @@ export async function createCollector({ email, password, fullName, phone, employ
     phone: phone || undefined,
     password,
     fullName,
-    employeeCode,
+    employeeCode: employeeCode || undefined,
     vehicleType,
     vehiclePlate,
   })

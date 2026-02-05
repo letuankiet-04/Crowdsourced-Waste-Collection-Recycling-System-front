@@ -25,6 +25,16 @@ function fileToDataUrl(file) {
   });
 }
 
+function normalizeWeightInput(value) {
+  if (value == null) return "";
+  const text = String(value).trim();
+  if (!text) return "";
+  const direct = Number(text);
+  if (Number.isFinite(direct)) return String(direct);
+  const match = text.match(/(\d+(\.\d+)?)/);
+  return match ? match[1] : "";
+}
+
 export default function CreateReportForm() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +45,8 @@ export default function CreateReportForm() {
 
   const [types, setTypes] = useState(() => (Array.isArray(editReport?.types) ? editReport.types : []));
   const [address, setAddress] = useState(() => (typeof editReport?.address === "string" ? editReport.address : ""));
-  const [weight, setWeight] = useState(() => (typeof editReport?.weight === "string" ? editReport.weight : "1 - 5 kg"));
+  const [weight, setWeight] = useState(() => normalizeWeightInput(editReport?.weight));
+  const [weightTouched, setWeightTouched] = useState(false);
   const [notes, setNotes] = useState(() => (typeof editReport?.notes === "string" ? editReport.notes : ""));
   const [coords, setCoords] = useState(() => (editReport?.coords ?? null));
   const [existingImages, setExistingImages] = useState(() => (Array.isArray(editReport?.images) ? editReport.images : []));
@@ -51,7 +62,8 @@ export default function CreateReportForm() {
   const handleDiscard = () => {
     setTypes([]);
     setAddress("");
-    setWeight("1 - 5 kg");
+    setWeight("");
+    setWeightTouched(false);
     setNotes("");
     setCoords(null);
     setAddrLoading(false);
@@ -62,17 +74,29 @@ export default function CreateReportForm() {
     navigate(isEdit && editReport?.id ? `${PATHS.citizen.reports}/${editReport.id}` : PATHS.citizen.dashboard);
   };
 
+  const weightError = useMemo(() => {
+    const trimmed = String(weight ?? "").trim();
+    if (!trimmed) return "Please enter the estimated weight.";
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) return "Weight must be a valid number.";
+    if (n <= 0) return "Weight must be greater than 0 kg.";
+    if (n >= 10) return "Weight must be less than 10 kg.";
+    return "";
+  }, [weight]);
+
   const canSubmit = useMemo(() => {
     const hasTypes = types.length > 0;
     const hasImages = images.length > 0 || existingImages.length > 0;
     const hasLocation = coords != null && address.trim().length >= 3 && !geoError;
-    return hasTypes && hasImages && hasLocation;
-  }, [types, images, existingImages, coords, address, geoError]);
+    const hasValidWeight = !weightError;
+    return hasTypes && hasImages && hasLocation && hasValidWeight;
+  }, [types, images, existingImages, coords, address, geoError, weightError]);
 
   const handleClearDraft = () => {
     setTypes([]);
     setAddress("");
-    setWeight("1 - 5 kg");
+    setWeight("");
+    setWeightTouched(false);
     setNotes("");
     setCoords(null);
     setExistingImages([]);
@@ -96,6 +120,10 @@ export default function CreateReportForm() {
       notify.error("Missing location", "Please choose a location using GPS, map, or address.");
       return;
     }
+    if (weightError) {
+      notify.error("Invalid weight", weightError);
+      return;
+    }
     if (geoError) {
       notify.warning("Fix location error", geoError);
       return;
@@ -114,12 +142,13 @@ export default function CreateReportForm() {
       }
 
       const imageUrls = (await Promise.all(images.map(fileToDataUrl))).filter(Boolean);
+      const weightValue = String(Number(String(weight).trim()));
       const report = isEdit
         ? {
           ...editReport,
           address: address.trim(),
           types: [...types],
-          weight,
+          weight: weightValue,
           notes,
           coords,
           images: [...existingImages, ...imageUrls],
@@ -129,7 +158,7 @@ export default function CreateReportForm() {
           id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
           address: address.trim(),
           types: [...types],
-          weight,
+          weight: weightValue,
           notes,
           coords,
           images: imageUrls,
@@ -156,7 +185,8 @@ export default function CreateReportForm() {
 
       setTypes([]);
       setAddress("");
-      setWeight("1 - 5 kg");
+      setWeight("");
+      setWeightTouched(false);
       setNotes("");
       setCoords(null);
       setExistingImages([]);
@@ -221,13 +251,23 @@ export default function CreateReportForm() {
             <h4 className="text-sm font-semibold text-gray-500 uppercase">Existing Photos</h4>
             <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4">
               {existingImages.map((src, idx) => (
-                <img
-                  key={`${src}-${idx}`}
-                  src={src}
-                  alt={`Existing report photo ${idx + 1}`}
-                  className="w-full h-28 object-cover rounded-xl border border-gray-100"
-                  loading="lazy"
-                />
+                <div key={`${src}-${idx}`} className="relative group">
+                  <img
+                    src={src}
+                    alt={`Existing report photo ${idx + 1}`}
+                    className="w-full h-28 object-cover rounded-xl border border-gray-100"
+                    loading="lazy"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setExistingImages((prev) => prev.filter((_, i) => i !== idx))}
+                    className="absolute top-1.5 right-1.5 inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/90 text-gray-700 border border-gray-200 shadow-sm opacity-0 group-hover:opacity-100 transition hover:bg-red-50 hover:text-red-600"
+                    aria-label="Remove image"
+                    title="Remove image"
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
 
@@ -322,11 +362,25 @@ export default function CreateReportForm() {
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Estimate Weight</h4>
-          <input type="number"
+          <input
+            type="number"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e) => {
+              setWeight(e.target.value);
+              setWeightTouched(true);
+            }}
+            onBlur={() => setWeightTouched(true)}
+            min="0"
+            max="9.99"
+            step="0.1"
+            placeholder="kg"
             className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200"
           />
+          {weightTouched && weightError ? (
+            <div className="mt-2 text-sm text-red-600">{weightError}</div>
+          ) : (
+            <div className="mt-2 text-sm text-gray-500">Required. Must be less than 10 kg.</div>
+          )}
         </div>
 
         <div className="mt-6">
