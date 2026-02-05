@@ -48,7 +48,7 @@ export const citizenNavItems = [
   </SidebarNavItem>,
   <SidebarNavItem
     key="rewards"
-    to="/rewards"
+    to={PATHS.citizen.rewards}
     icon={
       <svg
         xmlns="http://www.w3.org/2000/svg"
