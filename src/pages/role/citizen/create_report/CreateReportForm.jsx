@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import useNotify from "../../../../hooks/useNotify.js";
 import useStoredUser from "../../../../hooks/useStoredUser.js";
@@ -59,15 +59,115 @@ export default function CreateReportForm() {
     setGeoError("");
     setImages([]);
     sourceRef.current = null;
-    navigate(PATHS.citizen.dashboard);
+    navigate(isEdit && editReport?.id ? `${PATHS.citizen.reports}/${editReport.id}` : PATHS.citizen.dashboard);
   };
 
   const canSubmit = useMemo(() => {
-    const hasTypes = types.length > 0
-    const hasImages = images.length > 0
-    const hasLocation = coords != null && address.trim().length >= 3 && !geoError
-    return hasTypes && hasImages && hasLocation
-  }, [types, images, coords, address, geoError])
+    const hasTypes = types.length > 0;
+    const hasImages = images.length > 0 || existingImages.length > 0;
+    const hasLocation = coords != null && address.trim().length >= 3 && !geoError;
+    return hasTypes && hasImages && hasLocation;
+  }, [types, images, existingImages, coords, address, geoError]);
+
+  const handleClearDraft = () => {
+    setTypes([]);
+    setAddress("");
+    setWeight("1 - 5 kg");
+    setNotes("");
+    setCoords(null);
+    setExistingImages([]);
+    setImages([]);
+    setImageUploaderKey((x) => x + 1);
+    setGeoError("");
+    notify.info("Draft cleared", "Your draft has been cleared.");
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    if (!images.length && !existingImages.length) {
+      notify.error("Missing photo", "Please add at least one photo.");
+      return;
+    }
+    if (!types.length) {
+      notify.error("Missing waste type", "Please select at least one waste type.");
+      return;
+    }
+    if (!coords) {
+      notify.error("Missing location", "Please choose a location using GPS, map, or address.");
+      return;
+    }
+    if (geoError) {
+      notify.warning("Fix location error", geoError);
+      return;
+    }
+    if (isEdit && editReport && editReport.status && editReport.status !== "pending") {
+      notify.error("Cannot update", "Only pending reports can be updated.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const createdBy = user?.email ?? null;
+      if (!createdBy) {
+        notify.error("Not logged in", "Please log in again and retry submitting your report.");
+        return;
+      }
+
+      const imageUrls = (await Promise.all(images.map(fileToDataUrl))).filter(Boolean);
+      const report = isEdit
+        ? {
+          ...editReport,
+          address: address.trim(),
+          types: [...types],
+          weight,
+          notes,
+          coords,
+          images: [...existingImages, ...imageUrls],
+          updatedAt: new Date().toISOString(),
+        }
+        : {
+          id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+          address: address.trim(),
+          types: [...types],
+          weight,
+          notes,
+          coords,
+          images: imageUrls,
+          createdAt: new Date().toISOString(),
+          status: "pending",
+          createdBy,
+        };
+
+      await notify.promise(new Promise((resolve) => setTimeout(resolve, 800)), {
+        loadingTitle: isEdit ? "Updating report..." : "Sending report...",
+        successTitle: isEdit ? "Report updated" : "Report submitted",
+        successMessage: "Thank you for helping keep the city clean.",
+        errorTitle: "Submit failed",
+        errorMessage: (err) => err?.message || "Unable to submit your report.",
+      });
+
+      if (isEdit) {
+        updateMockReport(report);
+        publishReportUpdated(report);
+      } else {
+        addMockReport(report);
+        publishReportSubmitted(report);
+      }
+
+      setTypes([]);
+      setAddress("");
+      setWeight("1 - 5 kg");
+      setNotes("");
+      setCoords(null);
+      setExistingImages([]);
+      setImages([]);
+      setImageUploaderKey((x) => x + 1);
+      setGeoError("");
+      navigate(isEdit ? `${PATHS.citizen.reports}/${report.id}` : PATHS.citizen.dashboard);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (sourceRef.current !== "address") return;
@@ -222,16 +322,11 @@ export default function CreateReportForm() {
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Estimate Weight</h4>
-          <select
+          <input type="number"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200"
-          >
-            <option>1 - 5 kg</option>
-            <option>5 - 10 kg</option>
-            <option>10 - 25 kg</option>
-            <option>25+ kg</option>
-          </select>
+          />
         </div>
 
         <div className="mt-6">
@@ -242,114 +337,29 @@ export default function CreateReportForm() {
         <div className="mt-8 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-100">
           <button
             type="button"
-
             disabled={submitting}
-            onClick={() => {
-              setTypes([]);
-              setAddress("");
-              setWeight("1 - 5 kg");
-              setNotes("");
-              setCoords(null);
-              setExistingImages([]);
-              setImages([]);
-              setImageUploaderKey((x) => x + 1);
-              setGeoError("");
-              notify.info("Draft cleared", "Your draft has been cleared.");
-            }}
+            onClick={handleDiscard}
             className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
-            
-            disabled={submitting}
-            onClick={async () => {
-              if (submitting) return;
-              if (!images.length && !existingImages.length) {
-                notify.error("Missing photo", "Please add at least one photo.");
-                return;
-              }
-              if (!types.length) {
-                notify.error("Missing waste type", "Please select at least one waste type.");
-                return;
-              }
-              if (!coords) {
-                notify.error("Missing location", "Please choose a location using GPS, map, or address.");
-                return;
-              }
-              if (geoError) {
-                notify.warning("Fix location error", geoError);
-                return;
-              }
-              if (isEdit && editReport && editReport.status && editReport.status !== "pending") {
-                notify.error("Cannot update", "Only pending reports can be updated.");
-                return;
-              }
-
-              setSubmitting(true);
-              try {
-                const createdBy = user?.email ?? null;
-                if (!createdBy) {
-                  notify.error("Not logged in", "Please log in again and retry submitting your report.");
-                  return;
-                }
-
-                const imageUrls = (await Promise.all(images.map(fileToDataUrl))).filter(Boolean);
-                const report = isEdit
-                  ? {
-                      ...editReport,
-                      address: address.trim(),
-                      types: [...types],
-                      weight,
-                      notes,
-                      coords,
-                      images: [...existingImages, ...imageUrls],
-                      updatedAt: new Date().toISOString(),
-                    }
-                  : {
-                      id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-                      address: address.trim(),
-                      types: [...types],
-                      weight,
-                      notes,
-                      coords,
-                      images: imageUrls,
-                      createdAt: new Date().toISOString(),
-                      status: "pending",
-                      createdBy,
-                    };
-
-                await notify.promise(
-                  new Promise((resolve) => setTimeout(resolve, 800)),
-                  {
-                    loadingTitle: isEdit ? "Updating report..." : "Sending report...",
-                    successTitle: isEdit ? "Report updated" : "Report submitted",
-                    successMessage: "Thank you for helping keep the city clean.",
-                    errorTitle: "Submit failed",
-                    errorMessage: (err) => err?.message || "Unable to submit your report.",
-                  }
-                );
-                if (isEdit) {
-                  updateMockReport(report);
-                  publishReportUpdated(report);
-                } else {
-                  addMockReport(report);
-                  publishReportSubmitted(report);
-                }
-                setTypes([]);
-                setAddress("");
-                setWeight("1 - 5 kg");
-                setNotes("");
-                setCoords(null);
-                setExistingImages([]);
-                setImages([]);
-                setImageUploaderKey((x) => x + 1);
-                setGeoError("");
-                navigate(isEdit ? `${PATHS.citizen.reports}/${report.id}` : PATHS.citizen.dashboard);
-              } finally {
-                setSubmitting(false);
-              }
-            }}
-            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm disabled:opacity-60"
-
           >
-            Submit Report
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={handleClearDraft}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
+          >
+            Clear Draft
+          </button>
+
+          <button
+            type="button"
+            disabled={submitting || !canSubmit}
+            onClick={handleSubmit}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] shadow-sm disabled:opacity-60"
+          >
+            {isEdit ? "Update Report" : "Submit Report"}
           </button>
         </div>
       </Card>
