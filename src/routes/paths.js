@@ -16,6 +16,8 @@ export const PATHS = {
     reportDetail: '/citizen/reports/:reportId',
     feedback: '/citizen/feedback',
     profile: '/citizen/profile',
+    rewards: '/citizen/rewards',
+    pointsHistory: '/citizen/points-history',
   },
   collector: {
     dashboard: '/collector/dashboard',

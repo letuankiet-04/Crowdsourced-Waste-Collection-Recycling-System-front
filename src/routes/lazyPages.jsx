@@ -19,6 +19,8 @@ export const CitizenReports = lazy(() => import('../pages/role/citizen/Citizen_R
 export const CitizenReportDetail = lazy(() => import('../pages/role/citizen/Citizen_ReportDetail.jsx'))
 export const CitizenFeedback = lazy(() => import('../pages/role/citizen/Feedback.jsx'))
 export const CitizenProfile = lazy(() => import('../pages/role/citizen/Citizen_Profile.jsx'))
+export const CitizenRewards = lazy(() => import('../pages/role/citizen/Citizen_Rewards.jsx'))
+export const PointHistory = lazy(() => import('../pages/role/citizen/PointHistory.jsx'))
 
 
 

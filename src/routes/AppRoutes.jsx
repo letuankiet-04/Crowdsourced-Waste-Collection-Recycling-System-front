@@ -28,6 +28,8 @@ import {
   Unauthorized,
   CitizenProfile,
   AdminProfile,
+  CitizenRewards,
+  PointHistory,
 } from './lazyPages.jsx'
 
 export default function AppRoutes() {
@@ -77,6 +79,24 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['citizen']}>
             <CitizenProfile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.citizen.rewards}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenRewards />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.citizen.pointsHistory}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <PointHistory />
           </ProtectedRoute>
         }
       />
