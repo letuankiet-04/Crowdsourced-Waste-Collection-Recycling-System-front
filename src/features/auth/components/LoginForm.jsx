@@ -10,7 +10,7 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
   const passwordVisibility = usePasswordVisibility(false)
   const [error, setError] = useState('')
   const isActive = mode === 'login'
-  const accent = 'emerald'
+  const accent = 'indigo'
   const checkboxClasses =
     accent === 'emerald'
       ? 'h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500'

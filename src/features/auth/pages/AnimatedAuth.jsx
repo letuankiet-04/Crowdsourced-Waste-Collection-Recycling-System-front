@@ -7,7 +7,6 @@ import LoginForm from '../components/LoginForm.jsx'
 import SignupForm from '../components/SignupForm.jsx'
 import { cn } from '../../../lib/cn.js'
 import { PATHS } from '../../../routes/paths.js'
-import useNotify from '../../../hooks/useNotify.js'
 
 const APP_NAME = 'CrowdRecycle'
 
@@ -26,7 +25,7 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
         )}
       >
         <div className="relative flex w-1/2 items-center justify-center px-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-emerald-700 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-950" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_55%)]" />
           <div className="relative max-w-sm text-center text-white">
             <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
@@ -70,7 +69,6 @@ function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
 export default function AnimatedAuth() {
   const navigate = useNavigate()
   const location = useLocation()
-  const notify = useNotify()
 
   const mode = location.pathname.includes(PATHS.auth.signup) ? 'signup' : 'login'
   const [pending, setPending] = useState(false)
@@ -99,7 +97,7 @@ export default function AnimatedAuth() {
           navigate(PATHS.citizen.dashboard)
           break
         case 'enterprise':
-          navigate(PATHS.enterprise.dashboard)
+          navigate(PATHS.enterprise.reports)
           break
         case 'collector':
           navigate(PATHS.collector.dashboard)
@@ -133,7 +131,7 @@ export default function AnimatedAuth() {
           navigate(PATHS.citizen.dashboard)
           break
         case 'enterprise':
-          navigate(PATHS.enterprise.dashboard)
+          navigate(PATHS.enterprise.reports)
           break
         case 'collector':
           navigate(PATHS.collector.dashboard)
