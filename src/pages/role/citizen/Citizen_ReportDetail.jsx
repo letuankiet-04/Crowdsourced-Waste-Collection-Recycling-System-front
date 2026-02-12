@@ -85,6 +85,12 @@ export default function CitizenReportDetail() {
                     <div className="text-xs text-gray-500">{report?.updatedAt ? `Updated: ${new Date(report.updatedAt).toLocaleString()}` : null}</div>
                   </div>
 
+                  {status === "rejected" && report?.rejectionReason ? (
+                    <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-800">
+                      <span className="font-semibold">Reason for rejection:</span> {report.rejectionReason}
+                    </div>
+                  ) : null}
+
                   <div className="mt-6 space-y-5">
                     {steps.map((s, idx) => {
                       const done = idx < stepIndex;

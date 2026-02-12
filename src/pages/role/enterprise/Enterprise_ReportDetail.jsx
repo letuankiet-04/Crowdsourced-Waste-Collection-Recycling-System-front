@@ -4,6 +4,7 @@ import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import ReportDetail from "../../../components/layout/Report_Detail.jsx";
 import { getMockReports, updateMockReport } from "../../../mock/reportStore.js";
 import { publishReportUpdated, subscribeReportDeleted, subscribeReportUpdated, subscribeReportsCleared } from "../../../events/reportEvents.js";
+import { createNotification } from "../../../api/notifications.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../lib/reportStatus.js";
 import StatusPill from "../../../components/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
@@ -185,14 +186,36 @@ export default function EnterpriseReportDetail() {
                   size="lg"
                   className="rounded-full border-red-600 text-red-700 hover:bg-red-50"
                   disabled={!report || !canDecide}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!report || !canDecide) return;
-                    const ok = window.confirm("Reject this report?");
-                    if (!ok) return;
-                    const next = { ...report, status: "rejected", updatedAt: new Date().toISOString() };
+                    const reason = window.prompt("Please enter the reason for rejection:");
+                    if (reason === null) return; // Cancelled
+                    if (!reason.trim()) {
+                      alert("Rejection reason is required.");
+                      return;
+                    }
+                    
+                    const next = { 
+                      ...report, 
+                      status: "rejected", 
+                      updatedAt: new Date().toISOString(),
+                      rejectionReason: reason 
+                    };
+                    
                     updateMockReport(next);
                     publishReportUpdated(next);
                     setReportOverride(next);
+                    
+                    // Notify Citizen
+                    await createNotification({
+                      receiverId: report.createdBy, // email or id
+                      senderId: 2, // Enterprise
+                      reportId: report.id,
+                      type: 'REPORT_REJECTED',
+                      message: 'Your report has been rejected.',
+                      reason: reason
+                    });
+
                     navigate(PATHS.enterprise.dashboard, { replace: true });
                   }}
                 >
@@ -203,12 +226,22 @@ export default function EnterpriseReportDetail() {
                   size="lg"
                   className="rounded-full"
                   disabled={!report || !canDecide}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!report || !canDecide) return;
                     const next = { ...report, status: "accepted", updatedAt: new Date().toISOString() };
                     updateMockReport(next);
                     publishReportUpdated(next);
                     setReportOverride(next);
+                    
+                    // Notify Citizen
+                    await createNotification({
+                      receiverId: report.createdBy, // email or id
+                      senderId: 2, // Enterprise
+                      reportId: report.id,
+                      type: 'REPORT_ACCEPTED',
+                      message: 'Your report has been accepted.'
+                    });
+
                     openAssignDialog(next);
                   }}
                 >

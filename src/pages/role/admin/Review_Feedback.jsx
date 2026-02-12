@@ -119,23 +119,22 @@ export default function Review_Feedback() {
     // Date Filter
     if (dateFilter !== "All Time") {
       const now = new Date();
-      let daysToSubtract = 0;
+      const pastDate = new Date(now);
       
       if (dateFilter === "Last 7 Days") {
-        daysToSubtract = 7;
+        pastDate.setDate(now.getDate() - 7);
       } else if (dateFilter === "Last 30 Days") {
-        daysToSubtract = 30;
+        pastDate.setDate(now.getDate() - 30);
       }
+      
+      // Set to beginning of the day to ensure we include all items from that day onwards
+      pastDate.setHours(0, 0, 0, 0);
 
-      if (daysToSubtract > 0) {
-        const cutoffDate = new Date(now);
-        cutoffDate.setDate(now.getDate() - daysToSubtract);
-        
-        result = result.filter(item => {
-           const feedbackDate = new Date(item.date);
-           return feedbackDate >= cutoffDate;
-        });
-      }
+      result = result.filter(item => {
+         if (!item.date) return false;
+         const feedbackDate = new Date(item.date);
+         return feedbackDate >= pastDate;
+      });
     }
 
     return result;
