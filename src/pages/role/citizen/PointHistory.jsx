@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
 import Header from "../../../components/layout/CD_Header.jsx";
@@ -8,7 +8,6 @@ import { Card } from "../../../components/ui/Card.jsx";
 
 export default function PointHistory() {
   const [activeTab, setActiveTab] = useState('All Activities');
-  const [currentPage, setCurrentPage] = useState(1);
 
   // Mock data for the table
   const historyData = [

@@ -49,7 +49,12 @@ export default function ReportDetail({
 
   const types = useMemo(() => {
     const raw = safeReport?.types
-    return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
+    const direct = Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
+    if (direct.length) return direct
+    const items = Array.isArray(safeReport?.wasteItems) ? safeReport.wasteItems : []
+    return items
+      .map((i) => (i?.name ? String(i.name) : null))
+      .filter(Boolean)
   }, [safeReport])
 
   const images = useMemo(() => {
@@ -72,6 +77,19 @@ export default function ReportDetail({
         return [key, num]
       })
       .filter(([key, num]) => Boolean(key) && Number.isFinite(num) && num >= 0)
+  }, [safeReport])
+
+  const wasteItemsEntries = useMemo(() => {
+    const raw = safeReport?.wasteItems
+    const list = Array.isArray(raw) ? raw : []
+    return list
+      .map((item) => {
+        const name = item?.name ? String(item.name) : ''
+        const unit = item?.unit ? String(item.unit) : ''
+        const w = typeof item?.estimatedWeight === 'number' ? item.estimatedWeight : Number(item?.estimatedWeight)
+        return name && Number.isFinite(w) ? { name, unit, estimatedWeight: w } : null
+      })
+      .filter(Boolean)
   }, [safeReport])
 
   const collectedTotalWeight = useMemo(() => {
@@ -169,6 +187,31 @@ export default function ReportDetail({
                   </div>
                 </div>
                 <Field label="Estimated Weight" value={safeReport?.weight || '-'} />
+                {wasteItemsEntries.length ? (
+                  <div className="md:col-span-2">
+                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Estimated Items</div>
+                    <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50 text-gray-600">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold">Name</th>
+                            <th className="px-4 py-3 text-left font-semibold">Estimated weight</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {wasteItemsEntries.map((it) => (
+                            <tr key={it.name}>
+                              <td className="px-4 py-3 text-gray-900">{it.name}</td>
+                              <td className="px-4 py-3 text-gray-900">
+                                {it.estimatedWeight} {it.unit ? String(it.unit).toLowerCase() : 'kg'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
                 {collectedTotalWeight !== null ? (
                   <Field label="Collected Total Weight" value={`${collectedTotalWeight} kg`} />
                 ) : null}
