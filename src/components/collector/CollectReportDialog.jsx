@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, X } from 'lucide-react'
-import Button from '../ui/Button.jsx'
-import StatusPill from '../ui/StatusPill.jsx'
-import ValidationError from '../ui/ValidationError.jsx'
-import ImageUploader from '../ui/ImageUploader.jsx'
-import MapPicker from '../MapPicker.jsx'
+import Button from '../../shared/ui/Button.jsx'
+import StatusPill from '../../shared/ui/StatusPill.jsx'
+import ValidationError from '../../shared/ui/ValidationError.jsx'
+import ImageUploader from '../../shared/ui/ImageUploader.jsx'
+import MapPicker from '../../shared/components/maps/GoongMapPicker.jsx'
 
 function fileToDataUrl(file) {
   return new Promise((resolve) => {

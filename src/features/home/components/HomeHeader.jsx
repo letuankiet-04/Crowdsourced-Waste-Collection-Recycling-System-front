@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import logo from '../../../assets/app-logo.jpg'
-import Button from '../../../components/ui/Button.jsx'
-import Container from '../../../components/ui/Container.jsx'
-import { PATHS } from '../../../routes/paths.js'
+import Button from '../../../shared/ui/Button.jsx'
+import Container from '../../../shared/ui/Container.jsx'
+import { PATHS } from '../../../app/routes/paths.js'
 
 export default function HomeHeader() {
   return (

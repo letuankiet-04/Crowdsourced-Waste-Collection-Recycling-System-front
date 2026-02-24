@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import banner from '../../../assets/banner2.png'
-import Button from '../../../components/ui/Button.jsx'
-import Container from '../../../components/ui/Container.jsx'
-import { PATHS } from '../../../routes/paths.js'
+import Button from '../../../shared/ui/Button.jsx'
+import Container from '../../../shared/ui/Container.jsx'
+import { PATHS } from '../../../app/routes/paths.js'
 
 export default function HeroSection() {
   return (

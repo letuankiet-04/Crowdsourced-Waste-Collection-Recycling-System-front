@@ -1,7 +1,8 @@
 
+import { BrowserRouter } from 'react-router-dom'
 import { Suspense } from 'react'
-import AppRoutes from './routes/AppRoutes.jsx'
-import { NotifyProvider } from './components/ui/NotifyProvider.jsx'
+import AppRoutes from './app/routes/AppRoutes.jsx'
+import { NotifyProvider } from './shared/ui/NotifyProvider.jsx'
 
 function RouteFallback() {
   return (

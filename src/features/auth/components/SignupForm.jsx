@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
-import { cn } from '../../../lib/cn.js'
-import TextField from '../../../components/ui/TextField.jsx'
-import LoadingButton from '../../../components/ui/LoadingButton.jsx'
-import usePasswordVisibility from '../../../hooks/usePasswordVisibility.js'
+import { cn } from '../../../shared/lib/cn.js'
+import TextField from '../../../shared/ui/TextField.jsx'
+import LoadingButton from '../../../shared/ui/LoadingButton.jsx'
+import usePasswordVisibility from '../../../shared/hooks/usePasswordVisibility.js'
 
 export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin }) {
   const [values, setValues] = useState({ name: '', email: '', password: '', confirmPassword: '' })

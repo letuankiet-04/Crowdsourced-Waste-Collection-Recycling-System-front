@@ -1,4 +1,4 @@
-import Container from '../../../components/ui/Container.jsx'
+import Container from '../../../shared/ui/Container.jsx'
 
 const STATS = [
   { value: '5K+', label: 'TONS COLLECTED' },

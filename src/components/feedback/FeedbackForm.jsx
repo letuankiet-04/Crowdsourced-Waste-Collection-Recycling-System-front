@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { publishFeedbackSubmitted } from "../../events/feedbackEvents.js"
-import { PATHS } from "../../routes/paths.js"
+import { PATHS } from "../../app/routes/paths.js"
 
 export default function FeedbackForm() {
   const navigate = useNavigate()

@@ -1,12 +1,12 @@
 import { Leaf, Recycle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { buildStoredUserFromToken, login, register } from '../../../api/auth.js'
+import { buildStoredUserFromToken, login, register } from '../../../services/auth.service.js'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import foliageBackground from '../../../assets/foliage-bg.svg'
 import LoginForm from '../components/LoginForm.jsx'
 import SignupForm from '../components/SignupForm.jsx'
-import { cn } from '../../../lib/cn.js'
-import { PATHS } from '../../../routes/paths.js'
+import { cn } from '../../../shared/lib/cn.js'
+import { PATHS } from '../../../app/routes/paths.js'
 
 const APP_NAME = 'CrowdRecycle'
 

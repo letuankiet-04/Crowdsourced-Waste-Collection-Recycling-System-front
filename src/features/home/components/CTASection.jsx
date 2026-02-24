@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import Button from '../../../components/ui/Button.jsx'
-import Container from '../../../components/ui/Container.jsx'
-import { PATHS } from '../../../routes/paths.js'
+import Button from '../../../shared/ui/Button.jsx'
+import Container from '../../../shared/ui/Container.jsx'
+import { PATHS } from '../../../app/routes/paths.js'
 
 export default function CTASection() {
   return (

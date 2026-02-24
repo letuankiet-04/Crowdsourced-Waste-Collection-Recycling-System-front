@@ -1,5 +1,5 @@
 import enterpriseImage from '../../../assets/enterprise.png'
-import Container from '../../../components/ui/Container.jsx'
+import Container from '../../../shared/ui/Container.jsx'
 
 export default function EnterpriseSection() {
   return (
