@@ -5,6 +5,7 @@ import useNotify from "../../../../hooks/useNotify.js";
 import useStoredUser from "../../../../hooks/useStoredUser.js";
 import { publishReportSubmitted, publishReportUpdated } from "../../../../events/reportEvents.js";
 import { addMockReport, updateMockReport } from "../../../../mock/reportStore.js";
+import { createNotification } from "../../../../api/notifications.js";
 import MapPicker from "../../../../components/MapPicker.jsx";
 import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
 import { Card } from "../../../../components/ui/Card.jsx";
@@ -181,6 +182,16 @@ export default function CreateReportForm() {
       } else {
         addMockReport(report);
         publishReportSubmitted(report);
+
+        // Create notification for Enterprise
+        // Assuming Enterprise ID is 2 for this mock scenario
+        await createNotification({
+          receiverId: 2, 
+          senderId: user?.id || 1,
+          reportId: report.id,
+          type: 'NEW_REPORT',
+          message: `New report submitted by ${user?.name || 'Citizen'}`
+        });
       }
 
       setTypes([]);

@@ -41,6 +41,8 @@ export const PATHS = {
     dashboard: '/admin/dashboard',
     reportDetail: '/admin/reports/:reportId',
     profile: '/admin/profile',
+    userManagement: '/admin/users',
+    reviewFeedback: '/admin/review-feedback',
   },
   unauthorized: '/unauthorized',
   contact: '/home#contact',

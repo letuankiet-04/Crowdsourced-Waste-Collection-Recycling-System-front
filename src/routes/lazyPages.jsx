@@ -9,6 +9,8 @@ export const CollectorHistory = lazy(() => import('../pages/role/collector/Colle
 export const CollectorProfile = lazy(() => import('../pages/role/collector/Collector_Profile.jsx'))
 export const AdminDashboard = lazy(() => import('../pages/role/admin/Admin_Dashboard.jsx'))
 export const AdminProfile = lazy(() => import('../pages/role/admin/Admin_Profile.jsx'))
+export const AdminUserManagement = lazy(() => import('../pages/role/admin/Admin_UserManagement.jsx'))
+export const AdminReviewFeedback = lazy(() => import('../pages/role/admin/Review_Feedback.jsx'))
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))
 export const ApiTest = lazy(() => import('../pages/common/ApiTest.jsx'))
 
@@ -33,4 +35,4 @@ export const EnterpriseRewards = lazy(() => import('../pages/role/enterprise/Ent
 export const EnterpriseMap = lazy(() => import('../pages/role/enterprise/Enterprise_Map.jsx'))
 export const EnterpriseProfile = lazy(() => import('../pages/role/enterprise/Enterprise_Profile.jsx'))
 export const EnterpriseAdminPanel = lazy(() => import('../pages/role/enterprise/Enterprise_AdminPanel.jsx'))
-export const EnterpriseSettings = lazy(() => import('../pages/role/enterprise/Enterprise_Settings.jsx'))
+// export const EnterpriseSettings = lazy(() => import('../pages/role/enterprise/Enterprise_Settings.jsx'))
