@@ -32,6 +32,9 @@ export default function EnterpriseLayout({ children }) {
             <SidebarNavItem key="profile" to={PATHS.enterprise.profile} icon={<User className="h-5 w-5" />}>
               Profile
             </SidebarNavItem>,
+            <SidebarNavItem key="settings" to={PATHS.enterprise.settings} icon={<Settings className="h-5 w-5" />}>
+              Settings
+            </SidebarNavItem>,
           ]}
           footer={<SidebarLogoutButton />}
         />
@@ -44,6 +47,11 @@ export default function EnterpriseLayout({ children }) {
         </div>
       }
     >
+      <CD_Header
+        title="Enterprise Portal"
+        description="Welcome back! Manage recycling operations and review incoming requests."
+        showBadge={false}
+      />
       {children}
     </RoleLayout>
 
