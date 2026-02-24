@@ -44,11 +44,6 @@ export default function CollectorLayout({ children }) {
         </div>
       }
     >
-      <CD_Header
-        title="Collector Portal"
-        description="Welcome back! View your assigned tasks and update collection status."
-        showBadge={false}
-      />
       {children}
     </RoleLayout>
   );

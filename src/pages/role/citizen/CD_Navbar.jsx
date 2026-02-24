@@ -14,7 +14,7 @@ export default function CD_Navbar({ brandTitle = "Citizen Portal" }) {
       <div className="w-full pl-6 pr-6 sm:pr-8 lg:pr-12">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center gap-3">
-           
+            <div className="text-lg font-extrabold text-gray-900 tracking-tight">{brandTitle}</div>
           </div>
           <div className="flex items-center gap-8">
             <NotificationBell />

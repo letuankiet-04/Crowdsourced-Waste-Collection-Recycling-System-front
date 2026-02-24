@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import CollectorLayout from "./layout/CollectorLayout.jsx";
 import ReportDetail from "../../../components/layout/Report_Detail.jsx";
 import { getMockReports, updateMockReport } from "../../../mock/reportStore.js";
@@ -17,6 +17,7 @@ export default function CollectorReportDetail() {
   const { user } = useStoredUser();
   const { reportId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const id = reportId ? String(reportId) : "";
   const stateReport = location?.state?.report ?? null;
 
@@ -112,6 +113,8 @@ export default function CollectorReportDetail() {
     updateMockReport(next);
     publishReportUpdated(next);
     setReportOverride(next);
+    setCollectOpen(false);
+    navigate(PATHS.collector.dashboard, { replace: true });
     return true;
   }
 

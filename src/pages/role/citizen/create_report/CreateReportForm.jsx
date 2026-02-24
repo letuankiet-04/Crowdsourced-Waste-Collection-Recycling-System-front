@@ -9,11 +9,10 @@ import { createNotification } from "../../../../api/notifications.js";
 import MapPicker from "../../../../components/MapPicker.jsx";
 import DescriptionTextarea from "../../../../components/ui/DescriptionTextarea.jsx";
 import { Card } from "../../../../components/ui/Card.jsx";
-import PillSelect from "../../../../components/ui/PillSelect.jsx";
 import ImageUploader from "../../../../components/ui/ImageUploader.jsx";
 import { PATHS } from "../../../../routes/paths.js";
-
-const WASTE_TYPES = ["Organic", "Recyclable", "Hazardous"];
+import WasteItemsTable from "../../../../components/ui/WasteItemsTable.jsx";
+import { WASTE_TYPE_OPTIONS } from "../../../../constants/wasteTypes.js";
 
 function fileToDataUrl(file) {
   return new Promise((resolve) => {
@@ -36,6 +35,46 @@ function normalizeWeightInput(value) {
   return match ? match[1] : "";
 }
 
+function buildWasteTypeOptions(editReport) {
+  const base = Array.isArray(WASTE_TYPE_OPTIONS) ? WASTE_TYPE_OPTIONS : [];
+  const baseNames = new Set(base.map((t) => String(t?.name ?? "").trim()).filter(Boolean));
+  const legacyNames = Array.isArray(editReport?.types) ? editReport.types.map(String).map((s) => s.trim()).filter(Boolean) : [];
+
+  const extras = [];
+  let nextId = -1;
+  legacyNames.forEach((name) => {
+    if (baseNames.has(name)) return;
+    if (extras.some((x) => x.name === name)) return;
+    extras.push({ id: nextId--, name, unit: "KG" });
+  });
+
+  return [...base, ...extras];
+}
+
+function normalizeWasteItemsInput(rawItems, wasteTypeOptions) {
+  const options = Array.isArray(wasteTypeOptions) ? wasteTypeOptions : [];
+  const byId = new Map(options.map((t) => [Number(t.id), t]));
+  const byName = new Map(options.map((t) => [String(t.name ?? "").trim().toLowerCase(), t]));
+
+  const input = Array.isArray(rawItems) ? rawItems : [];
+  const normalized = input.map((item) => {
+    const candidateId = item?.wasteTypeId ?? item?.id ?? null;
+    const id = candidateId === null || candidateId === undefined || candidateId === "" ? null : Number(candidateId);
+    const name = String(item?.name ?? "").trim();
+    const found =
+      (Number.isFinite(id) ? byId.get(id) : null) ??
+      (name ? byName.get(name.toLowerCase()) : null) ??
+      null;
+
+    return {
+      wasteTypeId: found ? Number(found.id) : Number.isFinite(id) ? id : null,
+      estimatedWeight: normalizeWeightInput(item?.estimatedWeight ?? item?.weight ?? ""),
+    };
+  });
+
+  return normalized.filter((i) => i.wasteTypeId != null || String(i.estimatedWeight ?? "").trim());
+}
+
 export default function CreateReportForm() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,10 +83,31 @@ export default function CreateReportForm() {
   const editReport = location?.state?.editReport ?? null;
   const isEdit = Boolean(editReport?.id);
 
-  const [types, setTypes] = useState(() => (Array.isArray(editReport?.types) ? editReport.types : []));
+  const wasteTypeOptions = useMemo(() => buildWasteTypeOptions(editReport), [editReport]);
+
+  const [wasteItems, setWasteItems] = useState(() => {
+    const options = buildWasteTypeOptions(editReport);
+    const normalizedFromItems = normalizeWasteItemsInput(editReport?.wasteItems, options);
+    if (normalizedFromItems.length) return normalizedFromItems;
+
+    const legacyTypes = Array.isArray(editReport?.types) ? editReport.types.map(String).map((s) => s.trim()).filter(Boolean) : [];
+    const legacyWeight = normalizeWeightInput(editReport?.weight);
+    if (legacyTypes.length || legacyWeight) {
+      const legacyName = legacyTypes[0] ?? "";
+      const match = options.find((t) => String(t?.name ?? "").trim().toLowerCase() === legacyName.toLowerCase()) ?? null;
+      return [
+        {
+          wasteTypeId: match ? Number(match.id) : null,
+          estimatedWeight: legacyWeight,
+        },
+      ];
+    }
+
+    return [];
+  });
+  const [wasteItemsTouched, setWasteItemsTouched] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [address, setAddress] = useState(() => (typeof editReport?.address === "string" ? editReport.address : ""));
-  const [weight, setWeight] = useState(() => normalizeWeightInput(editReport?.weight));
-  const [weightTouched, setWeightTouched] = useState(false);
   const [notes, setNotes] = useState(() => (typeof editReport?.notes === "string" ? editReport.notes : ""));
   const [coords, setCoords] = useState(() => (editReport?.coords ?? null));
   const [existingImages, setExistingImages] = useState(() => (Array.isArray(editReport?.images) ? editReport.images : []));
@@ -60,11 +120,16 @@ export default function CreateReportForm() {
 
   const sourceRef = useRef(null);
 
+  const handleWasteItemsChange = (next) => {
+    setWasteItems(next);
+    if (!wasteItemsTouched) setWasteItemsTouched(true);
+  };
+
   const handleDiscard = () => {
-    setTypes([]);
+    setWasteItems([]);
+    setWasteItemsTouched(false);
+    setSubmitAttempted(false);
     setAddress("");
-    setWeight("");
-    setWeightTouched(false);
     setNotes("");
     setCoords(null);
     setAddrLoading(false);
@@ -75,29 +140,60 @@ export default function CreateReportForm() {
     navigate(isEdit && editReport?.id ? `${PATHS.citizen.reports}/${editReport.id}` : PATHS.citizen.dashboard);
   };
 
+  const totalEstimatedWeight = useMemo(() => {
+    const sum = (Array.isArray(wasteItems) ? wasteItems : []).reduce((acc, item) => {
+      const id = item?.wasteTypeId;
+      if (id === null || id === undefined || id === "") return acc;
+      const raw = String(item?.estimatedWeight ?? "").trim();
+      if (!raw) return acc;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0) return acc;
+      return acc + n;
+    }, 0);
+
+    return sum;
+  }, [wasteItems]);
+
   const weightError = useMemo(() => {
-    const trimmed = String(weight ?? "").trim();
-    if (!trimmed) return "Please enter the estimated weight.";
-    const n = Number(trimmed);
-    if (!Number.isFinite(n)) return "Weight must be a valid number.";
-    if (n <= 0) return "Weight must be greater than 0 kg.";
-    if (n >= 10) return "Weight must be less than 10 kg.";
+    if (totalEstimatedWeight >= 10) return "Weight must be less than 10 kg.";
     return "";
-  }, [weight]);
+  }, [totalEstimatedWeight]);
+
+  const wasteItemsError = useMemo(() => {
+    const list = Array.isArray(wasteItems) ? wasteItems : [];
+    if (!list.length) return "Please add at least one waste item.";
+
+    const seen = new Set();
+    for (let i = 0; i < list.length; i += 1) {
+      const item = list[i] || {};
+      const typeId = item.wasteTypeId === "" || item.wasteTypeId === null || item.wasteTypeId === undefined ? null : Number(item.wasteTypeId);
+      if (typeId == null || !Number.isFinite(typeId)) return `Please select a waste type for row ${i + 1}.`;
+      if (seen.has(typeId)) return "Please do not select the same waste type twice.";
+      seen.add(typeId);
+
+      const rawWeight = String(item.estimatedWeight ?? "").trim();
+      const n = rawWeight ? Number(rawWeight) : NaN;
+      if (!Number.isFinite(n) || n <= 0) return `Please enter a valid estimated weight for row ${i + 1}.`;
+    }
+
+    return "";
+  }, [wasteItems]);
+
+  const showWasteErrors = submitAttempted || wasteItemsTouched;
 
   const canSubmit = useMemo(() => {
-    const hasTypes = types.length > 0;
+    const hasItems = !wasteItemsError;
     const hasImages = images.length > 0 || existingImages.length > 0;
     const hasLocation = coords != null && address.trim().length >= 3 && !geoError;
     const hasValidWeight = !weightError;
-    return hasTypes && hasImages && hasLocation && hasValidWeight;
-  }, [types, images, existingImages, coords, address, geoError, weightError]);
+    return hasItems && hasImages && hasLocation && hasValidWeight;
+  }, [wasteItemsError, images, existingImages, coords, address, geoError, weightError]);
 
   const handleClearDraft = () => {
-    setTypes([]);
+    setWasteItems([]);
+    setWasteItemsTouched(false);
+    setSubmitAttempted(false);
     setAddress("");
-    setWeight("");
-    setWeightTouched(false);
     setNotes("");
     setCoords(null);
     setExistingImages([]);
@@ -109,12 +205,14 @@ export default function CreateReportForm() {
 
   const handleSubmit = async () => {
     if (submitting) return;
+    if (!submitAttempted) setSubmitAttempted(true);
+    if (!wasteItemsTouched) setWasteItemsTouched(true);
     if (!images.length && !existingImages.length) {
       notify.error("Missing photo", "Please add at least one photo.");
       return;
     }
-    if (!types.length) {
-      notify.error("Missing waste type", "Please select at least one waste type.");
+    if (wasteItemsError) {
+      notify.error("Waste items", wasteItemsError);
       return;
     }
     if (!coords) {
@@ -143,12 +241,24 @@ export default function CreateReportForm() {
       }
 
       const imageUrls = (await Promise.all(images.map(fileToDataUrl))).filter(Boolean);
-      const weightValue = String(Number(String(weight).trim()));
+      const byId = new Map((Array.isArray(wasteTypeOptions) ? wasteTypeOptions : []).map((t) => [Number(t.id), t]));
+      const cleanedItems = (Array.isArray(wasteItems) ? wasteItems : [])
+        .map((item) => {
+          const typeId = item?.wasteTypeId === "" || item?.wasteTypeId === null || item?.wasteTypeId === undefined ? NaN : Number(item.wasteTypeId);
+          const found = Number.isFinite(typeId) ? byId.get(typeId) : null;
+          const raw = String(item?.estimatedWeight ?? "").trim();
+          const w = raw ? Number(raw) : NaN;
+          return found && Number.isFinite(w) ? { wasteTypeId: Number(found.id), name: String(found.name), unit: found.unit ?? null, estimatedWeight: w } : null;
+        })
+        .filter(Boolean);
+      const total = cleanedItems.reduce((sum, it) => sum + (typeof it.estimatedWeight === "number" ? it.estimatedWeight : 0), 0);
+      const weightValue = String(total);
       const report = isEdit
         ? {
           ...editReport,
           address: address.trim(),
-          types: [...types],
+          wasteItems: cleanedItems,
+          types: cleanedItems.map((i) => i.name),
           weight: weightValue,
           notes,
           coords,
@@ -158,7 +268,8 @@ export default function CreateReportForm() {
         : {
           id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
           address: address.trim(),
-          types: [...types],
+          wasteItems: cleanedItems,
+          types: cleanedItems.map((i) => i.name),
           weight: weightValue,
           notes,
           coords,
@@ -194,10 +305,10 @@ export default function CreateReportForm() {
         });
       }
 
-      setTypes([]);
+      setWasteItems([]);
+      setWasteItemsTouched(false);
+      setSubmitAttempted(false);
       setAddress("");
-      setWeight("");
-      setWeightTouched(false);
       setNotes("");
       setCoords(null);
       setExistingImages([]);
@@ -237,10 +348,6 @@ export default function CreateReportForm() {
     }, 500);
     return () => clearTimeout(t);
   }, [address]);
-
-  const toggleType = (type) => {
-    setTypes((prev) => (prev.includes(type) ? prev.filter((x) => x !== type) : [...prev, type]));
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -293,10 +400,9 @@ export default function CreateReportForm() {
 
       {/* RIGHT COLUMN */}
       <Card as="section" className="p-6">
-        <h4 className="text-sm font-semibold text-gray-500 uppercase">What Type of Waste?</h4>
-        <div className="mt-3">
-          <PillSelect options={WASTE_TYPES} selected={types} onToggle={toggleType} />
-        </div>
+        <WasteItemsTable items={wasteItems} wasteTypes={wasteTypeOptions} onChange={handleWasteItemsChange} />
+        {showWasteErrors && wasteItemsError ? <div className="mt-2 text-sm text-red-600">{wasteItemsError}</div> : null}
+        {showWasteErrors && !wasteItemsError && weightError ? <div className="mt-3 text-sm text-red-600">{weightError}</div> : null}
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Location</h4>
@@ -371,28 +477,6 @@ export default function CreateReportForm() {
           )}
         </div>
 
-        <div className="mt-6">
-          <h4 className="text-sm font-semibold text-gray-500 uppercase">Estimate Weight</h4>
-          <input
-            type="number"
-            value={weight}
-            onChange={(e) => {
-              setWeight(e.target.value);
-              setWeightTouched(true);
-            }}
-            onBlur={() => setWeightTouched(true)}
-            min="0"
-            max="9.99"
-            step="0.1"
-            placeholder="kg"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-200"
-          />
-          {weightTouched && weightError ? (
-            <div className="mt-2 text-sm text-red-600">{weightError}</div>
-          ) : (
-            <div className="mt-2 text-sm text-gray-500">Required. Must be less than 10 kg.</div>
-          )}
-        </div>
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Additional Details</h4>
