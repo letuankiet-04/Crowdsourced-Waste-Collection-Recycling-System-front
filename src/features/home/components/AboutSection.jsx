@@ -1,6 +1,6 @@
 import { Gift, MapPin, TrendingUp } from 'lucide-react'
-import Section from '../../../components/ui/Section.jsx'
-import IconFeatureCard from '../../../components/ui/IconFeatureCard.jsx'
+import Section from '../../../shared/ui/Section.jsx'
+import IconFeatureCard from '../../../shared/ui/IconFeatureCard.jsx'
 
 const FEATURES = [
   {

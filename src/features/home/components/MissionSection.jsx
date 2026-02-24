@@ -1,8 +1,8 @@
 import img01 from '../../../assets/mission_01.jpg'
 import img02 from '../../../assets/mission_02.jpg'
 import { Check } from 'lucide-react'
-import Section from '../../../components/ui/Section.jsx'
-import IconListItem from '../../../components/ui/IconListItem.jsx'
+import Section from '../../../shared/ui/Section.jsx'
+import IconListItem from '../../../shared/ui/IconListItem.jsx'
 
 const MISSION_ITEMS = [
   {
