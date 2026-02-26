@@ -22,12 +22,14 @@ import {
   EnterpriseReports,
   EnterpriseReportDetail,
   EnterpriseRewards,
-  EnterpriseSettings,
+  // EnterpriseSettings,
   Home,
   ApiTest,
   Unauthorized,
   CitizenProfile,
   AdminProfile,
+  AdminUserManagement,
+  AdminReviewFeedback,
   CitizenRewards,
   PointHistory,
 } from './lazyPages.jsx'
@@ -206,14 +208,14 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* <Route
         path={PATHS.enterprise.settings}
         element={
           <ProtectedRoute role={['enterprise']}>
             <EnterpriseSettings />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       <Route
         path={PATHS.admin.dashboard}
@@ -229,6 +231,24 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['admin']}>
             <AdminProfile />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.admin.userManagement}
+        element={
+          <ProtectedRoute role={['admin']}>
+            <AdminUserManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.admin.reviewFeedback}
+        element={
+          <ProtectedRoute role={['admin']}>
+            <AdminReviewFeedback />
           </ProtectedRoute>
         }
       />

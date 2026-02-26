@@ -36,15 +36,15 @@ export default function CitizenReportDetail() {
   }
 
   const status = normalizeReportStatus(report?.status);
-  const canManage = status === "pending";
+  const canManage = status === "Pending";
   const stepIndex =
-    status === "pending"
+    status === "Pending"
       ? 0
-      : status === "accepted"
+      : status === "Accepted"
         ? 1
-        : status === "on the way"
+        : status === "On The Way"
           ? 2
-          : status === "collected"
+          : status === "Collected"
             ? 3
             : 0;
 
@@ -84,6 +84,12 @@ export default function CitizenReportDetail() {
                     <StatusPill variant={reportStatusToPillVariant(status)}>{status}</StatusPill>
                     <div className="text-xs text-gray-500">{report?.updatedAt ? `Updated: ${new Date(report.updatedAt).toLocaleString()}` : null}</div>
                   </div>
+
+                  {status === "rejected" && report?.rejectionReason ? (
+                    <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-800">
+                      <span className="font-semibold">Reason for rejection:</span> {report.rejectionReason}
+                    </div>
+                  ) : null}
 
                   <div className="mt-6 space-y-5">
                     {steps.map((s, idx) => {
@@ -146,7 +152,7 @@ export default function CitizenReportDetail() {
                     Remove Report
                   </Button>
                   <div className="text-xs text-gray-500 text-center">
-                    Reports can only be updated while in Pending or Accepted status.
+                    Reports can only be updated while in Pending status.
                   </div>
                 </CardBody>
               </Card>

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
+import Button from "../../../shared/ui/Button.jsx";
+import TextField from "../../../shared/ui/TextField.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { getEnterpriseCollectors } from "../../../services/enterprise.service.js";
@@ -18,6 +20,13 @@ export default function EnterpriseActiveCollector() {
   const [collectors, setCollectors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Filter states
+  const initialFilterState = {
+    status: "All",
+    search: "",
+  };
+  const [filter, setFilter] = useState(initialFilterState);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +56,7 @@ export default function EnterpriseActiveCollector() {
     };
   }, [notify]);
 
-  const rows = useMemo(() => {
+  const allCollectors = useMemo(() => {
     const list = Array.isArray(collectors) ? collectors : [];
     return list
       .map((c, idx) => {
@@ -64,16 +73,75 @@ export default function EnterpriseActiveCollector() {
         c?.active === true ||
         c?.isActive === true ||
         ["online", "active", "available"].includes(statusRaw);
-      const statusLabel = isOnline ? "online" : statusRaw || "offline";
+      const statusLabel = isOnline ? "Online" : "Offline";
       return { id, name, email, lastSeen, isOnline, statusLabel };
-      })
-      .filter((r) => r.isOnline);
+      });
   }, [collectors]);
+
+  const filteredCollectors = useMemo(() => {
+    let filtered = [...allCollectors];
+
+    // Filter by status
+    if (filter.status !== "All") {
+      const isLookingForOnline = filter.status === "Online";
+      filtered = filtered.filter((c) => c.isOnline === isLookingForOnline);
+    }
+
+    // Filter by search (name or email)
+    if (filter.search) {
+      const searchLower = filter.search.toLowerCase();
+      filtered = filtered.filter(
+        (c) => c.name.toLowerCase().includes(searchLower) || c.email.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  }, [allCollectors, filter]);
+
+  const handleResetFilter = () => {
+    setFilter(initialFilterState);
+  };
 
   return (
     <EnterpriseLayout>
       <div className="space-y-8">
         <PageHeader title="Active Collectors" description="List collectors." />
+        
+        {/* Filter Section */}
+        <Card>
+          <CardHeader className="py-4 px-8 border-b border-gray-100">
+            <CardTitle className="text-lg">Filter Collectors</CardTitle>
+          </CardHeader>
+          <CardBody className="px-8 py-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2 text-left">
+                <label className="text-sm font-medium text-slate-800">Status</label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+                  value={filter.status}
+                  onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+                >
+                  <option value="All">All</option>
+                  <option value="Online">Online</option>
+                  <option value="Offline">Offline</option>
+                </select>
+              </div>
+
+              <TextField
+                label="Search"
+                placeholder="Search by Name or Email..."
+                value={filter.search}
+                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={handleResetFilter}>
+                Reset Filter
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+
         <Card>
           <CardHeader className="py-6 px-8">
             <CardTitle className="text-2xl">Collectors</CardTitle>
@@ -97,21 +165,21 @@ export default function EnterpriseActiveCollector() {
                         Loading collectors...
                       </td>
                     </tr>
-                  ) : rows.length ? (
-                    rows.map((r) => (
+                  ) : filteredCollectors.length ? (
+                    filteredCollectors.map((r) => (
                       <tr key={r.id} className="bg-white hover:bg-emerald-50/20 transition">
                         <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.name}</td>
                         <td className="px-8 py-5 text-sm text-gray-700">{r.email}</td>
                         <td className="px-8 py-5 text-sm text-gray-700">{r.lastSeen}</td>
                         <td className="px-8 py-5 text-right">
-                          <StatusPill variant={r.isOnline ? "green" : "red"}>{r.statusLabel}</StatusPill>
+                          <StatusPill variant={r.isOnline ? "green" : "gray"}>{r.statusLabel}</StatusPill>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                        No collectors available.
+                        {allCollectors.length === 0 ? "No collectors available." : "No collectors match your filter."}
                       </td>
                     </tr>
                   )}

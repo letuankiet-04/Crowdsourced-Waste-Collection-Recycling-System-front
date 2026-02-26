@@ -5,6 +5,7 @@ import useNotify from "../../../../shared/hooks/useNotify.js";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 import { publishReportSubmitted, publishReportUpdated } from "../../../../events/reportEvents.js";
 import { addMockReport, updateMockReport } from "../../../../mock/reportStore.js";
+import { createNotification } from "../../../../services/notifications.js";
 import MapPicker from "../../../../shared/components/maps/GoongMapPicker.jsx";
 import DescriptionTextarea from "../../../../shared/ui/DescriptionTextarea.jsx";
 import { Card } from "../../../../shared/ui/Card.jsx";
@@ -292,6 +293,16 @@ export default function CreateReportForm() {
       } else {
         addMockReport(report);
         publishReportSubmitted(report);
+
+        // Create notification for Enterprise
+        // Assuming Enterprise ID is 2 for this mock scenario
+        await createNotification({
+          receiverId: 2, 
+          senderId: user?.id || 1,
+          reportId: report.id,
+          type: 'NEW_REPORT',
+          message: `New report submitted by ${user?.name || 'Citizen'}`
+        });
       }
 
       setWasteItems([]);

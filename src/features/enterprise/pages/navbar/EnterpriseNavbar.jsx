@@ -1,9 +1,9 @@
-import { Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../../../services/auth.service.js";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 import { PATHS } from "../../../../app/routes/paths.js";
 import UserMenu from "../../../../shared/ui/UserMenu.jsx";
+import NotificationBell from "../../../../shared/ui/NotificationBell.jsx";
 
 export default function EnterpriseNavbar() {
   const { displayName, roleLabel, clearAuth } = useStoredUser();
@@ -14,14 +14,7 @@ export default function EnterpriseNavbar() {
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex items-center justify-end h-20">
           <div className="flex items-center gap-4">
-            <button
-              className="p-3 text-gray-500 hover:text-emerald-700 hover:bg-gray-100 rounded-full transition relative"
-              type="button"
-              aria-label="View notifications"
-            >
-              <Bell className="h-7 w-7" aria-hidden="true" />
-              <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
-            </button>
+            <NotificationBell />
 
             <UserMenu
               displayName={displayName}
