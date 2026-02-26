@@ -10,6 +10,8 @@ export const CollectorHistory = lazy(() => import('../../features/collector/page
 export const CollectorProfile = lazy(() => import('../../features/collector/pages/Collector_Profile.jsx'))
 export const AdminDashboard = lazy(() => import('../../features/admin/pages/Admin_Dashboard.jsx'))
 export const AdminProfile = lazy(() => import('../../features/admin/pages/Admin_Profile.jsx'))
+export const AdminUserManagement = lazy(() => import('../../features/admin/pages/Admin_UserManagement.jsx'))
+export const AdminReviewFeedback = lazy(() => import('../../features/admin/pages/Review_Feedback.jsx'))
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))
 export const ApiTest = lazy(() => import('../pages/common/ApiTest.jsx'))
 

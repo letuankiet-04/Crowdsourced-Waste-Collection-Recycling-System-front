@@ -58,8 +58,8 @@ export default function EnterpriseReportDetail() {
   const report =
     reportOverride?.id === id ? reportOverride : stateReport?.id && String(stateReport.id) === id ? stateReport : storedReport;
   const status = normalizeReportStatus(report?.status);
-  const canDecide = status === "pending";
-  const canGoAssign = status === "accepted";
+  const canDecide = status === "Pending";
+  const canGoAssign = status === "Accepted";
 
   const [collectorSource, setCollectorSource] = useState([]);
   const [collectorsLoading, setCollectorsLoading] = useState(false);

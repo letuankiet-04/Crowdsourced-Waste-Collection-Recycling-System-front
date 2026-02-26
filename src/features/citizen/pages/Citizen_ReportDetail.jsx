@@ -36,15 +36,15 @@ export default function CitizenReportDetail() {
   }
 
   const status = normalizeReportStatus(report?.status);
-  const canManage = status === "pending";
+  const canManage = status === "Pending";
   const stepIndex =
-    status === "pending"
+    status === "Pending"
       ? 0
-      : status === "accepted"
+      : status === "Accepted"
         ? 1
-        : status === "on the way"
+        : status === "On The Way"
           ? 2
-          : status === "collected"
+          : status === "Collected"
             ? 3
             : 0;
 
@@ -152,7 +152,7 @@ export default function CitizenReportDetail() {
                     Remove Report
                   </Button>
                   <div className="text-xs text-gray-500 text-center">
-                    Reports can only be updated while in Pending or Accepted status.
+                    Reports can only be updated while in Pending status.
                   </div>
                 </CardBody>
               </Card>

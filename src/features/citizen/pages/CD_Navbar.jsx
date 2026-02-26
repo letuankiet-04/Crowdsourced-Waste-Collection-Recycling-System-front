@@ -1,9 +1,9 @@
 
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 
-import NotificationBell from "../../../components/ui/NotificationBell";
+import NotificationBell from "../../../shared/ui/NotificationBell.jsx";
 
-export default function CD_Navbar({ brandTitle = "Citizen Portal" }) {
+export default function CD_Navbar({ brandTitle = "" }) {
   const { displayName, roleLabel, user } = useStoredUser();
 
   const initial = displayName ? displayName.charAt(0).toUpperCase() : "U";

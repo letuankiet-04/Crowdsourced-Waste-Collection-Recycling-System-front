@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Coins } from 'lucide-react'; // Added Plus icon
-import { cn } from '../../lib/cn';
+import { cn } from '../lib/cn';
 
 export function Voucher({ voucher, className, ...props }) {
   if (!voucher) return null;
