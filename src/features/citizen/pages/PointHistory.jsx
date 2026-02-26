@@ -1,22 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
 import Header from "../../../shared/layout/CD_Header.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card } from "../../../shared/ui/Card.jsx";
+import { getCitizenPoints, getCitizenPointsHistory } from "../../../services/citizen.service.js";
 
 export default function PointHistory() {
   const [activeTab, setActiveTab] = useState('All Activities');
+  const [historyData, setHistoryData] = useState([]);
+  const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
 
-  // Mock data for the table
-  const historyData = [
-    { id: 12345, date: 'Oct 24, 2023', activity: 'Report #12345 Collected', category: 'RECYCLABLE', points: 25, type: 'bonus' },
-    { id: 12346, date: 'Oct 22, 2023', activity: 'Weekly Streak Bonus', category: 'N/A', points: 100, type: 'bonus' },
-    { id: 12311, date: 'Oct 20, 2023', activity: 'Report #12311 Collected', category: 'ORGANIC', points: 15, type: 'bonus' },
-    { id: 12347, date: 'Oct 18, 2023', activity: 'Neighborhood Clean-up Hero', category: 'SPECIAL', points: 500, type: 'bonus' },
-    { id: 12290, date: 'Oct 15, 2023', activity: 'Report #12290 Collected', category: 'HAZARDOUS', points: 50, type: 'bonus' },
-  ];
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [points, history] = await Promise.all([
+          getCitizenPoints(),
+          getCitizenPointsHistory()
+        ]);
+        if (points) setPointsData(points);
+        if (history && Array.isArray(history)) setHistoryData(history);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    }
+    fetchData();
+  }, []);
 
   return (
     <RoleLayout
@@ -66,7 +76,7 @@ export default function PointHistory() {
               <div>
                 <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">CURRENT BALANCE</p>
                 <div className="flex items-baseline justify-center md:justify-start gap-2">
-                  <span className="text-5xl font-bold text-gray-900">Wait API</span>
+                  <span className="text-5xl font-bold text-gray-900">{pointsData.totalPoints}</span>
                   <span className="text-xl font-semibold text-green-600">pts</span>
                 </div>
               </div>
@@ -75,7 +85,7 @@ export default function PointHistory() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
                 </svg>
-                <span>Wait API pts this month</span>
+                <span>+{pointsData.monthlyPoints} pts this month</span>
               </div>
             </div>
 
@@ -154,12 +164,12 @@ export default function PointHistory() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {historyData.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4 px-6 text-sm font-medium text-gray-900">{item.date}</td>
+                  <tr key={item.id || Math.random()} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="py-4 px-6 text-sm font-medium text-gray-900">{item.date || new Date().toLocaleDateString()}</td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-full ${item.activity.includes('Bonus') || item.activity.includes('Hero') ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                           {item.activity.includes('Bonus') || item.activity.includes('Hero') ? (
+                        <div className={`p-1.5 rounded-full ${(item.activity || '').includes('Bonus') || (item.activity || '').includes('Hero') ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
+                           {(item.activity || '').includes('Bonus') || (item.activity || '').includes('Hero') ? (
                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.699-3.181a1 1 0 011.827.954L16.25 7l2.229 4.177a1 1 0 01-1.827.954L12.75 10.5V14a1 1 0 01-2 0v-3.5l-3.903 1.631-1.827-.954L7.25 7 5.021 2.823a1 1 0 011.827-.954L8.55 5.05V3a1 1 0 011-1z" clipRule="evenodd" />
                              </svg>
@@ -169,7 +179,7 @@ export default function PointHistory() {
                              </svg>
                            )}
                         </div>
-                        <span className="font-bold text-gray-800 text-sm">{item.activity}</span>
+                        <span className="font-bold text-gray-800 text-sm">{item.activity || 'Unknown Activity'}</span>
                       </div>
                     </td>
                     <td className="py-4 px-6">
@@ -180,10 +190,10 @@ export default function PointHistory() {
                         ${item.category === 'SPECIAL' ? 'bg-purple-100 text-purple-700' : ''}
                         ${item.category === 'N/A' ? 'bg-gray-100 text-gray-600' : ''}
                       `}>
-                        {item.category}
+                        {item.category || 'N/A'}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right font-bold text-green-600">+{item.points} pts</td>
+                    <td className="py-4 px-6 text-right font-bold text-green-600">+{item.points || 0} pts</td>
                   </tr>
                 ))}
               </tbody>
@@ -191,18 +201,18 @@ export default function PointHistory() {
           </div>
 
           {/* Pagination */}
-          <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">24</span> entries
+          {historyData.length > 0 && (
+            <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-medium">1</span> to <span className="font-medium">{historyData.length}</span> of <span className="font-medium">{historyData.length}</span> entries
+              </div>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50" disabled>Previous</button>
+                <button className="px-3 py-1 text-sm font-bold bg-green-500 text-white rounded-lg shadow-sm">1</button>
+                <button className="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700" disabled>Next</button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button className="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50">Previous</button>
-              <button className="px-3 py-1 text-sm font-bold bg-green-500 text-white rounded-lg shadow-sm">1</button>
-              <button className="px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200">2</button>
-              <button className="px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200">3</button>
-              <button className="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700">Next</button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </RoleLayout>

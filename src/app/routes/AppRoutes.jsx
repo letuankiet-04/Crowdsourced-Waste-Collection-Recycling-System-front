@@ -8,6 +8,8 @@ import {
   CitizenReportDetail,
   CitizenReports,
   CitizenFeedback,
+  CitizenMyFeedback,
+  CitizenFeedbackDetails,
   CollectorDashboard,
   CollectorHistory,
   CollectorProfile,
@@ -71,7 +73,23 @@ export default function AppRoutes() {
         path={PATHS.citizen.feedback}
         element={
           <ProtectedRoute role={['citizen']}>
-           <CitizenFeedback/>
+            <CitizenFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.citizen.myFeedback}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenMyFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.citizen.feedbackDetail}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenFeedbackDetails />
           </ProtectedRoute>
         }
       />

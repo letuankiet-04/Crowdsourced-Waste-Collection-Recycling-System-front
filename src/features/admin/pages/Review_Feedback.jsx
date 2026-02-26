@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
 import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
-import CD_Footer from "../../../components/layout/CD_Footer.jsx";
-import RoleLayout from "../../../components/layout/RoleLayout.jsx";
-import { Card, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
-import StatusPill from "../../../components/ui/StatusPill.jsx";
+import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
+import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
+import { Card, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
+import StatusPill from "../../../shared/ui/StatusPill.jsx";
 
 // Mock Data
 const MOCK_FEEDBACK = [

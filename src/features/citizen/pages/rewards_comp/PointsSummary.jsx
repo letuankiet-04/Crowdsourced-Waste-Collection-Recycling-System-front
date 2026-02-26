@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from "../../../../shared/ui/Card.jsx";
+import { getCitizenPoints } from "../../../../services/citizen.service.js";
 
 export function PointsSummary() {
   const navigate = useNavigate();
+  const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
+
+  useEffect(() => {
+    async function fetchPoints() {
+      try {
+        const data = await getCitizenPoints();
+        if (data) {
+          setPointsData(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch points:", error);
+      }
+    }
+    fetchPoints();
+  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -12,14 +28,14 @@ export function PointsSummary() {
          <div className="relative z-10">
             <p className="text-gray-500 text-sm font-medium mb-2">Total Points</p>
             <div className="flex items-baseline gap-2">
-               <span className="text-5xl font-bold text-gray-900">Wait API</span>
+               <span className="text-5xl font-bold text-gray-900">{pointsData.totalPoints}</span>
                <span className="text-green-600 font-semibold">pts</span>
             </div>
             <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full bg-green-50 text-green-700 text-sm font-medium">
                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                </svg>
-               Wait API this month
+               +{pointsData.monthlyPoints} this month
             </div>
          </div>
          {/* Decorative blob */}

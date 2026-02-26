@@ -21,6 +21,8 @@ export const CreateReport = lazy(() => import('../../features/citizen/pages/Crea
 export const CitizenReports = lazy(() => import('../../features/citizen/pages/Citizen_Reports.jsx'))
 export const CitizenReportDetail = lazy(() => import('../../features/citizen/pages/Citizen_ReportDetail.jsx'))
 export const CitizenFeedback = lazy(() => import('../../features/citizen/pages/Feedback.jsx'))
+export const CitizenMyFeedback = lazy(() => import('../../features/citizen/pages/MyFeedback.jsx'))
+export const CitizenFeedbackDetails = lazy(() => import('../../features/citizen/pages/FeedbackDetails.jsx'))
 export const CitizenProfile = lazy(() => import('../../features/citizen/pages/Citizen_Profile.jsx'))
 export const CitizenRewards = lazy(() => import('../../features/citizen/pages/Citizen_Rewards.jsx'))
 export const PointHistory = lazy(() => import('../../features/citizen/pages/PointHistory.jsx'))
