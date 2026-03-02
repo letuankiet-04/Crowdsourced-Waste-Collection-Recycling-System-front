@@ -8,35 +8,39 @@ import TextField from "../../../shared/ui/TextField.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { PATHS } from "../../../app/routes/paths.js";
-import { getEnterpriseReportsPending } from "../../../services/enterprise.service.js";
-
-function normalizeEnterpriseReport(report, index) {
-  const raw = report && typeof report === "object" ? report : {};
-  const reportCode = raw.reportCode ?? raw.code ?? null;
-  const id = reportCode != null ? String(reportCode) : raw.id != null ? String(raw.id) : String(index);
-  const latRaw = raw.latitude ?? raw.lat ?? raw.coords?.lat ?? null;
-  const lngRaw = raw.longitude ?? raw.lng ?? raw.coords?.lng ?? null;
-  const lat = latRaw != null ? Number(latRaw) : null;
-  const lng = lngRaw != null ? Number(lngRaw) : null;
-
-  return {
-    ...raw,
-    id,
-    reportId: raw.id ?? raw.reportId ?? null,
-    reportCode: reportCode ?? (raw.reportCode != null ? String(raw.reportCode) : id),
-    address: raw.address ?? raw.location ?? raw.place ?? "",
-    coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : raw.coords ?? null,
-    images: Array.isArray(raw.images) ? raw.images : [],
-    createdAt: raw.createdAt ?? raw.created_at ?? raw.createdDate ?? null,
-    status: raw.status ?? "PENDING",
-  };
-}
+import useNotify from "../../../shared/hooks/useNotify.js";
+import { getEnterpriseReports } from "../../../services/enterprise.service.js";
 
 export default function EnterpriseReports() {
   const navigate = useNavigate();
+  const notify = useNotify();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    getEnterpriseReports()
+      .then((rows) => {
+        if (cancelled) return;
+        setReports(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load reports.";
+        setError(message);
+        notify.error("Load reports failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify]);
 
   // Filter states
   const initialFilterState = {
@@ -87,34 +91,6 @@ export default function EnterpriseReports() {
   const handleResetFilter = () => {
     setFilter(initialFilterState);
   };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadReports() {
-      setLoading(true);
-      setLoadError("");
-      try {
-        const data = await getEnterpriseReportsPending();
-        const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
-        const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
-        if (!cancelled) setReports(normalized);
-      } catch (err) {
-        const message = err?.message || "Không thể tải danh sách report. Vui lòng thử lại.";
-        if (!cancelled) {
-          setReports([]);
-          setLoadError(message);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadReports();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <EnterpriseLayout>
@@ -178,6 +154,7 @@ export default function EnterpriseReports() {
             <CardTitle className="text-2xl">All reports</CardTitle>
           </CardHeader>
           <CardBody className="p-0">
+            {error ? <div className="px-8 pt-6 text-sm text-red-600">{error}</div> : null}
             <div className="overflow-x-auto">
               <table className="min-w-full text-left">
                 <thead className="bg-gray-50/60">
@@ -189,25 +166,28 @@ export default function EnterpriseReports() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredReports.length ? (
+                  {loading ? (
+                    <tr>
+                      <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
+                        Loading reports...
+                      </td>
+                    </tr>
+                  ) : filteredReports.length ? (
                     filteredReports.map((r) => (
                       <ReportRow
-                        key={r.id}
+                        key={r?.id ?? r?.reportCode ?? r?.code}
                         report={r}
                         showLocation
-                        onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
+                        onClick={() => {
+                          const reportKey = r?.id ?? r?.reportCode ?? r?.code ?? "";
+                          navigate(`${PATHS.enterprise.reports}/${reportKey}`, { state: { report: r } });
+                        }}
                       />
                     ))
                   ) : (
                     <tr>
                       <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                        {loading
-                          ? "Đang tải..."
-                          : loadError
-                            ? loadError
-                            : ordered.length === 0
-                              ? "Chưa có report nào."
-                              : "Không có report phù hợp bộ lọc."}
+                        {ordered.length === 0 ? "No reports submitted yet." : "No reports match your filter."}
                       </td>
                     </tr>
                   )}

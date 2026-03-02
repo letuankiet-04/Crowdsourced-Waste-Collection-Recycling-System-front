@@ -12,29 +12,7 @@ import { PATHS } from "../../../app/routes/paths.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
-import { getEnterpriseReportsPending } from "../../../services/enterprise.service.js";
-
-function normalizeEnterpriseReport(report, index) {
-  const raw = report && typeof report === "object" ? report : {};
-  const reportCode = raw.reportCode ?? raw.code ?? null;
-  const id = reportCode != null ? String(reportCode) : raw.id != null ? String(raw.id) : String(index);
-  const latRaw = raw.latitude ?? raw.lat ?? raw.coords?.lat ?? null;
-  const lngRaw = raw.longitude ?? raw.lng ?? raw.coords?.lng ?? null;
-  const lat = latRaw != null ? Number(latRaw) : null;
-  const lng = lngRaw != null ? Number(lngRaw) : null;
-
-  return {
-    ...raw,
-    id,
-    reportId: raw.id ?? raw.reportId ?? null,
-    reportCode: reportCode ?? (raw.reportCode != null ? String(raw.reportCode) : id),
-    address: raw.address ?? raw.location ?? raw.place ?? "",
-    coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : raw.coords ?? null,
-    images: Array.isArray(raw.images) ? raw.images : [],
-    createdAt: raw.createdAt ?? raw.created_at ?? raw.createdDate ?? null,
-    status: raw.status ?? "PENDING",
-  };
-}
+import { getEnterpriseReports } from "../../../services/enterprise.service.js";
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
@@ -42,39 +20,35 @@ export default function EnterpriseDashboard() {
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
-
-  const pendingReports = useMemo(() => {
-    return reports.filter((r) => r && normalizeReportStatus(r.status) !== "closed").slice(0, 8);
-  }, [reports]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-
-    async function loadReports() {
-      setLoading(true);
-      setLoadError("");
-      try {
-        const data = await getEnterpriseReportsPending();
-        const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
-        const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
-        if (!cancelled) setReports(normalized);
-      } catch (err) {
-        const message = err?.message || "Không thể tải danh sách report.";
-        if (!cancelled) {
-          setReports([]);
-          setLoadError(message);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadReports();
+    setLoading(true);
+    setError("");
+    getEnterpriseReports()
+      .then((rows) => {
+        if (cancelled) return;
+        setReports(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load reports.";
+        setError(message);
+        notify.error("Load reports failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
   }, [notify]);
+
+  const pendingReports = useMemo(() => {
+    return reports.filter((r) => r && normalizeReportStatus(r.status) !== "closed").slice(0, 8);
+  }, [reports]);
 
   return (
     <EnterpriseLayout>
@@ -140,6 +114,7 @@ export default function EnterpriseDashboard() {
               </Button>
             </CardHeader>
             <CardBody className="p-0">
+              {error ? <div className="px-8 pt-6 text-sm text-red-600">{error}</div> : null}
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
                   <thead className="bg-gray-50/60">
@@ -151,19 +126,28 @@ export default function EnterpriseDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {pendingReports.length ? (
+                    {loading ? (
+                      <tr>
+                        <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
+                          Loading requests...
+                        </td>
+                      </tr>
+                    ) : pendingReports.length ? (
                       pendingReports.map((r) => (
                         <ReportRow
-                          key={r.id}
+                          key={r?.id ?? r?.reportCode ?? r?.code}
                           report={r}
                           showLocation
-                          onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
+                          onClick={() => {
+                            const reportKey = r?.id ?? r?.reportCode ?? r?.code ?? "";
+                            navigate(`${PATHS.enterprise.reports}/${reportKey}`, { state: { report: r } });
+                          }}
                         />
                       ))
                     ) : (
                       <tr>
                         <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                          {loading ? "Đang tải..." : loadError ? loadError : "Chưa có yêu cầu nào."}
+                          No pending requests yet.
                         </td>
                       </tr>
                     )}
@@ -177,23 +161,21 @@ export default function EnterpriseDashboard() {
                   size="sm"
                   className="rounded-full"
                   disabled={loading}
-                  onClick={async () => {
+                  onClick={() => {
+                    if (loading) return;
                     setLoading(true);
-                    setLoadError("");
-                    try {
-                      const data = await getEnterpriseReportsPending();
-                      const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
-                      const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
-                      setReports(normalized);
-                    } catch (err) {
-                      setReports([]);
-                      setLoadError(err?.message || "Không thể tải danh sách report.");
-                    } finally {
-                      setLoading(false);
-                    }
+                    setError("");
+                    getEnterpriseReports()
+                      .then((rows) => setReports(Array.isArray(rows) ? rows : []))
+                      .catch((err) => {
+                        const message = err?.message || "Unable to load reports.";
+                        setError(message);
+                        notify.error("Load reports failed", message);
+                      })
+                      .finally(() => setLoading(false));
                   }}
                 >
-                  Load more requests
+                  Refresh requests
                 </Button>
                 <div className="flex items-center gap-2">
                   <StatusPill variant="yellow">pending</StatusPill>

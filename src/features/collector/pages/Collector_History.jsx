@@ -7,16 +7,14 @@ import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import { PATHS } from "../../../app/routes/paths.js";
-import { subscribeReportDeleted, subscribeReportUpdated } from "../../../events/reportEvents.js";
-import { deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
+import { getCollectorWorkHistory } from "../../../services/collector.service.js";
 
 export default function CollectorHistory() {
   const { user } = useStoredUser();
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
-  const collectorEmail = user?.email ?? null;
+  const [items, setItems] = useState([]);
 
   // Filter states
   const initialFilterState = {
@@ -28,21 +26,15 @@ export default function CollectorHistory() {
   const [filter, setFilter] = useState(initialFilterState);
 
   const historyReports = useMemo(() => {
-    return reports.filter((r) => {
-      // 1. Check assignment
-      if (!collectorEmail) return false;
-      const assignedEmails = Array.isArray(r?.assignedCollectors)
-        ? r.assignedCollectors.map((c) => c?.email).filter(Boolean)
-        : [];
-      const legacyEmail = r?.assignedCollector?.email ?? r?.assignedCollectorEmail ?? r?.collectorEmail ?? null;
-      const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
-      if (!effectiveEmails.includes(collectorEmail)) return false;
-
-      // 2. Check status (Completed/Rejected)
-      const status = normalizeReportStatus(r.status);
-      return ["Collected", "Rejected"].includes(status);
-    });
-  }, [reports, collectorEmail]);
+    const list = Array.isArray(items) ? items : [];
+    return list.map((it) => ({
+      id: it?.collectionRequestId != null ? String(it.collectionRequestId) : "",
+      reportCode: it?.requestCode ?? null,
+      status: it?.status ?? null,
+      address: it?.address ?? null,
+      createdAt: it?.completedAt ?? it?.collectedAt ?? it?.updatedAt ?? it?.startedAt ?? null,
+    }));
+  }, [items]);
 
   const filteredHistory = useMemo(() => {
     let result = [...historyReports];
@@ -86,23 +78,22 @@ export default function CollectorHistory() {
   };
 
   useEffect(() => {
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-
-    return () => {
-      unsubUpdated();
-      unsubDeleted();
+    let active = true;
+    const load = async () => {
+      try {
+        const data = await getCollectorWorkHistory();
+        if (!active) return;
+        setItems(Array.isArray(data) ? data : []);
+      } catch {
+        if (!active) return;
+        setItems([]);
+      }
     };
-  }, []);
+    if (user) load();
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   return (
     <CollectorLayout>

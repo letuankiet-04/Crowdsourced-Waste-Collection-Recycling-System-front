@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { createNotification } from "../../../services/notifications.js";
@@ -9,94 +9,33 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.j
 import Button from "../../../shared/ui/Button.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Users, X, XCircle } from "lucide-react";
+import PageHeader from "../../../shared/ui/PageHeader.jsx";
+import useNotify from "../../../shared/hooks/useNotify.js";
+import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import {
   acceptWasteReport,
   assignCollectorByReportCode,
   assignCollectorToRequest,
   getEnterpriseCollectors,
-  getEnterpriseReportsPending,
+  getEnterpriseWasteReportById,
   rejectWasteReport,
 } from "../../../services/enterprise.service.js";
-
-function normalizeEnterpriseReport(report, index) {
-  const raw = report && typeof report === "object" ? report : {};
-  const reportCode = raw.reportCode ?? raw.code ?? null;
-  const id = reportCode != null ? String(reportCode) : raw.id != null ? String(raw.id) : String(index);
-  const latRaw = raw.latitude ?? raw.lat ?? raw.coords?.lat ?? null;
-  const lngRaw = raw.longitude ?? raw.lng ?? raw.coords?.lng ?? null;
-  const lat = latRaw != null ? Number(latRaw) : null;
-  const lng = lngRaw != null ? Number(lngRaw) : null;
-
-  return {
-    ...raw,
-    id,
-    reportId: raw.id ?? raw.reportId ?? null,
-    reportCode: reportCode ?? (raw.reportCode != null ? String(raw.reportCode) : id),
-    address: raw.address ?? raw.location ?? raw.place ?? "",
-    coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : raw.coords ?? null,
-    images: Array.isArray(raw.images) ? raw.images : [],
-    createdAt: raw.createdAt ?? raw.created_at ?? raw.createdDate ?? null,
-    status: raw.status ?? "PENDING",
-  };
-}
-
-function normalizeCollectors(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
-  const maybeList = payload.collectors ?? payload.items ?? payload.data ?? payload.users ?? payload.result ?? payload.content ?? [];
-  return Array.isArray(maybeList) ? maybeList : [];
-}
 
 export default function EnterpriseReportDetail() {
   const { reportId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const notify = useNotify();
+  const { user } = useStoredUser();
   const id = reportId ? String(reportId) : "";
   const stateReport = location?.state?.report ?? null;
 
   const [reportOverride, setReportOverride] = useState(null);
+  const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
-  const [decisionLoading, setDecisionLoading] = useState(false);
-  const [assignLoading, setAssignLoading] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadReport() {
-      setReportError("");
-      if (stateReport?.id && String(stateReport.id) === id) {
-        setReportOverride(stateReport);
-        return;
-      }
-      if (!id) {
-        setReportOverride(null);
-        return;
-      }
-      setReportLoading(true);
-      try {
-        const data = await getEnterpriseReportsPending();
-        const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
-        const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
-        const found = normalized.find((r) => r && String(r.id) === id) ?? null;
-        if (!cancelled) setReportOverride(found);
-      } catch (err) {
-        if (!cancelled) {
-          setReportOverride(null);
-          setReportError(err?.message || "Không thể tải chi tiết report.");
-        }
-      } finally {
-        if (!cancelled) setReportLoading(false);
-      }
-    }
-
-    loadReport();
-    return () => {
-      cancelled = true;
-    };
-  }, [id, stateReport]);
-
-  const report = reportOverride?.id === id ? reportOverride : null;
+  const report = reportOverride ?? reportData ?? (stateReport?.id && String(stateReport.id) === id ? stateReport : null);
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
   const canGoAssign = status === "Accepted";
@@ -106,31 +45,53 @@ export default function EnterpriseReportDetail() {
   const [collectorsError, setCollectorsError] = useState("");
 
   useEffect(() => {
+    if (!id) return;
     let cancelled = false;
-
-    async function loadCollectors() {
-      setCollectorsLoading(true);
-      setCollectorsError("");
-      try {
-        const data = await getEnterpriseCollectors();
-        const list = normalizeCollectors(data);
-        if (!cancelled) setCollectorSource(list);
-      } catch (err) {
-        const message = err?.message || "Unable to load collectors. Please try again.";
-        if (!cancelled) {
-          setCollectorSource([]);
-          setCollectorsError(message);
-        }
-      } finally {
-        if (!cancelled) setCollectorsLoading(false);
-      }
-    }
-
-    loadCollectors();
+    setReportLoading(true);
+    setReportError("");
+    getEnterpriseWasteReportById(id)
+      .then((row) => {
+        if (cancelled) return;
+        setReportData(row ?? null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load report.";
+        setReportError(message);
+        notify.error("Load report failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setReportLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [id, notify]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCollectorsLoading(true);
+    setCollectorsError("");
+    getEnterpriseCollectors()
+      .then((rows) => {
+        if (cancelled) return;
+        setCollectorSource(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load collectors.";
+        setCollectorsError(message);
+        notify.error("Load collectors failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setCollectorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify]);
 
   function getAssignedEmailsFromReport(r) {
     const many = Array.isArray(r?.assignedCollectors) ? r.assignedCollectors : [];
@@ -172,16 +133,44 @@ export default function EnterpriseReportDetail() {
     setAssignOpen(true);
   }
 
+  function getReportCodeFromReport(r) {
+    return String(r?.reportCode ?? r?.code ?? r?.id ?? "").trim();
+  }
+
+  function getRequestIdFromReport(r) {
+    const raw = r?.collectionRequestId ?? r?.requestId ?? r?.collection_request_id ?? null;
+    if (raw === null || raw === undefined || raw === "") return null;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(n) ? n : raw;
+  }
+
   return (
     <EnterpriseLayout>
       <div className="space-y-8">
-        <ReportDetail
-          report={report}
-          backTo={PATHS.enterprise.reports}
-          title="Report Detail"
-          description={reportLoading ? "Đang tải..." : reportError ? reportError : id ? `Viewing report: ${id}` : "Viewing report"}
-          backLabel="Back to reports"
-        />
+        {reportLoading && !report ? (
+          <div className="space-y-8">
+            <PageHeader
+              title="Report Detail"
+              description={id ? `Loading report: ${id}` : "Loading report"}
+              right={
+                <Button as={Link} to={PATHS.enterprise.reports} variant="outline" size="sm" className="rounded-full">
+                  Back to reports
+                </Button>
+              }
+            />
+            <Card>
+              <CardBody className="p-8">
+                <div className="text-gray-900 font-semibold">Loading report...</div>
+                <div className="mt-2 text-gray-600 text-sm">Please wait while we fetch report details.</div>
+              </CardBody>
+            </Card>
+          </div>
+        ) : null}
+
+        {!reportLoading || report ? (
+        <ReportDetail report={report} backTo={PATHS.enterprise.reports} title="Report Detail" description={id ? `Viewing report: ${id}` : "Viewing report"} backLabel="Back to reports" />
+        ) : null}
+        {reportError && !reportLoading ? <div className="text-sm text-red-600">{reportError}</div> : null}
 
         <Card className="overflow-hidden bg-gradient-to-br from-emerald-50/70 via-white to-white">
           <CardHeader className="py-6 px-8">
@@ -225,7 +214,7 @@ export default function EnterpriseReportDetail() {
                   variant="outline"
                   size="lg"
                   className="rounded-full border-red-600 text-red-700 hover:bg-red-50"
-                  disabled={!report || !canDecide || decisionLoading}
+                  disabled={!report || !canDecide}
                   onClick={async () => {
                     if (!report || !canDecide) return;
                     const reason = window.prompt("Please enter the reason for rejection:");
@@ -234,34 +223,44 @@ export default function EnterpriseReportDetail() {
                       alert("Rejection reason is required.");
                       return;
                     }
+                    const reportCode = getReportCodeFromReport(report);
+                    if (!reportCode) {
+                      notify.error("Missing report code", "Unable to identify report code for this report.");
+                      return;
+                    }
 
-                    setDecisionLoading(true);
                     try {
-                      const reportCode = report?.reportCode ?? report?.id;
-                      await rejectWasteReport({ reportCode, reason: reason.trim() });
-                      const next = {
+                      const updated = await notify.promise(rejectWasteReport({ reportCode, reason: reason.trim() }), {
+                        loadingTitle: "Rejecting report...",
+                        loadingMessage: "Sending rejection to the server.",
+                        successTitle: "Report rejected",
+                        successMessage: "The report has been rejected.",
+                        errorTitle: "Reject failed",
+                        errorMessage: (err) => err?.message || "Unable to reject this report.",
+                      });
+                      const next = updated ?? {
                         ...report,
-                        status: "REJECTED",
+                        status: "rejected",
                         updatedAt: new Date().toISOString(),
                         rejectionReason: reason.trim(),
                       };
                       setReportOverride(next);
+                      setReportData(next);
+                      setReportError("");
 
-                      if (report.createdBy) {
+                      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
+                      try {
                         await createNotification({
                           receiverId: report.createdBy,
-                          senderId: 2,
+                          senderId,
                           reportId: report.id,
                           type: "REPORT_REJECTED",
                           message: "Your report has been rejected.",
                           reason: reason.trim(),
                         });
-                      }
-
+                      } catch {}
                       navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } finally {
-                      setDecisionLoading(false);
-                    }
+                    } catch {}
                   }}
                 >
                   <XCircle className="h-5 w-5" aria-hidden="true" />
@@ -270,37 +269,42 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="lg"
                   className="rounded-full"
-                  disabled={!report || !canDecide || decisionLoading}
+                  disabled={!report || !canDecide}
                   onClick={async () => {
                     if (!report || !canDecide) return;
-                    setDecisionLoading(true);
-                    try {
-                      const reportCode = report?.reportCode ?? report?.id;
-                      const res = await acceptWasteReport({ reportCode });
-                      const collectionRequestId =
-                        res?.collectionRequestId ?? res?.requestId ?? res?.id ?? report?.collectionRequestId ?? null;
-                      const next = {
-                        ...report,
-                        status: "ACCEPTED_ENTERPRISE",
-                        updatedAt: new Date().toISOString(),
-                        collectionRequestId,
-                      };
-                      setReportOverride(next);
+                    const reportCode = getReportCodeFromReport(report);
+                    if (!reportCode) {
+                      notify.error("Missing report code", "Unable to identify report code for this report.");
+                      return;
+                    }
 
-                      if (report.createdBy) {
+                    try {
+                      const updated = await notify.promise(acceptWasteReport({ reportCode }), {
+                        loadingTitle: "Accepting report...",
+                        loadingMessage: "Sending acceptance to the server.",
+                        successTitle: "Report accepted",
+                        successMessage: "You can now assign a collector.",
+                        errorTitle: "Accept failed",
+                        errorMessage: (err) => err?.message || "Unable to accept this report.",
+                      });
+                      const next = updated ?? { ...report, status: "accepted", updatedAt: new Date().toISOString() };
+                      setReportOverride(next);
+                      setReportData(next);
+                      setReportError("");
+
+                      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
+                      try {
                         await createNotification({
                           receiverId: report.createdBy,
-                          senderId: 2,
+                          senderId,
                           reportId: report.id,
                           type: "REPORT_ACCEPTED",
                           message: "Your report has been accepted.",
                         });
-                      }
+                      } catch {}
 
                       openAssignDialog(next);
-                    } finally {
-                      setDecisionLoading(false);
-                    }
+                    } catch {}
                   }}
                 >
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -418,7 +422,7 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length || assignLoading}
+                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length}
                   onClick={async () => {
                     if (!report || !canGoAssign) return;
                     const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
@@ -426,41 +430,38 @@ export default function EnterpriseReportDetail() {
                     const ok = window.confirm("Assign this report to selected collectors?");
                     if (!ok) return;
                     const primaryCollector = selectedCollectors[0];
+                    const reportCode = getReportCodeFromReport(report);
+                    if (!reportCode) {
+                      notify.error("Missing report code", "Unable to identify report code for this report.");
+                      return;
+                    }
 
-                    setAssignLoading(true);
                     try {
-                      const collectorId = primaryCollector.id;
-                      const requestId =
-                        report?.collectionRequestId ??
-                        report?.requestId ??
-                        report?.collectionRequest?.id ??
-                        report?.request?.id ??
-                        null;
-
-                      if (requestId != null) {
-                        await assignCollectorToRequest({ requestId, collectorId });
-                      } else {
-                        const reportCode = report?.reportCode ?? report?.id;
-                        await assignCollectorByReportCode({ reportCode, collectorId });
-                      }
+                      const requestId = getRequestIdFromReport(report);
+                      const assignPromise =
+                        requestId != null
+                          ? assignCollectorToRequest({ requestId, collectorId: primaryCollector.id })
+                          : assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
+                      await notify.promise(assignPromise, {
+                        loadingTitle: "Assigning collector...",
+                        loadingMessage: "Sending assignment to the server.",
+                        successTitle: "Collector assigned",
+                        successMessage: "Assignment saved successfully.",
+                        errorTitle: "Assign failed",
+                        errorMessage: (err) => err?.message || "Unable to assign collector.",
+                      });
 
                       const next = {
                         ...report,
-                        status: "ASSIGNED",
-                        assignedCollector: {
-                          id: primaryCollector.id,
-                          name: primaryCollector.name,
-                          email: primaryCollector.email,
-                        },
+                        assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
                         assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
                         updatedAt: new Date().toISOString(),
                       };
                       setReportOverride(next);
+                      setReportData(next);
                       setAssignOpen(false);
                       navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } finally {
-                      setAssignLoading(false);
-                    }
+                    } catch {}
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />

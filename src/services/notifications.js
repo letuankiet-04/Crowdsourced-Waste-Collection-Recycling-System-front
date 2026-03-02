@@ -1,73 +1,41 @@
-// Mock Notification Store
-let MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    receiverId: 2, // Enterprise
-    senderId: 1, // Citizen
-    reportId: 101,
-    type: 'NEW_REPORT',
-    message: 'New report submitted by Citizen',
-    isRead: false,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 2,
-    receiverId: 1, // Citizen
-    senderId: 2, // Enterprise
-    reportId: 100,
-    type: 'REPORT_ACCEPTED',
-    message: 'Your report #WR-2023-001 has been accepted.',
-    isRead: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString()
+import api from './http/client.js'
+import unwrapApiResponse from './http/unwrapApiResponse.js'
+
+export function subscribeNotifications() {
+  return () => {}
+}
+
+export async function getNotifications(userId) {
+  try {
+    const params = userId != null ? { userId } : undefined
+    const { data } = await api.get('/api/notifications', { params })
+    const result = unwrapApiResponse(data)
+    return Array.isArray(result) ? result : []
+  } catch {
+    return []
   }
-];
+}
 
-let listeners = [];
+export async function markAsRead(id) {
+  if (!id) return { success: false }
+  try {
+    const { data } = await api.patch(`/api/notifications/${id}/read`)
+    return unwrapApiResponse(data) ?? { success: true }
+  } catch {
+    return { success: false }
+  }
+}
 
-const notifyListeners = () => {
-  listeners.forEach(l => l(MOCK_NOTIFICATIONS));
-};
+export async function getUnreadCount(userId) {
+  const list = await getNotifications(userId)
+  return list.filter((n) => !n?.isRead).length
+}
 
-export const subscribeNotifications = (callback) => {
-  listeners.push(callback);
-  return () => {
-    listeners = listeners.filter(l => l !== callback);
-  };
-};
-
-export const getNotifications = async (userId) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  if (userId == null) return MOCK_NOTIFICATIONS;
-  const receiverId = Number(userId);
-  return MOCK_NOTIFICATIONS.filter(n => n.receiverId === receiverId);
-};
-
-export const markAsRead = async (id) => {
-  await new Promise(resolve => setTimeout(resolve, 200));
-  MOCK_NOTIFICATIONS = MOCK_NOTIFICATIONS.map(n => 
-    n.id === id ? { ...n, isRead: true } : n
-  );
-  notifyListeners();
-  return { success: true };
-};
-
-export const getUnreadCount = async (userId) => {
-  await new Promise(resolve => setTimeout(resolve, 200));
-  if (userId == null) return MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
-  const receiverId = Number(userId);
-  return MOCK_NOTIFICATIONS.filter(n => n.receiverId === receiverId && !n.isRead).length;
-};
-
-export const createNotification = async (notification) => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  const newNotification = {
-    id: Date.now(),
-    isRead: false,
-    createdAt: new Date().toISOString(),
-    ...notification
-  };
-  MOCK_NOTIFICATIONS = [newNotification, ...MOCK_NOTIFICATIONS];
-  notifyListeners();
-  return newNotification;
-};
+export async function createNotification(notification) {
+  try {
+    const { data } = await api.post('/api/notifications', notification ?? {})
+    return unwrapApiResponse(data)
+  } catch {
+    return null
+  }
+}

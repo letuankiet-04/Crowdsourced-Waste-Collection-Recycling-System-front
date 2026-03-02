@@ -84,10 +84,15 @@ export default function CitizenReportDetail() {
             ? 3
             : 0;
 
+  const step2 =
+    status === "On The Way"
+      ? { label: "On The Way", sub: "Collector is on the way." }
+      : { label: "Assign Collector", sub: "Awaiting unit assignment" };
+
   const steps = [
     { label: "Pending Review", sub: report?.createdAt ? new Date(report.createdAt).toLocaleString() : null },
     { label: "Accepted", sub: "Processing report details..." },
-    { label: "Assign Collector", sub: "Awaiting unit assignment" },
+    step2,
     { label: "Collected", sub: apiResult?.collectedAt ? `Collected at: ${new Date(apiResult.collectedAt).toLocaleString()}` : "Final verification step" },
   ];
 

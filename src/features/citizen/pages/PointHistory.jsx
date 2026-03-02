@@ -1,22 +1,76 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
 import Header from "../../../shared/layout/CD_Header.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card } from "../../../shared/ui/Card.jsx";
+import { getCitizenRewardHistory } from "../../../services/citizen.service.js";
 
 export default function PointHistory() {
   const [activeTab, setActiveTab] = useState('All Activities');
+  const [history, setHistory] = useState([]);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
 
-  // Mock data for the table
-  const historyData = [
-    { id: 12345, date: 'Oct 24, 2023', activity: 'Report #12345 Collected', category: 'RECYCLABLE', points: 25, type: 'bonus' },
-    { id: 12346, date: 'Oct 22, 2023', activity: 'Weekly Streak Bonus', category: 'N/A', points: 100, type: 'bonus' },
-    { id: 12311, date: 'Oct 20, 2023', activity: 'Report #12311 Collected', category: 'ORGANIC', points: 15, type: 'bonus' },
-    { id: 12347, date: 'Oct 18, 2023', activity: 'Neighborhood Clean-up Hero', category: 'SPECIAL', points: 500, type: 'bonus' },
-    { id: 12290, date: 'Oct 15, 2023', activity: 'Report #12290 Collected', category: 'HAZARDOUS', points: 50, type: 'bonus' },
-  ];
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setPending(true);
+      setError("");
+      try {
+        const data = await getCitizenRewardHistory();
+        if (!active) return;
+        setHistory(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!active) return;
+        setHistory([]);
+        setError(e?.message || "Unable to load point history.");
+      } finally {
+        if (active) setPending(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const historyData = useMemo(() => {
+    return history.map((h) => {
+      const createdAt = h?.createdAt ? new Date(h.createdAt) : null;
+      const date = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.toLocaleDateString() : "-";
+      const reportId = h?.reportId ?? h?.id ?? "";
+      const reportCode = h?.reportCode ? String(h.reportCode) : null;
+      const points = typeof h?.point === "number" ? h.point : Number(h?.point ?? 0);
+      return {
+        id: reportId,
+        date,
+        activity: reportCode ? `Report ${reportCode} Collected` : `Report #${reportId} Collected`,
+        category: "N/A",
+        points: Number.isFinite(points) ? points : 0,
+        type: "bonus",
+        createdAt: h?.createdAt ?? null,
+      };
+    });
+  }, [history]);
+
+  const totalPoints = useMemo(() => {
+    return historyData.reduce((sum, it) => sum + (Number.isFinite(it.points) ? it.points : 0), 0);
+  }, [historyData]);
+
+  const monthPoints = useMemo(() => {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    return historyData.reduce((sum, it) => {
+      if (!it.createdAt) return sum;
+      const d = new Date(it.createdAt);
+      if (Number.isNaN(d.getTime())) return sum;
+      if (d.getFullYear() !== year || d.getMonth() !== month) return sum;
+      return sum + (Number.isFinite(it.points) ? it.points : 0);
+    }, 0);
+  }, [historyData]);
 
   return (
     <RoleLayout
@@ -66,7 +120,7 @@ export default function PointHistory() {
               <div>
                 <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">CURRENT BALANCE</p>
                 <div className="flex items-baseline justify-center md:justify-start gap-2">
-                  <span className="text-5xl font-bold text-gray-900">Wait API</span>
+                  <span className="text-5xl font-bold text-gray-900">{pending ? "-" : totalPoints}</span>
                   <span className="text-xl font-semibold text-green-600">pts</span>
                 </div>
               </div>
@@ -75,7 +129,7 @@ export default function PointHistory() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
                 </svg>
-                <span>Wait API pts this month</span>
+                <span>{pending ? "-" : monthPoints} pts this month</span>
               </div>
             </div>
 
@@ -143,6 +197,9 @@ export default function PointHistory() {
 
           {/* Table */}
           <div className="overflow-x-auto">
+            {error ? (
+              <div className="p-6 text-sm text-red-600">{error}</div>
+            ) : null}
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-100">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle } from "lucide-react";
 import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
@@ -6,24 +6,49 @@ import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
 import StatCard from "./dashboard_comp/StatCard.jsx";
-
-// Mock data with more entries for pagination testing
-const MOCK_USERS = [
-  { id: 1, name: "Sarah Jenkins", email: "sarah.j@gmail.com", role: "Citizen", status: "Active", joined: "Oct 12, 2023", avatar: "S" },
-  { id: 2, name: "Marcus Chen", email: "m.chen@ecocollect.net", role: "Collector", status: "Active", joined: "Jan 05, 2024", avatar: "M" },
-  { id: 3, name: "GreenCycle Inc.", email: "admin@greencycle.co", role: "Enterprise", status: "Pending", joined: "Feb 18, 2024", avatar: "G" },
-  { id: 4, name: "Robert Blackwood", email: "r.blackwood@outlook.com", role: "Citizen", status: "Suspended", joined: "Nov 30, 2022", avatar: "R" },
-  { id: 5, name: "Emily Blunt", email: "emily.b@gmail.com", role: "Citizen", status: "Active", joined: "Mar 10, 2024", avatar: "E" },
-  { id: 6, name: "John Doe", email: "john.doe@example.com", role: "Collector", status: "Inactive", joined: "Apr 01, 2024", avatar: "J" },
-  { id: 7, name: "Jane Smith", email: "jane.smith@example.com", role: "Admin", status: "Active", joined: "May 15, 2024", avatar: "J" },
-  { id: 8, name: "Michael Brown", email: "michael.b@example.com", role: "Citizen", status: "Pending", joined: "Jun 20, 2024", avatar: "M" },
-  { id: 9, name: "EcoTrack Ltd.", email: "contact@ecotrack.com", role: "Enterprise", status: "Active", joined: "Jul 05, 2024", avatar: "E" },
-  { id: 10, name: "David Wilson", email: "david.w@example.com", role: "Collector", status: "Suspended", joined: "Aug 12, 2024", avatar: "D" },
-  { id: 11, name: "Lisa Ray", email: "lisa.ray@example.com", role: "Citizen", status: "Active", joined: "Sep 01, 2024", avatar: "L" },
-  { id: 12, name: "Tom Holland", email: "tom.h@example.com", role: "Citizen", status: "Inactive", joined: "Oct 10, 2024", avatar: "T" }
-];
+import { getAdminAccounts } from "../../../services/admin.service.js";
 
 export default function AdminUserManagement() {
+  const [users, setUsers] = useState([]);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setLoadError("");
+      try {
+        const data = await getAdminAccounts();
+        if (!active) return;
+        const list = Array.isArray(data) ? data : [];
+        const mapped = list.map((u) => {
+          const fullName = typeof u?.fullName === "string" && u.fullName.trim() ? u.fullName.trim() : null;
+          const email = typeof u?.email === "string" ? u.email : "";
+          const name = fullName || email || "User";
+          const roleCode = typeof u?.roleCode === "string" ? u.roleCode : "";
+          const roleDisplay = roleCode ? roleCode.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : "User";
+          const statusRaw = typeof u?.status === "string" ? u.status : "";
+          const status = statusRaw ? statusRaw.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : "Active";
+          const createdAt = u?.createdAt ? new Date(u.createdAt) : null;
+          const joined =
+            createdAt && !Number.isNaN(createdAt.getTime())
+              ? createdAt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+              : "-";
+          const avatar = name ? String(name).trim().slice(0, 1).toUpperCase() : "?";
+          return { id: u?.id, name, email, role: roleDisplay, status, joined, avatar };
+        });
+        setUsers(mapped);
+      } catch (e) {
+        if (!active) return;
+        setUsers([]);
+        setLoadError(e?.message || "Unable to load users.");
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Filter State
   const [filter, setFilter] = useState({
     search: "",
@@ -62,10 +87,11 @@ export default function AdminUserManagement() {
 
   // Filtering Logic
   const filteredUsers = useMemo(() => {
-    return MOCK_USERS.filter(user => {
+    return users.filter(user => {
       // Search Logic (Name or Email)
       const searchTerm = filter.search.toLowerCase().trim();
       const matchesSearch = 
+        String(user.id ?? "").toLowerCase().includes(searchTerm) ||
         user.name.toLowerCase().includes(searchTerm) || 
         user.email.toLowerCase().includes(searchTerm);
 
@@ -77,7 +103,7 @@ export default function AdminUserManagement() {
 
       return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [filter]);
+  }, [filter, users]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
@@ -121,22 +147,22 @@ export default function AdminUserManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up">
            <StatCard 
              title="Total Users" 
-             value="12,840" 
-             change="+12%" 
+             value={String(users.length)} 
+             change="" 
              icon={<Users className="w-6 h-6" />} 
              color="green" 
            />
            <StatCard 
              title="Active Today" 
-             value="1,204" 
-             change="+5.2%" 
+             value={String(users.filter((u) => String(u.status).toLowerCase() === "active").length)} 
+             change="" 
              icon={<Activity className="w-6 h-6" />} 
              color="blue" 
            />
            <StatCard 
-             title="New Requests" 
-             value="45" 
-             change="Awaiting approval" 
+             title="Suspended" 
+             value={String(users.filter((u) => String(u.status).toLowerCase() === "suspended").length)} 
+             change="" 
              icon={<UserPlus className="w-6 h-6" />} 
              color="orange" 
            />
@@ -188,9 +214,7 @@ export default function AdminUserManagement() {
                 >
                    <option value="All">Status: All</option>
                    <option value="Active">Active</option>
-                   <option value="Pending">Pending</option>
                    <option value="Suspended">Suspended</option>
-                   <option value="Inactive">Inactive</option>
                 </select>
                 
                 {/* Reset Button */}
@@ -207,6 +231,9 @@ export default function AdminUserManagement() {
           </div>
 
           <div className="overflow-x-auto">
+             {loadError ? (
+               <div className="p-6 text-sm text-red-600">{loadError}</div>
+             ) : null}
              <table className="w-full text-left border-collapse">
                 <thead>
                    <tr className="bg-gray-50/50 border-b border-gray-100">

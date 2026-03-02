@@ -8,18 +8,35 @@ import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { getEnterpriseCollectors } from "../../../services/enterprise.service.js";
 
-function normalizeCollectors(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
-  const maybeList = payload.collectors ?? payload.items ?? payload.data ?? payload.users ?? payload.result ?? payload.content ?? [];
-  return Array.isArray(maybeList) ? maybeList : [];
-}
-
 export default function EnterpriseActiveCollector() {
   const notify = useNotify();
   const [collectors, setCollectors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    getEnterpriseCollectors()
+      .then((rows) => {
+        if (cancelled) return;
+        setCollectors(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load collectors.";
+        setError(message);
+        notify.error("Load collectors failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify]);
 
   // Filter states
   const initialFilterState = {
@@ -27,34 +44,6 @@ export default function EnterpriseActiveCollector() {
     search: "",
   };
   const [filter, setFilter] = useState(initialFilterState);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCollectors() {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await getEnterpriseCollectors();
-        const list = normalizeCollectors(data);
-        if (!cancelled) setCollectors(list);
-      } catch (err) {
-        const message = err?.message || "Unable to load collectors. Please try again.";
-        if (!cancelled) {
-          setCollectors([]);
-          setError(message);
-        }
-        notify.error("Load failed", message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadCollectors();
-    return () => {
-      cancelled = true;
-    };
-  }, [notify]);
 
   const allCollectors = useMemo(() => {
     const list = Array.isArray(collectors) ? collectors : [];

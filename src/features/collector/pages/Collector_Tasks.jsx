@@ -8,17 +8,15 @@ import TextField from "../../../shared/ui/TextField.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { PATHS } from "../../../app/routes/paths.js";
-import { subscribeReportDeleted, subscribeReportUpdated } from "../../../events/reportEvents.js";
-import { deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
+import { getCollectorTasks } from "../../../services/collector.service.js";
 
 export default function CollectorTasks() {
   const { user, displayName } = useStoredUser();
   const notify = useNotify();
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
-  const collectorEmail = user?.email ?? null;
+  const [tasks, setTasks] = useState([]);
 
   // Filter states
   const initialFilterState = {
@@ -29,35 +27,30 @@ export default function CollectorTasks() {
   };
   const [filter, setFilter] = useState(initialFilterState);
 
-  const allAssignedTasks = useMemo(() => {
-    return reports.filter((r) => {
-      if (!collectorEmail) return false;
-      const assignedEmails = Array.isArray(r?.assignedCollectors)
-        ? r.assignedCollectors.map((c) => c?.email).filter(Boolean)
-        : [];
-      const legacyEmail = r?.assignedCollector?.email ?? r?.assignedCollectorEmail ?? r?.collectorEmail ?? null;
-      const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
-      return effectiveEmails.includes(collectorEmail);
-    });
-  }, [reports, collectorEmail]);
+  const allTasks = useMemo(() => {
+    const list = Array.isArray(tasks) ? tasks : [];
+    return list.map((t) => ({
+      id: t?.id != null ? String(t.id) : "",
+      reportCode: t?.requestCode ?? null,
+      status: t?.status ?? null,
+      createdAt: t?.createdAt ?? t?.assignedAt ?? t?.updatedAt ?? null,
+    }));
+  }, [tasks]);
 
   const activeTaskCount = useMemo(() => {
-    return allAssignedTasks.filter((r) => {
+    return allTasks.filter((r) => {
       const status = normalizeReportStatus(r.status);
       return ["Assigned", "Accepted", "On The Way"].includes(status);
     }).length;
-  }, [allAssignedTasks]);
+  }, [allTasks]);
 
   const filteredTasks = useMemo(() => {
-    let result = [...allAssignedTasks];
+    let result = [...allTasks];
 
     // Status
     if (filter.status !== "All") {
       result = result.filter((r) => {
         const status = normalizeReportStatus(r.status);
-        if (filter.status === "Assigned") {
-          return status === "Pending" || status === "Assigned";
-        }
         return status === filter.status;
       });
     }
@@ -78,49 +71,36 @@ export default function CollectorTasks() {
       const term = filter.search.toLowerCase();
       result = result.filter(
         (r) =>
-          String(r.id).toLowerCase().includes(term) || (r.address && r.address.toLowerCase().includes(term))
+          String(r.id).toLowerCase().includes(term) ||
+          String(r.reportCode ?? "").toLowerCase().includes(term)
       );
     }
 
     return result;
-  }, [allAssignedTasks, filter]);
+  }, [allTasks, filter]);
 
   const handleResetFilter = () => {
     setFilter(initialFilterState);
   };
 
   useEffect(() => {
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-      const status = normalizeReportStatus(nextReport.status);
-      const assignedEmails = Array.isArray(nextReport?.assignedCollectors)
-        ? nextReport.assignedCollectors.map((c) => c?.email).filter(Boolean)
-        : [];
-      const legacyEmail =
-        nextReport?.assignedCollector?.email ?? nextReport?.assignedCollectorEmail ?? nextReport?.collectorEmail ?? null;
-      const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
-      if (
-        collectorEmail &&
-        effectiveEmails.includes(collectorEmail) &&
-        (status === "Accepted" || status === "Assigned")
-      ) {
-        notify.info("New task assigned", `${nextReport.id} · ${nextReport.address || "Unknown location"}`);
+    let active = true;
+    const load = async () => {
+      try {
+        const data = await getCollectorTasks({ all: true });
+        if (!active) return;
+        setTasks(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!active) return;
+        setTasks([]);
+        notify.error("Unable to load tasks", e?.message || "Request failed");
       }
-    });
-
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-
-    return () => {
-      unsubUpdated();
-      unsubDeleted();
     };
-  }, [collectorEmail, notify]);
+    if (user) load();
+    return () => {
+      active = false;
+    };
+  }, [notify, user]);
 
   return (
     <CollectorLayout>
@@ -153,6 +133,7 @@ export default function CollectorTasks() {
                   <option value="Accepted">Accepted</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
+                  <option value="Completed">Completed</option>
                   <option value="Rejected">Rejected</option>
                 </select>
               </div>
@@ -204,14 +185,10 @@ export default function CollectorTasks() {
                 <tbody className="divide-y divide-gray-100">
                   {filteredTasks.length ? (
                     filteredTasks.map((r) => {
-                      // Visual override: Pending -> Assigned
-                      const displayReport =
-                        normalizeReportStatus(r.status) === "Pending" ? { ...r, status: "Assigned" } : r;
-
                       return (
                         <ReportRow
                           key={r.id}
-                          report={displayReport}
+                          report={r}
                           showLocation
                           onClick={() =>
                             navigate(PATHS.collector.reportDetail.replace(":reportId", r.id), { state: { report: r } })
@@ -222,7 +199,7 @@ export default function CollectorTasks() {
                   ) : (
                     <tr>
                       <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                        {allAssignedTasks.length === 0 ? "No tasks assigned yet." : "No tasks match your filter."}
+                        {allTasks.length === 0 ? "No tasks assigned yet." : "No tasks match your filter."}
                       </td>
                     </tr>
                   )}

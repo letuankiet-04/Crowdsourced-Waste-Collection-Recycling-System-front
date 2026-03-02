@@ -97,7 +97,7 @@ export default function AnimatedAuth() {
           navigate(PATHS.citizen.dashboard)
           break
         case 'enterprise':
-          navigate(PATHS.enterprise.reports)
+          navigate(PATHS.enterprise.dashboard)
           break
         case 'collector':
           navigate(PATHS.collector.dashboard)
