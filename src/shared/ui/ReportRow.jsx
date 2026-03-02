@@ -2,10 +2,11 @@ import { Link } from "react-router-dom";
 import StatusPill from "./StatusPill.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../lib/reportStatus.js";
 
-export default function ReportRow({ report, onClick, idTo, showLocation = false }) {
+export default function ReportRow({ report, onClick, idTo, showLocation = false, action }) {
   if (!report) return null;
 
   const interactive = typeof onClick === "function";
+  const displayId = report?.reportCode ?? report?.code ?? report?.id ?? "";
 
   return (
     <tr
@@ -24,10 +25,10 @@ export default function ReportRow({ report, onClick, idTo, showLocation = false 
       <td className="px-8 py-5 text-sm font-semibold">
         {idTo ? (
           <Link to={idTo} className="text-gray-900 hover:text-green-700 underline">
-            {report.id}
+            {displayId}
           </Link>
         ) : (
-          <span className="text-gray-900">{report.id}</span>
+          <span className="text-gray-900">{displayId}</span>
         )}
       </td>
 
@@ -46,6 +47,8 @@ export default function ReportRow({ report, onClick, idTo, showLocation = false 
           {normalizeReportStatus(report.status)}
         </StatusPill>
       </td>
+
+      {action ? <td className="px-8 py-5 text-sm text-right">{action}</td> : null}
     </tr>
   );
 }

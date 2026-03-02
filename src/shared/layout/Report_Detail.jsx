@@ -186,7 +186,9 @@ export default function ReportDetail({
                     )}
                   </div>
                 </div>
-                <Field label="Estimated Weight" value={safeReport?.weight || '-'} />
+                {safeReport?.weight != null && String(safeReport.weight).trim() !== '' ? (
+                  <Field label="Estimated Weight" value={safeReport.weight} />
+                ) : null}
                 {wasteItemsEntries.length ? (
                   <div className="md:col-span-2">
                     <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Estimated Items</div>

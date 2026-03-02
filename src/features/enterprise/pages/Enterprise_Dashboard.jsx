@@ -9,55 +9,46 @@ import useNotify from "../../../shared/hooks/useNotify.js";
 import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
-import {
-  subscribeReportDeleted,
-  subscribeReportSubmitted,
-  subscribeReportsCleared,
-  subscribeReportUpdated,
-} from "../../../events/reportEvents.js";
-import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
+import { getEnterpriseReports } from "../../../services/enterprise.service.js";
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
   const notify = useNotify();
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    getEnterpriseReports()
+      .then((rows) => {
+        if (cancelled) return;
+        setReports(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load reports.";
+        setError(message);
+        notify.error("Load reports failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify]);
 
   const pendingReports = useMemo(() => {
     return reports.filter((r) => r && normalizeReportStatus(r.status) !== "closed").slice(0, 8);
   }, [reports]);
-
-  useEffect(() => {
-    const unsubSubmitted = subscribeReportSubmitted((report) => {
-      if (!report) return;
-      const next = upsertMockReport(report);
-      setReports(next);
-      notify.info("New request received", `${report.id} · ${report.address || "Unknown location"}`);
-    });
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-    const unsubCleared = subscribeReportsCleared(() => {
-      clearMockReports();
-      setReports([]);
-    });
-    return () => {
-      unsubSubmitted();
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
-    };
-  }, [notify]);
 
   return (
     <EnterpriseLayout>
@@ -123,6 +114,7 @@ export default function EnterpriseDashboard() {
               </Button>
             </CardHeader>
             <CardBody className="p-0">
+              {error ? <div className="px-8 pt-6 text-sm text-red-600">{error}</div> : null}
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
                   <thead className="bg-gray-50/60">
@@ -134,13 +126,22 @@ export default function EnterpriseDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {pendingReports.length ? (
+                    {loading ? (
+                      <tr>
+                        <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
+                          Loading requests...
+                        </td>
+                      </tr>
+                    ) : pendingReports.length ? (
                       pendingReports.map((r) => (
                         <ReportRow
-                          key={r.id}
+                          key={r?.id ?? r?.reportCode ?? r?.code}
                           report={r}
                           showLocation
-                          onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
+                          onClick={() => {
+                            const reportKey = r?.id ?? r?.reportCode ?? r?.code ?? "";
+                            navigate(`${PATHS.enterprise.reports}/${reportKey}`, { state: { report: r } });
+                          }}
                         />
                       ))
                     ) : (
@@ -155,8 +156,26 @@ export default function EnterpriseDashboard() {
               </div>
 
               <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-between">
-                <Button variant="outline" size="sm" className="rounded-full">
-                  Load more requests
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={loading}
+                  onClick={() => {
+                    if (loading) return;
+                    setLoading(true);
+                    setError("");
+                    getEnterpriseReports()
+                      .then((rows) => setReports(Array.isArray(rows) ? rows : []))
+                      .catch((err) => {
+                        const message = err?.message || "Unable to load reports.";
+                        setError(message);
+                        notify.error("Load reports failed", message);
+                      })
+                      .finally(() => setLoading(false));
+                  }}
+                >
+                  Refresh requests
                 </Button>
                 <div className="flex items-center gap-2">
                   <StatusPill variant="yellow">pending</StatusPill>

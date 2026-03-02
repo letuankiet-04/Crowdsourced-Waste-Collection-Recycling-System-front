@@ -266,9 +266,7 @@ export default function AdminUserManagement() {
                 >
                    <option value="All">Status: All</option>
                    <option value="Active">Active</option>
-                   <option value="Pending">Pending</option>
                    <option value="Suspended">Suspended</option>
-                   <option value="Inactive">Inactive</option>
                 </select>
                 
                 {/* Reset Button */}
