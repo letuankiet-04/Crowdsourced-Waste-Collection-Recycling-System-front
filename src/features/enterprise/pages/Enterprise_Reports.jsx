@@ -7,18 +7,36 @@ import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
-import {
-  subscribeReportDeleted,
-  subscribeReportSubmitted,
-  subscribeReportsCleared,
-  subscribeReportUpdated,
-} from "../../../events/reportEvents.js";
-import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import { PATHS } from "../../../app/routes/paths.js";
+import { getEnterpriseReportsPending } from "../../../services/enterprise.service.js";
+
+function normalizeEnterpriseReport(report, index) {
+  const raw = report && typeof report === "object" ? report : {};
+  const reportCode = raw.reportCode ?? raw.code ?? null;
+  const id = reportCode != null ? String(reportCode) : raw.id != null ? String(raw.id) : String(index);
+  const latRaw = raw.latitude ?? raw.lat ?? raw.coords?.lat ?? null;
+  const lngRaw = raw.longitude ?? raw.lng ?? raw.coords?.lng ?? null;
+  const lat = latRaw != null ? Number(latRaw) : null;
+  const lng = lngRaw != null ? Number(lngRaw) : null;
+
+  return {
+    ...raw,
+    id,
+    reportId: raw.id ?? raw.reportId ?? null,
+    reportCode: reportCode ?? (raw.reportCode != null ? String(raw.reportCode) : id),
+    address: raw.address ?? raw.location ?? raw.place ?? "",
+    coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : raw.coords ?? null,
+    images: Array.isArray(raw.images) ? raw.images : [],
+    createdAt: raw.createdAt ?? raw.created_at ?? raw.createdDate ?? null,
+    status: raw.status ?? "PENDING",
+  };
+}
 
 export default function EnterpriseReports() {
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   // Filter states
   const initialFilterState = {
@@ -71,30 +89,30 @@ export default function EnterpriseReports() {
   };
 
   useEffect(() => {
-    const unsubSubmitted = subscribeReportSubmitted((report) => {
-      if (!report) return;
-      const next = upsertMockReport(report);
-      setReports(next);
-    });
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-    const unsubCleared = subscribeReportsCleared(() => {
-      clearMockReports();
-      setReports([]);
-    });
+    let cancelled = false;
+
+    async function loadReports() {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const data = await getEnterpriseReportsPending();
+        const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+        const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
+        if (!cancelled) setReports(normalized);
+      } catch (err) {
+        const message = err?.message || "Không thể tải danh sách report. Vui lòng thử lại.";
+        if (!cancelled) {
+          setReports([]);
+          setLoadError(message);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadReports();
     return () => {
-      unsubSubmitted();
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
+      cancelled = true;
     };
   }, []);
 
@@ -183,7 +201,13 @@ export default function EnterpriseReports() {
                   ) : (
                     <tr>
                       <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                        {ordered.length === 0 ? "No reports submitted yet." : "No reports match your filter."}
+                        {loading
+                          ? "Đang tải..."
+                          : loadError
+                            ? loadError
+                            : ordered.length === 0
+                              ? "Chưa có report nào."
+                              : "Không có report phù hợp bộ lọc."}
                       </td>
                     </tr>
                   )}

@@ -1,53 +1,48 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle } from "../../../../shared/ui/Card.jsx";
-import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
-import { subscribeReportDeleted, subscribeReportSubmitted, subscribeReportsCleared, subscribeReportUpdated } from "../../../../events/reportEvents.js";
-import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../../mock/reportStore.js";
+import useNotify from "../../../../shared/hooks/useNotify.js";
 import ReportRow from "../../../../shared/ui/ReportRow.jsx";
 import { PATHS } from "../../../../app/routes/paths.js";
+import { getMyReports } from "../../../../services/reports.service.js";
+
+function toTime(value) {
+  if (!value) return 0;
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
 
 export default function RecentReports() {
-  const { user } = useStoredUser();
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
+  const notify = useNotify();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const myReports = useMemo(() => {
-    const me = user?.email ?? null;
     const list = Array.isArray(reports) ? reports : [];
-
-    if (!me) return [];
-
-    return list.filter((r) => r && r.createdBy === me).slice(0, 5);
-  }, [reports, user]);
+    return list
+      .slice()
+      .sort((a, b) => toTime(b?.createdAt) - toTime(a?.createdAt))
+      .slice(0, 5);
+  }, [reports]);
 
   useEffect(() => {
-    const unsubSubmitted = subscribeReportSubmitted((report) => {
-      if (!report) return;
-      const next = upsertMockReport(report);
-      setReports(next);
-    });
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-    const unsubCleared = subscribeReportsCleared(() => {
-      clearMockReports();
-      setReports([]);
-    });
+    let cancelled = false;
+    setLoading(true);
+    getMyReports()
+      .then((rows) => {
+        if (cancelled) return;
+        setReports(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => notify.error("Load reports failed", err?.message || "Unable to load reports."))
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
     return () => {
-      unsubSubmitted();
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
+      cancelled = true;
     };
-  }, []);
+  }, [notify]);
 
   return (
     <Card className="overflow-hidden">
@@ -85,7 +80,7 @@ export default function RecentReports() {
             ) : (
               <tr>
                 <td className="px-8 py-6 text-center text-sm text-gray-500" colSpan={3}>
-                  No reports submitted yet.
+                  {loading ? "Loading..." : "No reports submitted yet."}
                 </td>
               </tr>
             )}

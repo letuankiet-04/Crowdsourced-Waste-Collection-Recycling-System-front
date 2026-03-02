@@ -1,6 +1,3 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PATHS } from "../../../app/routes/paths.js";
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";

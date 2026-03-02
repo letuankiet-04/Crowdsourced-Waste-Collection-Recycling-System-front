@@ -4,7 +4,7 @@ export function normalizeReportStatus(status) {
   
   if (!normalized) return "Pending";
   if (normalized === "new" || normalized === "pending") return "Pending";
-  if (normalized === "accepted") return "Accepted";
+  if (normalized === "accepted" || normalized === "accepted_enterprise") return "Accepted";
   if (normalized === "assigned") return "Assigned";
   if (normalized === "rejected") return "Rejected";
   if (normalized === "on_the_way" || normalized === "ontheway" || normalized === "on the way") return "On The Way";
@@ -16,7 +16,7 @@ export function normalizeReportStatus(status) {
 
 export function reportStatusToPillVariant(status) {
   const s = String(status).toLowerCase();
-  if (s === "accepted" || s === "collected" || s === "resolved" || s === "assigned") return "green";
+  if (s === "accepted" || s === "accepted_enterprise" || s === "collected" || s === "resolved" || s === "assigned") return "green";
   if (s === "rejected") return "red";
   if (s === "on the way" || s === "ontheway" || s === "on_the_way") return "blue";
   return "yellow";

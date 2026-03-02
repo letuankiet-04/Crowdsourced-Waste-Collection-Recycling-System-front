@@ -6,7 +6,6 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.j
 import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
-import useNotify from "../../../shared/hooks/useNotify.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import { subscribeReportDeleted, subscribeReportUpdated } from "../../../events/reportEvents.js";
 import { deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
@@ -14,8 +13,7 @@ import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 
 export default function CollectorHistory() {
-  const { user, displayName } = useStoredUser();
-  const notify = useNotify();
+  const { user } = useStoredUser();
   const navigate = useNavigate();
   const [reports, setReports] = useState(() => getMockReports());
   const collectorEmail = user?.email ?? null;

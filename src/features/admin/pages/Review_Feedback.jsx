@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
 import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
-import CD_Footer from "../../../components/layout/CD_Footer.jsx";
-import RoleLayout from "../../../components/layout/RoleLayout.jsx";
-import { Card, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
-import StatusPill from "../../../components/ui/StatusPill.jsx";
+import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
+import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
+import { Card, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
+import StatusPill from "../../../shared/ui/StatusPill.jsx";
 
 // Mock Data
 const MOCK_FEEDBACK = [
@@ -93,7 +93,7 @@ export default function Review_Feedback() {
   const [activeTab, setActiveTab] = useState("All Submissions");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, _setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("All Time");
 
   // Filtering Logic

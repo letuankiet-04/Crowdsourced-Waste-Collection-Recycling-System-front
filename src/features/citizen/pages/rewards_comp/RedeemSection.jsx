@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Voucher } from "../../../../shared/ui/Voucher.jsx";
 import { REDEEMABLE_VOUCHERS } from "../../../../mock/voucherData.js";
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
@@ -12,20 +12,51 @@ import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
-import {
-  publishReportsCleared,
-  subscribeReportDeleted,
-  subscribeReportSubmitted,
-  subscribeReportsCleared,
-  subscribeReportUpdated,
-} from "../../../events/reportEvents.js";
-import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import { PATHS } from "../../../app/routes/paths.js";
+import { getMyReports } from "../../../services/reports.service.js";
+
+function toTime(value) {
+  if (!value) return 0;
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function mapApiReportToUi(r) {
+  if (!r) return null;
+  const lat =
+    r?.latitude ??
+    r?.lat ??
+    r?.coords?.lat ??
+    r?.location?.lat ??
+    r?.reportedLatitude ??
+    null;
+  const lng =
+    r?.longitude ??
+    r?.lng ??
+    r?.coords?.lng ??
+    r?.location?.lng ??
+    r?.reportedLongitude ??
+    null;
+  const coords =
+    lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+      ? { lat: Number(lat), lng: Number(lng) }
+      : null;
+  return {
+    id: r?.id ?? "",
+    reportCode: r?.reportCode ?? r?.code ?? "",
+    status: r?.status ?? null,
+    createdAt: r?.createdAt ?? null,
+    address: r?.address ?? "",
+    coords,
+  };
+}
 
 export default function CitizenReports() {
-  const { user, displayName } = useStoredUser();
+  const navigate = useNavigate();
+  const { displayName } = useStoredUser();
   const notify = useNotify();
-  const [reports, setReports] = useState(() => getMockReports());
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Filter states
   const initialFilterState = {
@@ -36,14 +67,7 @@ export default function CitizenReports() {
   };
   const [filter, setFilter] = useState(initialFilterState);
 
-  const allMyReports = useMemo(() => {
-    const me = user?.email ?? null;
-    const list = Array.isArray(reports) ? reports : [];
-
-    if (!me) return [];
-
-    return list.filter((r) => r && r.createdBy === me);
-  }, [reports, user]);
+  const allMyReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
 
   const filteredReports = useMemo(() => {
     let filtered = [...allMyReports];
@@ -67,9 +91,10 @@ export default function CitizenReports() {
 
     if (filter.searchId) {
       const search = filter.searchId.toLowerCase();
-      filtered = filtered.filter((r) => String(r.id).toLowerCase().includes(search));
+      filtered = filtered.filter((r) => String(r.reportCode || r.id).toLowerCase().includes(search));
     }
 
+    filtered.sort((a, b) => toTime(b?.createdAt) - toTime(a?.createdAt));
     return filtered;
   }, [allMyReports, filter]);
 
@@ -78,32 +103,23 @@ export default function CitizenReports() {
   };
 
   useEffect(() => {
-    const unsubSubmitted = subscribeReportSubmitted((report) => {
-      if (!report) return;
-      const next = upsertMockReport(report);
-      setReports(next);
-    });
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-    const unsubCleared = subscribeReportsCleared(() => {
-      clearMockReports();
-      setReports([]);
-    });
+    let cancelled = false;
+    setLoading(true);
+    getMyReports()
+      .then((rows) => {
+        if (cancelled) return;
+        const list = Array.isArray(rows) ? rows : [];
+        setReports(list.map(mapApiReportToUi).filter(Boolean));
+      })
+      .catch((err) => notify.error("Load reports failed", err?.message || "Unable to load reports."))
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
     return () => {
-      unsubSubmitted();
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
+      cancelled = true;
     };
-  }, []);
+  }, [notify]);
 
   return (
     <RoleLayout
@@ -127,16 +143,21 @@ export default function CitizenReports() {
                 variant="outline"
                 size="sm"
                 className="rounded-full"
-                onClick={() => {
-                  const ok = window.confirm("Clear ALL report data? This will remove all saved mock reports.");
-                  if (!ok) return;
-                  clearMockReports();
-                  publishReportsCleared();
-                  setReports([]);
-                  notify.success("Reports cleared", "All report data has been removed.");
+                disabled={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const rows = await getMyReports();
+                    const list = Array.isArray(rows) ? rows : [];
+                    setReports(list.map(mapApiReportToUi).filter(Boolean));
+                  } catch (err) {
+                    notify.error("Load reports failed", err?.message || "Unable to load reports.");
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
               >
-                Clear reports
+                Refresh
               </Button>
               <Button as={Link} to={PATHS.citizen.createReport} size="sm" className="rounded-full">
                 Create report
@@ -221,15 +242,13 @@ export default function CitizenReports() {
                         key={r.id}
                         report={r}
                         showLocation
-                        idTo={`${PATHS.citizen.reports}/${r.id}`}
+                        onClick={() => navigate(`${PATHS.citizen.reports}/${r.id}`)}
                       />
                     ))
                   ) : (
                     <tr>
                       <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                        {allMyReports.length === 0
-                          ? "No reports submitted yet."
-                          : "No reports match your filter."}
+                        {loading ? "Loading..." : allMyReports.length === 0 ? "No reports submitted yet." : "No reports match your filter."}
                       </td>
                     </tr>
                   )}

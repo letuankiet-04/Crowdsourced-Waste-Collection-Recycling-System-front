@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-
 // Mock Notification Store
 let MOCK_NOTIFICATIONS = [
   {
@@ -40,10 +38,9 @@ export const subscribeNotifications = (callback) => {
 export const getNotifications = async (userId) => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 300));
-  // In a real app, we would filter by receiverId
-  // For demo purposes, we'll return relevant ones based on role logic if possible, 
-  // or just all for the demo user if we don't have auth context here.
-  return MOCK_NOTIFICATIONS; 
+  if (userId == null) return MOCK_NOTIFICATIONS;
+  const receiverId = Number(userId);
+  return MOCK_NOTIFICATIONS.filter(n => n.receiverId === receiverId);
 };
 
 export const markAsRead = async (id) => {
@@ -57,7 +54,9 @@ export const markAsRead = async (id) => {
 
 export const getUnreadCount = async (userId) => {
   await new Promise(resolve => setTimeout(resolve, 200));
-  return MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
+  if (userId == null) return MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
+  const receiverId = Number(userId);
+  return MOCK_NOTIFICATIONS.filter(n => n.receiverId === receiverId && !n.isRead).length;
 };
 
 export const createNotification = async (notification) => {

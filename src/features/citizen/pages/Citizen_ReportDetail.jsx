@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
@@ -8,32 +8,68 @@ import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import Button from "../../../shared/ui/Button.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
-import useStoredUser from "../../../shared/hooks/useStoredUser.js";
-import { deleteMockReport, getMockReports } from "../../../mock/reportStore.js";
-import { publishReportDeleted } from "../../../events/reportEvents.js";
+import useNotify from "../../../shared/hooks/useNotify.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import { PATHS } from "../../../app/routes/paths.js";
+import { deleteReport, getMyReportById, getMyReportResult } from "../../../services/reports.service.js";
 
 export default function CitizenReportDetail() {
   const { reportId } = useParams();
-  const { user } = useStoredUser();
   const navigate = useNavigate();
+  const notify = useNotify();
+
+  const [apiReport, setApiReport] = useState(null);
+  const [apiResult, setApiResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!reportId) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoading(true);
+      Promise.all([getMyReportById(reportId), getMyReportResult(reportId)])
+        .then(([r, res]) => {
+          if (cancelled) return;
+          setApiReport(r ?? null);
+          setApiResult(res ?? null);
+        })
+        .catch((err) => notify.error("Load report failed", err?.message || "Unable to load report."))
+        .finally(() => {
+          if (cancelled) return;
+          setLoading(false);
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reportId, notify]);
 
   const report = useMemo(() => {
-    const id = reportId ? String(reportId) : "";
-    if (!id) return null;
-
-    const list = getMockReports();
-    if (!Array.isArray(list)) return null;
-
-    return list.find((r) => r && r.id === id) ?? null;
-  }, [reportId]);
-
-  const me = user?.email ?? null;
-
-  if (report && me && report.createdBy && report.createdBy !== me) {
-    return <Navigate to={PATHS.unauthorized} replace />;
-  }
+    if (!apiReport) return null;
+    const categories = Array.isArray(apiReport?.categories) ? apiReport.categories : [];
+    const images = Array.isArray(apiReport?.images) ? apiReport.images : [];
+    const address =
+      (typeof apiReport?.address === "string" && apiReport.address.trim()) ||
+      (typeof apiReport?.reportedAddress === "string" && apiReport.reportedAddress.trim()) ||
+      (typeof apiReport?.location?.address === "string" && apiReport.location.address.trim()) ||
+      "";
+    return {
+      id: apiReport?.id ?? reportId,
+      status: apiReport?.status ?? null,
+      createdAt: apiReport?.createdAt ?? null,
+      address,
+      images,
+      wasteItems: categories
+        .map((c) => {
+          const name = c?.name ? String(c.name) : "";
+          const unit = c?.unit ?? null;
+          const q = typeof c?.quantity === "number" ? c.quantity : Number(c?.quantity);
+          return name && Number.isFinite(q) ? { name, unit, estimatedWeight: q } : null;
+        })
+        .filter(Boolean),
+    };
+  }, [apiReport, reportId]);
 
   const status = normalizeReportStatus(report?.status);
   const canManage = status === "Pending";
@@ -42,7 +78,7 @@ export default function CitizenReportDetail() {
       ? 0
       : status === "Accepted"
         ? 1
-        : status === "On The Way"
+        : status === "Assigned" || status === "On The Way"
           ? 2
           : status === "Collected"
             ? 3
@@ -52,7 +88,7 @@ export default function CitizenReportDetail() {
     { label: "Pending Review", sub: report?.createdAt ? new Date(report.createdAt).toLocaleString() : null },
     { label: "Accepted", sub: "Processing report details..." },
     { label: "Assign Collector", sub: "Awaiting unit assignment" },
-    { label: "Collected", sub: "Final verification step" },
+    { label: "Collected", sub: apiResult?.collectedAt ? `Collected at: ${new Date(apiResult.collectedAt).toLocaleString()}` : "Final verification step" },
   ];
 
   return (
@@ -82,14 +118,8 @@ export default function CitizenReportDetail() {
                 <CardBody className="px-8 pb-8 pt-0">
                   <div className="flex items-center gap-3">
                     <StatusPill variant={reportStatusToPillVariant(status)}>{status}</StatusPill>
-                    <div className="text-xs text-gray-500">{report?.updatedAt ? `Updated: ${new Date(report.updatedAt).toLocaleString()}` : null}</div>
+                    <div className="text-xs text-gray-500">{loading ? "Loading..." : null}</div>
                   </div>
-
-                  {status === "rejected" && report?.rejectionReason ? (
-                    <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-800">
-                      <span className="font-semibold">Reason for rejection:</span> {report.rejectionReason}
-                    </div>
-                  ) : null}
 
                   <div className="mt-6 space-y-5">
                     {steps.map((s, idx) => {
@@ -131,7 +161,26 @@ export default function CitizenReportDetail() {
                     disabled={!report || !canManage}
                     onClick={() => {
                       if (!report || !canManage) return;
-                      navigate(PATHS.citizen.createReport, { state: { editReport: report } });
+                      const categories = Array.isArray(apiReport?.categories) ? apiReport.categories : [];
+                      const images = Array.isArray(apiReport?.images) ? apiReport.images : [];
+                      navigate(PATHS.citizen.createReport, {
+                        state: {
+                          editReport: {
+                            id: apiReport?.id ?? reportId,
+                            status: apiReport?.status ?? null,
+                            address: "",
+                            notes: "",
+                            coords: null,
+                            images,
+                            wasteItems: categories
+                              .map((c) => ({
+                                wasteTypeId: c?.id ?? null,
+                                estimatedWeight: c?.quantity ?? "",
+                              }))
+                              .filter((x) => x.wasteTypeId != null),
+                          },
+                        },
+                      });
                     }}
                   >
                     Update Details
@@ -144,9 +193,17 @@ export default function CitizenReportDetail() {
                       if (!report || !canManage) return;
                       const ok = window.confirm("Remove this report?");
                       if (!ok) return;
-                      deleteMockReport(report.id);
-                      publishReportDeleted(report.id);
-                      navigate(PATHS.citizen.reports);
+                      notify
+                        .promise(deleteReport(reportId), {
+                          loadingTitle: "Deleting report...",
+                          loadingMessage: "Removing report from the server.",
+                          successTitle: "Report removed",
+                          successMessage: "The report has been deleted.",
+                          errorTitle: "Delete failed",
+                          errorMessage: (err) => err?.message || "Unable to delete report.",
+                        })
+                        .then(() => navigate(PATHS.citizen.reports))
+                        .catch(() => {});
                     }}
                   >
                     Remove Report

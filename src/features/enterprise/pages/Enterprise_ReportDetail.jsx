@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
-import { getMockReports, updateMockReport } from "../../../mock/reportStore.js";
-import { publishReportUpdated, subscribeReportDeleted, subscribeReportUpdated, subscribeReportsCleared } from "../../../events/reportEvents.js";
 import { createNotification } from "../../../services/notifications.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
@@ -11,7 +9,36 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.j
 import Button from "../../../shared/ui/Button.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Users, X, XCircle } from "lucide-react";
-import { getEnterpriseCollectors } from "../../../services/enterprise.service.js";
+import {
+  acceptWasteReport,
+  assignCollectorByReportCode,
+  assignCollectorToRequest,
+  getEnterpriseCollectors,
+  getEnterpriseReportsPending,
+  rejectWasteReport,
+} from "../../../services/enterprise.service.js";
+
+function normalizeEnterpriseReport(report, index) {
+  const raw = report && typeof report === "object" ? report : {};
+  const reportCode = raw.reportCode ?? raw.code ?? null;
+  const id = reportCode != null ? String(reportCode) : raw.id != null ? String(raw.id) : String(index);
+  const latRaw = raw.latitude ?? raw.lat ?? raw.coords?.lat ?? null;
+  const lngRaw = raw.longitude ?? raw.lng ?? raw.coords?.lng ?? null;
+  const lat = latRaw != null ? Number(latRaw) : null;
+  const lng = lngRaw != null ? Number(lngRaw) : null;
+
+  return {
+    ...raw,
+    id,
+    reportId: raw.id ?? raw.reportId ?? null,
+    reportCode: reportCode ?? (raw.reportCode != null ? String(raw.reportCode) : id),
+    address: raw.address ?? raw.location ?? raw.place ?? "",
+    coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : raw.coords ?? null,
+    images: Array.isArray(raw.images) ? raw.images : [],
+    createdAt: raw.createdAt ?? raw.created_at ?? raw.createdDate ?? null,
+    status: raw.status ?? "PENDING",
+  };
+}
 
 function normalizeCollectors(payload) {
   if (Array.isArray(payload)) return payload;
@@ -27,36 +54,49 @@ export default function EnterpriseReportDetail() {
   const id = reportId ? String(reportId) : "";
   const stateReport = location?.state?.report ?? null;
 
-  const storedReport = useMemo(() => {
-    if (!id) return null;
-    const list = getMockReports();
-    if (!Array.isArray(list)) return null;
-    return list.find((r) => r && r.id === id) ?? null;
-  }, [id]);
-
   const [reportOverride, setReportOverride] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [decisionLoading, setDecisionLoading] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
 
   useEffect(() => {
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      if (nextReport.id !== id) return;
-      setReportOverride(nextReport);
-    });
-    const unsubDeleted = subscribeReportDeleted((deletedId) => {
-      if (!deletedId) return;
-      if (deletedId !== id) return;
-      setReportOverride(null);
-    });
-    const unsubCleared = subscribeReportsCleared(() => setReportOverride(null));
-    return () => {
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
-    };
-  }, [id]);
+    let cancelled = false;
 
-  const report =
-    reportOverride?.id === id ? reportOverride : stateReport?.id && String(stateReport.id) === id ? stateReport : storedReport;
+    async function loadReport() {
+      setReportError("");
+      if (stateReport?.id && String(stateReport.id) === id) {
+        setReportOverride(stateReport);
+        return;
+      }
+      if (!id) {
+        setReportOverride(null);
+        return;
+      }
+      setReportLoading(true);
+      try {
+        const data = await getEnterpriseReportsPending();
+        const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+        const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
+        const found = normalized.find((r) => r && String(r.id) === id) ?? null;
+        if (!cancelled) setReportOverride(found);
+      } catch (err) {
+        if (!cancelled) {
+          setReportOverride(null);
+          setReportError(err?.message || "Không thể tải chi tiết report.");
+        }
+      } finally {
+        if (!cancelled) setReportLoading(false);
+      }
+    }
+
+    loadReport();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, stateReport]);
+
+  const report = reportOverride?.id === id ? reportOverride : null;
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
   const canGoAssign = status === "Accepted";
@@ -139,7 +179,7 @@ export default function EnterpriseReportDetail() {
           report={report}
           backTo={PATHS.enterprise.reports}
           title="Report Detail"
-          description={id ? `Viewing report: ${id}` : "Viewing report"}
+          description={reportLoading ? "Đang tải..." : reportError ? reportError : id ? `Viewing report: ${id}` : "Viewing report"}
           backLabel="Back to reports"
         />
 
@@ -185,7 +225,7 @@ export default function EnterpriseReportDetail() {
                   variant="outline"
                   size="lg"
                   className="rounded-full border-red-600 text-red-700 hover:bg-red-50"
-                  disabled={!report || !canDecide}
+                  disabled={!report || !canDecide || decisionLoading}
                   onClick={async () => {
                     if (!report || !canDecide) return;
                     const reason = window.prompt("Please enter the reason for rejection:");
@@ -194,29 +234,34 @@ export default function EnterpriseReportDetail() {
                       alert("Rejection reason is required.");
                       return;
                     }
-                    
-                    const next = { 
-                      ...report, 
-                      status: "rejected", 
-                      updatedAt: new Date().toISOString(),
-                      rejectionReason: reason 
-                    };
-                    
-                    updateMockReport(next);
-                    publishReportUpdated(next);
-                    setReportOverride(next);
-                    
-                    // Notify Citizen
-                    await createNotification({
-                      receiverId: report.createdBy, // email or id
-                      senderId: 2, // Enterprise
-                      reportId: report.id,
-                      type: 'REPORT_REJECTED',
-                      message: 'Your report has been rejected.',
-                      reason: reason
-                    });
 
-                    navigate(PATHS.enterprise.dashboard, { replace: true });
+                    setDecisionLoading(true);
+                    try {
+                      const reportCode = report?.reportCode ?? report?.id;
+                      await rejectWasteReport({ reportCode, reason: reason.trim() });
+                      const next = {
+                        ...report,
+                        status: "REJECTED",
+                        updatedAt: new Date().toISOString(),
+                        rejectionReason: reason.trim(),
+                      };
+                      setReportOverride(next);
+
+                      if (report.createdBy) {
+                        await createNotification({
+                          receiverId: report.createdBy,
+                          senderId: 2,
+                          reportId: report.id,
+                          type: "REPORT_REJECTED",
+                          message: "Your report has been rejected.",
+                          reason: reason.trim(),
+                        });
+                      }
+
+                      navigate(PATHS.enterprise.dashboard, { replace: true });
+                    } finally {
+                      setDecisionLoading(false);
+                    }
                   }}
                 >
                   <XCircle className="h-5 w-5" aria-hidden="true" />
@@ -225,24 +270,37 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="lg"
                   className="rounded-full"
-                  disabled={!report || !canDecide}
+                  disabled={!report || !canDecide || decisionLoading}
                   onClick={async () => {
                     if (!report || !canDecide) return;
-                    const next = { ...report, status: "accepted", updatedAt: new Date().toISOString() };
-                    updateMockReport(next);
-                    publishReportUpdated(next);
-                    setReportOverride(next);
-                    
-                    // Notify Citizen
-                    await createNotification({
-                      receiverId: report.createdBy, // email or id
-                      senderId: 2, // Enterprise
-                      reportId: report.id,
-                      type: 'REPORT_ACCEPTED',
-                      message: 'Your report has been accepted.'
-                    });
+                    setDecisionLoading(true);
+                    try {
+                      const reportCode = report?.reportCode ?? report?.id;
+                      const res = await acceptWasteReport({ reportCode });
+                      const collectionRequestId =
+                        res?.collectionRequestId ?? res?.requestId ?? res?.id ?? report?.collectionRequestId ?? null;
+                      const next = {
+                        ...report,
+                        status: "ACCEPTED_ENTERPRISE",
+                        updatedAt: new Date().toISOString(),
+                        collectionRequestId,
+                      };
+                      setReportOverride(next);
 
-                    openAssignDialog(next);
+                      if (report.createdBy) {
+                        await createNotification({
+                          receiverId: report.createdBy,
+                          senderId: 2,
+                          reportId: report.id,
+                          type: "REPORT_ACCEPTED",
+                          message: "Your report has been accepted.",
+                        });
+                      }
+
+                      openAssignDialog(next);
+                    } finally {
+                      setDecisionLoading(false);
+                    }
                   }}
                 >
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -360,25 +418,49 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length}
-                  onClick={() => {
+                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length || assignLoading}
+                  onClick={async () => {
                     if (!report || !canGoAssign) return;
                     const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
                     if (!selectedCollectors.length) return;
                     const ok = window.confirm("Assign this report to selected collectors?");
                     if (!ok) return;
                     const primaryCollector = selectedCollectors[0];
-                    const next = {
-                      ...report,
-                      assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
-                      assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
-                      updatedAt: new Date().toISOString(),
-                    };
-                    updateMockReport(next);
-                    publishReportUpdated(next);
-                    setReportOverride(next);
-                    setAssignOpen(false);
-                    navigate(PATHS.enterprise.dashboard, { replace: true });
+
+                    setAssignLoading(true);
+                    try {
+                      const collectorId = primaryCollector.id;
+                      const requestId =
+                        report?.collectionRequestId ??
+                        report?.requestId ??
+                        report?.collectionRequest?.id ??
+                        report?.request?.id ??
+                        null;
+
+                      if (requestId != null) {
+                        await assignCollectorToRequest({ requestId, collectorId });
+                      } else {
+                        const reportCode = report?.reportCode ?? report?.id;
+                        await assignCollectorByReportCode({ reportCode, collectorId });
+                      }
+
+                      const next = {
+                        ...report,
+                        status: "ASSIGNED",
+                        assignedCollector: {
+                          id: primaryCollector.id,
+                          name: primaryCollector.name,
+                          email: primaryCollector.email,
+                        },
+                        assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+                        updatedAt: new Date().toISOString(),
+                      };
+                      setReportOverride(next);
+                      setAssignOpen(false);
+                      navigate(PATHS.enterprise.dashboard, { replace: true });
+                    } finally {
+                      setAssignLoading(false);
+                    }
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />

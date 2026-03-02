@@ -9,53 +9,70 @@ import useNotify from "../../../shared/hooks/useNotify.js";
 import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
-import {
-  subscribeReportDeleted,
-  subscribeReportSubmitted,
-  subscribeReportsCleared,
-  subscribeReportUpdated,
-} from "../../../events/reportEvents.js";
-import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
+import { getEnterpriseReportsPending } from "../../../services/enterprise.service.js";
+
+function normalizeEnterpriseReport(report, index) {
+  const raw = report && typeof report === "object" ? report : {};
+  const reportCode = raw.reportCode ?? raw.code ?? null;
+  const id = reportCode != null ? String(reportCode) : raw.id != null ? String(raw.id) : String(index);
+  const latRaw = raw.latitude ?? raw.lat ?? raw.coords?.lat ?? null;
+  const lngRaw = raw.longitude ?? raw.lng ?? raw.coords?.lng ?? null;
+  const lat = latRaw != null ? Number(latRaw) : null;
+  const lng = lngRaw != null ? Number(lngRaw) : null;
+
+  return {
+    ...raw,
+    id,
+    reportId: raw.id ?? raw.reportId ?? null,
+    reportCode: reportCode ?? (raw.reportCode != null ? String(raw.reportCode) : id),
+    address: raw.address ?? raw.location ?? raw.place ?? "",
+    coords: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : raw.coords ?? null,
+    images: Array.isArray(raw.images) ? raw.images : [],
+    createdAt: raw.createdAt ?? raw.created_at ?? raw.createdDate ?? null,
+    status: raw.status ?? "PENDING",
+  };
+}
 
 export default function EnterpriseDashboard() {
   const { displayName } = useStoredUser();
   const notify = useNotify();
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const pendingReports = useMemo(() => {
     return reports.filter((r) => r && normalizeReportStatus(r.status) !== "closed").slice(0, 8);
   }, [reports]);
 
   useEffect(() => {
-    const unsubSubmitted = subscribeReportSubmitted((report) => {
-      if (!report) return;
-      const next = upsertMockReport(report);
-      setReports(next);
-      notify.info("New request received", `${report.id} · ${report.address || "Unknown location"}`);
-    });
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-    const unsubCleared = subscribeReportsCleared(() => {
-      clearMockReports();
-      setReports([]);
-    });
+    let cancelled = false;
+
+    async function loadReports() {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const data = await getEnterpriseReportsPending();
+        const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+        const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
+        if (!cancelled) setReports(normalized);
+      } catch (err) {
+        const message = err?.message || "Không thể tải danh sách report.";
+        if (!cancelled) {
+          setReports([]);
+          setLoadError(message);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadReports();
     return () => {
-      unsubSubmitted();
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
+      cancelled = true;
     };
   }, [notify]);
 
@@ -146,7 +163,7 @@ export default function EnterpriseDashboard() {
                     ) : (
                       <tr>
                         <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                          No pending requests yet.
+                          {loading ? "Đang tải..." : loadError ? loadError : "Chưa có yêu cầu nào."}
                         </td>
                       </tr>
                     )}
@@ -155,7 +172,27 @@ export default function EnterpriseDashboard() {
               </div>
 
               <div className="px-8 py-6 border-t border-gray-100 flex items-center justify-between">
-                <Button variant="outline" size="sm" className="rounded-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    setLoadError("");
+                    try {
+                      const data = await getEnterpriseReportsPending();
+                      const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+                      const normalized = Array.isArray(list) ? list.map((r, idx) => normalizeEnterpriseReport(r, idx)) : [];
+                      setReports(normalized);
+                    } catch (err) {
+                      setReports([]);
+                      setLoadError(err?.message || "Không thể tải danh sách report.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
                   Load more requests
                 </Button>
                 <div className="flex items-center gap-2">

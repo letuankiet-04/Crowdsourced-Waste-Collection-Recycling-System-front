@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
+import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle } from "lucide-react";
 import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
-import CD_Footer from "../../../components/layout/CD_Footer.jsx";
-import RoleLayout from "../../../components/layout/RoleLayout.jsx";
+import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
+import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
 import StatCard from "./dashboard_comp/StatCard.jsx";
 
