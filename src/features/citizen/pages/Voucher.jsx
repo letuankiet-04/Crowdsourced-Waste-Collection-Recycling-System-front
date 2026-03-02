@@ -1,8 +1,8 @@
 import React from 'react';
 import { Plus, Coins } from 'lucide-react'; // Added Plus icon
-import { cn } from '../lib/cn';
+import { cn } from '../../../shared/lib/cn';
 
-export function Voucher({ voucher, className, ...props }) {
+export function Voucher({ voucher, onRedeem, className, ...props }) {
   if (!voucher) return null;
 
   const {
@@ -68,7 +68,10 @@ export function Voucher({ voucher, className, ...props }) {
             </div>
 
             {/* Add Button */}
-            <button className="w-10 h-10 bg-green-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-2xl flex items-center justify-center transition-colors shadow-md">
+            <button 
+              onClick={onRedeem}
+              className="w-10 h-10 bg-green-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-2xl flex items-center justify-center transition-colors shadow-md"
+            >
                 <Plus size={24} strokeWidth={2.5} />
             </button>
         </div>

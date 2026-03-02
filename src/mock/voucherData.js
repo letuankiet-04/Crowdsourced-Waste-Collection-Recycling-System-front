@@ -136,7 +136,8 @@ export const MY_VOUCHERS = [
     value: "50,000 VND",
     validDate: "2026-12-31",
     points: 55000,
-    status: "Active"
+    status: "Active",
+    code: "VOUCHER-JOLLI-001"
   },
   {
     id: 102,
@@ -146,7 +147,8 @@ export const MY_VOUCHERS = [
     value: "30,000 VND",
     validDate: "2026-11-30",
     points: 33000,
-    status: "Used"
+    status: "Used",
+    code: "VOUCHER-PLONG-002"
   },
   {
     id: 103,
@@ -156,7 +158,8 @@ export const MY_VOUCHERS = [
     value: "50,000 VND",
     validDate: "2026-12-15",
     points: 55000,
-    status: "Expired"
+    status: "Expired",
+    code: "VOUCHER-KATIN-003"
   },
   {
     id: 104,
@@ -166,7 +169,8 @@ export const MY_VOUCHERS = [
     value: "50,000 VND",
     validDate: "2026-12-31",
     points: 55000,
-    status: "Active"
+    status: "Active",
+    code: "VOUCHER-KFCVN-004"
   },
   {
     id: 105,
@@ -176,6 +180,7 @@ export const MY_VOUCHERS = [
     value: "100,000 VND",
     validDate: "2026-12-31",
     points: 110000,
-    status: "Active"
+    status: "Active",
+    code: "VOUCHER-HIGH-005"
   }
 ];

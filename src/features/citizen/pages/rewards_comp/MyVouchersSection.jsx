@@ -1,14 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from "../../../../shared/ui/Card.jsx";
 import { MY_VOUCHERS } from "../../../../mock/voucherData.js";
+import { X, QrCode } from "lucide-react"; // Import Icons
 
-export function MyVouchersSection() {
+export function MyVouchersSection({ vouchers = MY_VOUCHERS }) {
   const [filterStatus, setFilterStatus] = useState("All");
+  const [selectedVoucher, setSelectedVoucher] = useState(null); // State for modal
 
   const filteredVouchers = useMemo(() => {
-    if (filterStatus === "All") return MY_VOUCHERS;
-    return MY_VOUCHERS.filter(v => v.status === filterStatus);
-  }, [filterStatus]);
+    if (filterStatus === "All") return vouchers;
+    return vouchers.filter(v => v.status === filterStatus);
+  }, [filterStatus, vouchers]);
 
   const getStatusColor = (status) => {
       switch(status) {
@@ -64,7 +66,11 @@ export function MyVouchersSection() {
                 <tbody className="divide-y divide-gray-100">
                    {filteredVouchers.length > 0 ? (
                        filteredVouchers.map((voucher) => (
-                           <tr key={voucher.id} className="hover:bg-gray-50/50 transition-colors">
+                           <tr 
+                             key={voucher.id} 
+                             className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                             onClick={() => setSelectedVoucher(voucher)} // Open modal on row click
+                           >
                               <td className="py-4 px-6">
                                  <div className="flex items-center gap-4">
                                     <div className="flex-shrink-0 w-12 h-12 rounded-full border border-gray-100 shadow-sm overflow-hidden bg-white p-1">
@@ -122,6 +128,60 @@ export function MyVouchersSection() {
              <button className="text-sm font-medium text-gray-500 hover:text-gray-900">Show older vouchers</button>
           </div>
        </Card>
+
+       {/* QR Code Modal */}
+       {selectedVoucher && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up relative">
+             <button 
+               onClick={(e) => { e.stopPropagation(); setSelectedVoucher(null); }}
+               className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors z-10"
+             >
+               <X className="w-5 h-5 text-gray-600" />
+             </button>
+
+             <div className="p-8 flex flex-col items-center text-center">
+               <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white mb-4 -mt-12">
+                 <img 
+                   src={selectedVoucher.logoUrl} 
+                   alt={selectedVoucher.brandName} 
+                   className="w-full h-full object-contain"
+                 />
+               </div>
+               
+               <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedVoucher.brandName}</h3>
+               <p className="text-gray-500 text-sm mb-6">{selectedVoucher.title}</p>
+
+               <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 w-full mb-6">
+                 {/* Simulate QR Code with an image API or placeholder */}
+                 <img 
+                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${selectedVoucher.code || 'VOUCHER-DEMO'}`} 
+                   alt="Voucher QR Code" 
+                   className="w-48 h-48 mx-auto"
+                 />
+                 <div className="mt-3 text-xs font-mono font-bold text-gray-400 tracking-widest">
+                   {selectedVoucher.code || 'CODE-HIDDEN'}
+                 </div>
+               </div>
+
+               <div className="text-xs text-gray-400">
+                 Show this QR code to the cashier to redeem.
+                 <br/>
+                 Valid until: <span className="font-bold text-gray-600">{selectedVoucher.validDate}</span>
+               </div>
+             </div>
+             
+             <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-center">
+                <button 
+                  onClick={() => setSelectedVoucher(null)}
+                  className="text-sm font-bold text-gray-600 hover:text-gray-900"
+                >
+                  Close
+                </button>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   );
 }

@@ -1,39 +1,125 @@
-import { useState, useMemo } from "react";
-import { Card, CardBody, CardHeader, CardTitle } from "../../../components/ui/Card.jsx";
-import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
+import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle, Loader2 } from "lucide-react";
 import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
-import CD_Footer from "../../../components/layout/CD_Footer.jsx";
-import RoleLayout from "../../../components/layout/RoleLayout.jsx";
+import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
+import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
 import StatCard from "./dashboard_comp/StatCard.jsx";
-
-// Mock data with more entries for pagination testing
-const MOCK_USERS = [
-  { id: 1, name: "Sarah Jenkins", email: "sarah.j@gmail.com", role: "Citizen", status: "Active", joined: "Oct 12, 2023", avatar: "S" },
-  { id: 2, name: "Marcus Chen", email: "m.chen@ecocollect.net", role: "Collector", status: "Active", joined: "Jan 05, 2024", avatar: "M" },
-  { id: 3, name: "GreenCycle Inc.", email: "admin@greencycle.co", role: "Enterprise", status: "Pending", joined: "Feb 18, 2024", avatar: "G" },
-  { id: 4, name: "Robert Blackwood", email: "r.blackwood@outlook.com", role: "Citizen", status: "Suspended", joined: "Nov 30, 2022", avatar: "R" },
-  { id: 5, name: "Emily Blunt", email: "emily.b@gmail.com", role: "Citizen", status: "Active", joined: "Mar 10, 2024", avatar: "E" },
-  { id: 6, name: "John Doe", email: "john.doe@example.com", role: "Collector", status: "Inactive", joined: "Apr 01, 2024", avatar: "J" },
-  { id: 7, name: "Jane Smith", email: "jane.smith@example.com", role: "Admin", status: "Active", joined: "May 15, 2024", avatar: "J" },
-  { id: 8, name: "Michael Brown", email: "michael.b@example.com", role: "Citizen", status: "Pending", joined: "Jun 20, 2024", avatar: "M" },
-  { id: 9, name: "EcoTrack Ltd.", email: "contact@ecotrack.com", role: "Enterprise", status: "Active", joined: "Jul 05, 2024", avatar: "E" },
-  { id: 10, name: "David Wilson", email: "david.w@example.com", role: "Collector", status: "Suspended", joined: "Aug 12, 2024", avatar: "D" },
-  { id: 11, name: "Lisa Ray", email: "lisa.ray@example.com", role: "Citizen", status: "Active", joined: "Sep 01, 2024", avatar: "L" },
-  { id: 12, name: "Tom Holland", email: "tom.h@example.com", role: "Citizen", status: "Inactive", joined: "Oct 10, 2024", avatar: "T" }
-];
+import { getUsers, getAdminStats, suspendUser, activateUser, getUserDetail } from "../../../services/admin.service.js";
+import useNotify from "../../../shared/hooks/useNotify.js";
 
 export default function AdminUserManagement() {
+  const notify = useNotify();
   // Filter State
   const [filter, setFilter] = useState({
     search: "",
-    role: "All",
-    status: "All"
+    role: null, // Changed from "All" to null for API compatibility
+    status: null // Changed from "All" to null for API compatibility
   });
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Data State
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeToday: 0,
+    newRequests: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null); // For detail view
+
+  // Fetch Data
+  useEffect(() => {
+    fetchUsers();
+    fetchStats();
+  }, [currentPage, filter]); // Re-fetch when page or filters change
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        // API might not support pagination yet based on controller code, but sending just in case
+        page: currentPage,
+        limit: itemsPerPage,
+        status: filter.status,
+        role: filter.role
+      };
+      
+      const data = await getUsers(params);
+      if (Array.isArray(data)) {
+        // Client-side filtering if backend returns all users
+        let filteredData = data;
+        
+        if (filter.search) {
+          const searchLower = filter.search.toLowerCase();
+          filteredData = filteredData.filter(u => 
+            u.fullName?.toLowerCase().includes(searchLower) || 
+            u.email?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        // Calculate pagination locally since backend returns list
+        setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        setUsers(filteredData.slice(startIndex, startIndex + itemsPerPage));
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      notify.error("Error", "Failed to load users. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const data = await getAdminStats();
+      if (data) {
+        setStats(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch admin stats:", error);
+    }
+  };
+
+  const handleStatusToggle = async (user) => {
+    try {
+      const currentStatus = (user.status || '').toLowerCase();
+      if (currentStatus === 'active') {
+        await suspendUser(user.id);
+        notify.success("Success", `User ${user.fullName} has been suspended.`);
+      } else {
+        await activateUser(user.id);
+        notify.success("Success", `User ${user.fullName} has been activated.`);
+      }
+      await fetchUsers(); // Refresh list
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      notify.error("Error", "Failed to update user status.");
+    }
+  };
+
+  const handleViewUser = async (userId) => {
+    try {
+      const userData = await getUserDetail(userId);
+      setSelectedUser(userData);
+    } catch (error) {
+      console.error("Failed to fetch user detail:", error);
+      notify.error("Error", "Failed to load user details.");
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedUser(null);
+  };
 
   // Filter Handlers
   const handleSearchChange = (e) => {
@@ -42,51 +128,43 @@ export default function AdminUserManagement() {
   };
 
   const handleRoleChange = (e) => {
-    setFilter(prev => ({ ...prev, role: e.target.value }));
+    const val = e.target.value === "All" ? null : e.target.value;
+    setFilter(prev => ({ ...prev, role: val }));
     setCurrentPage(1);
   };
 
   const handleStatusChange = (e) => {
-    setFilter(prev => ({ ...prev, status: e.target.value }));
+    const val = e.target.value === "All" ? null : e.target.value;
+    setFilter(prev => ({ ...prev, status: val }));
     setCurrentPage(1);
   };
 
   const handleResetFilters = () => {
     setFilter({
       search: "",
-      role: "All",
-      status: "All"
+      role: null,
+      status: null
     });
     setCurrentPage(1);
   };
 
-  // Filtering Logic
-  const filteredUsers = useMemo(() => {
-    return MOCK_USERS.filter(user => {
-      // Search Logic (Name or Email)
-      const searchTerm = filter.search.toLowerCase().trim();
-      const matchesSearch = 
-        user.name.toLowerCase().includes(searchTerm) || 
-        user.email.toLowerCase().includes(searchTerm);
-
-      // Role Logic
-      const matchesRole = filter.role === "All" || user.role === filter.role;
-
-      // Status Logic
-      const matchesStatus = filter.status === "All" || user.status === filter.status;
-
-      return matchesSearch && matchesRole && matchesStatus;
-    });
-  }, [filter]);
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
   // Pagination Handlers
+  const getRoleBadgeStyle = (roleName) => {
+    const role = (roleName || '').toUpperCase();
+    switch (role) {
+      case 'ADMIN':
+        return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'CITIZEN':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'COLLECTOR':
+        return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'ENTERPRISE':
+        return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -121,21 +199,21 @@ export default function AdminUserManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up">
            <StatCard 
              title="Total Users" 
-             value="12,840" 
-             change="+12%" 
+             value={stats.totalUsers.toLocaleString()} 
+             change="+12%" // Ideally this would come from API too
              icon={<Users className="w-6 h-6" />} 
              color="green" 
            />
            <StatCard 
              title="Active Today" 
-             value="1,204" 
+             value={stats.activeToday.toLocaleString()} 
              change="+5.2%" 
              icon={<Activity className="w-6 h-6" />} 
              color="blue" 
            />
            <StatCard 
              title="New Requests" 
-             value="45" 
+             value={stats.newRequests.toLocaleString()} 
              change="Awaiting approval" 
              icon={<UserPlus className="w-6 h-6" />} 
              color="orange" 
@@ -171,18 +249,18 @@ export default function AdminUserManagement() {
              </div>
              <div className="flex flex-wrap gap-3 w-full lg:w-auto items-center">
                 <select 
-                  value={filter.role}
+                  value={filter.role || "All"}
                   onChange={handleRoleChange}
                   className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none"
                 >
                    <option value="All">Role: All</option>
-                   <option value="Admin">Admin</option>
-                   <option value="Citizen">Citizen</option>
-                   <option value="Collector">Collector</option>
-                   <option value="Enterprise">Enterprise</option>
+                   <option value="ADMIN">Admin</option>
+                   <option value="CITIZEN">Citizen</option>
+                   <option value="COLLECTOR">Collector</option>
+                   <option value="ENTERPRISE">Enterprise</option>
                 </select>
                 <select 
-                  value={filter.status}
+                  value={filter.status || "All"}
                   onChange={handleStatusChange}
                   className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none"
                 >
@@ -194,7 +272,7 @@ export default function AdminUserManagement() {
                 </select>
                 
                 {/* Reset Button */}
-                {(filter.search || filter.role !== "All" || filter.status !== "All") && (
+                {(filter.search || filter.role !== null || filter.status !== null) && (
                   <button 
                     onClick={handleResetFilters}
                     className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors border border-red-100"
@@ -206,8 +284,14 @@ export default function AdminUserManagement() {
              </div>
           </div>
 
-          <div className="overflow-x-auto">
-             <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto min-h-[300px]">
+             {loading ? (
+               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                 <Loader2 className="w-8 h-8 animate-spin mb-2 text-green-500" />
+                 <p>Loading users...</p>
+               </div>
+             ) : (
+               <table className="w-full text-left border-collapse">
                 <thead>
                    <tr className="bg-gray-50/50 border-b border-gray-100">
                       <th className="py-4 px-6 w-12">
@@ -221,8 +305,8 @@ export default function AdminUserManagement() {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                   {paginatedUsers.length > 0 ? (
-                     paginatedUsers.map((user) => (
+                   {users.length > 0 ? (
+                     users.map((user) => (
                         <tr key={user.id} className="hover:bg-gray-50/50 transition-colors group">
                            <td className="py-4 px-6">
                               <input type="checkbox" className="rounded border-gray-300 text-green-500 focus:ring-green-500" />
@@ -230,46 +314,57 @@ export default function AdminUserManagement() {
                            <td className="py-4 px-6">
                               <div className="flex items-center gap-4">
                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
-                                    {user.avatar}
+                                    {(user.avatar || (user.fullName ? user.fullName.charAt(0).toUpperCase() : "?"))}
                                   </div>
                                   <div>
-                                     <div className="font-bold text-gray-900">{user.name}</div>
+                                     <div className="font-bold text-gray-900">{user.fullName || "N/A"}</div>
                                      <div className="text-xs text-gray-500">{user.email}</div>
                                   </div>
                               </div>
                            </td>
                            <td className="py-4 px-6">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">
-                                 {user.role}
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold border ${getRoleBadgeStyle(user.roleName || user.roleCode)}`}>
+                                 {user.roleName || user.roleCode || "N/A"}
                               </span>
                            </td>
                            <td className="py-4 px-6">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                                 user.status === 'Active' ? 'bg-green-100 text-green-700 border-green-200' : 
-                                 user.status === 'Pending' ? 'bg-orange-100 text-orange-700 border-orange-200' : 
-                                 user.status === 'Suspended' ? 'bg-gray-100 text-gray-600 border-gray-200' : 
+                                 (user.status || '').toLowerCase() === 'active' ? 'bg-green-100 text-green-700 border-green-200' : 
+                                 (user.status || '').toLowerCase() === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-200' : 
+                                 (user.status || '').toLowerCase() === 'suspended' ? 'bg-gray-100 text-gray-600 border-gray-200' : 
                                  'bg-gray-50 text-gray-500 border-gray-200'
                               }`}>
                                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                    user.status === 'Active' ? 'bg-green-500' : 
-                                    user.status === 'Pending' ? 'bg-orange-500' : 
+                                    (user.status || '').toLowerCase() === 'active' ? 'bg-green-500' : 
+                                    (user.status || '').toLowerCase() === 'pending' ? 'bg-orange-500' : 
                                     'bg-gray-400'
                                  }`}></span>
                                  {user.status}
                               </span>
                            </td>
                            <td className="py-4 px-6 text-sm text-gray-600 font-medium">
-                              {user.joined}
+                              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
                            </td>
                            <td className="py-4 px-6 text-right">
                               <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                 <button 
+                                   onClick={() => handleViewUser(user.id)}
+                                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                 >
                                     <Eye className="w-4 h-4" />
                                  </button>
                                  <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
                                     <Edit2 className="w-4 h-4" />
                                  </button>
-                                 <button className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
+                                 <button 
+                                   onClick={() => handleStatusToggle(user)}
+                                   className={`p-2 rounded-lg transition-colors ${
+                                     (user.status || '').toLowerCase() === 'active' 
+                                       ? 'text-gray-400 hover:text-red-600 hover:bg-red-50' 
+                                       : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                   }`}
+                                   title={(user.status || '').toLowerCase() === 'active' ? 'Suspend User' : 'Activate User'}
+                                 >
                                     <Key className="w-4 h-4" />
                                  </button>
                               </div>
@@ -296,17 +391,18 @@ export default function AdminUserManagement() {
                    )}
                 </tbody>
              </table>
+             )}
           </div>
 
           {/* Pagination Controls */}
-          {filteredUsers.length > 0 && (
+          {!loading && users.length > 0 && (
             <div className="p-6 border-t border-gray-100 flex items-center justify-between">
                <div className="text-sm text-gray-500">
                   Showing <span className="font-bold text-gray-900">
-                    {Math.min(filteredUsers.length, (currentPage - 1) * itemsPerPage + 1)}
+                    {Math.min(users.length, (currentPage - 1) * itemsPerPage + 1)}
                     -
-                    {Math.min(filteredUsers.length, currentPage * itemsPerPage)}
-                  </span> of <span className="font-bold text-gray-900">{filteredUsers.length}</span> users
+                    {Math.min(users.length, currentPage * itemsPerPage)}
+                  </span> of <span className="font-bold text-gray-900">{users.length}</span> users
                </div>
                <div className="flex gap-2">
                   <button 
@@ -344,6 +440,88 @@ export default function AdminUserManagement() {
             </div>
           )}
         </Card>
+
+        {/* User Detail Modal */}
+        {selectedUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-xl font-bold text-gray-900">User Details</h3>
+                <button 
+                  onClick={handleCloseDetail}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-2xl font-bold border-4 border-white shadow-sm">
+                    {(selectedUser.avatar || (selectedUser.fullName ? selectedUser.fullName.charAt(0).toUpperCase() : "?"))}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{selectedUser.fullName || "N/A"}</h2>
+                    <p className="text-gray-500">{selectedUser.email}</p>
+                    <div className="flex gap-2 mt-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold border ${getRoleBadgeStyle(selectedUser.roleName || selectedUser.roleCode)}`}>
+                        {selectedUser.roleName || selectedUser.roleCode || "N/A"}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                        (selectedUser.status || '').toLowerCase() === 'active' ? 'bg-green-100 text-green-700 border-green-200' : 
+                        (selectedUser.status || '').toLowerCase() === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-200' : 
+                        'bg-gray-100 text-gray-600 border-gray-200'
+                      }`}>
+                        {selectedUser.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Phone</p>
+                    <p className="font-medium text-gray-900">{selectedUser.phone || "Not provided"}</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Joined Date</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString() : "N/A"}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 col-span-2">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-1">Last Login</p>
+                    <p className="font-medium text-gray-900">
+                      {selectedUser.lastLogin ? new Date(selectedUser.lastLogin).toLocaleString() : "Never logged in"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
+                  <button 
+                    onClick={handleCloseDetail}
+                    className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handleStatusToggle(selectedUser);
+                      handleCloseDetail();
+                    }}
+                    className={`px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors shadow-md ${
+                      (selectedUser.status || '').toLowerCase() === 'active' 
+                        ? 'bg-red-500 hover:bg-red-600' 
+                        : 'bg-green-500 hover:bg-green-600'
+                    }`}
+                  >
+                    {(selectedUser.status || '').toLowerCase() === 'active' ? 'Suspend Account' : 'Activate Account'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </RoleLayout>

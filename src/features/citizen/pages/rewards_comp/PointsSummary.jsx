@@ -1,25 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from "../../../../shared/ui/Card.jsx";
-import { getCitizenPoints } from "../../../../services/citizen.service.js";
 
-export function PointsSummary() {
+export function PointsSummary({ pointsData = { totalPoints: 0, monthlyPoints: 0 } }) {
   const navigate = useNavigate();
-  const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
-
-  useEffect(() => {
-    async function fetchPoints() {
-      try {
-        const data = await getCitizenPoints();
-        if (data) {
-          setPointsData(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch points:", error);
-      }
-    }
-    fetchPoints();
-  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
