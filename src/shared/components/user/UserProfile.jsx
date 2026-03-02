@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, MapPin, Edit, MessageSquare, Activity, Save, X, Loader2 } from 'lucide-react';
 import useStoredUser from '../../hooks/useStoredUser.js';
 import { cn } from '../../lib/cn.js';
-import { updateProfile } from '../../../services/auth.service.js'; // Import mock/real API function
+import { updateProfile } from '../../../services/auth.service.js';
 
 // Helper to format date
 const formatDate = (dateString) => {

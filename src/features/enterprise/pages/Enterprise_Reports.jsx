@@ -7,18 +7,40 @@ import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
-import {
-  subscribeReportDeleted,
-  subscribeReportSubmitted,
-  subscribeReportsCleared,
-  subscribeReportUpdated,
-} from "../../../events/reportEvents.js";
-import { clearMockReports, deleteMockReport, getMockReports, upsertMockReport } from "../../../mock/reportStore.js";
 import { PATHS } from "../../../app/routes/paths.js";
+import useNotify from "../../../shared/hooks/useNotify.js";
+import { getEnterpriseReports } from "../../../services/enterprise.service.js";
 
 export default function EnterpriseReports() {
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
+  const notify = useNotify();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    getEnterpriseReports()
+      .then((rows) => {
+        if (cancelled) return;
+        setReports(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load reports.";
+        setError(message);
+        notify.error("Load reports failed", message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify]);
 
   // Filter states
   const initialFilterState = {
@@ -69,34 +91,6 @@ export default function EnterpriseReports() {
   const handleResetFilter = () => {
     setFilter(initialFilterState);
   };
-
-  useEffect(() => {
-    const unsubSubmitted = subscribeReportSubmitted((report) => {
-      if (!report) return;
-      const next = upsertMockReport(report);
-      setReports(next);
-    });
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-    const unsubCleared = subscribeReportsCleared(() => {
-      clearMockReports();
-      setReports([]);
-    });
-    return () => {
-      unsubSubmitted();
-      unsubUpdated();
-      unsubDeleted();
-      unsubCleared();
-    };
-  }, []);
 
   return (
     <EnterpriseLayout>
@@ -160,6 +154,7 @@ export default function EnterpriseReports() {
             <CardTitle className="text-2xl">All reports</CardTitle>
           </CardHeader>
           <CardBody className="p-0">
+            {error ? <div className="px-8 pt-6 text-sm text-red-600">{error}</div> : null}
             <div className="overflow-x-auto">
               <table className="min-w-full text-left">
                 <thead className="bg-gray-50/60">
@@ -171,13 +166,22 @@ export default function EnterpriseReports() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredReports.length ? (
+                  {loading ? (
+                    <tr>
+                      <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
+                        Loading reports...
+                      </td>
+                    </tr>
+                  ) : filteredReports.length ? (
                     filteredReports.map((r) => (
                       <ReportRow
-                        key={r.id}
+                        key={r?.id ?? r?.reportCode ?? r?.code}
                         report={r}
                         showLocation
-                        onClick={() => navigate(`${PATHS.enterprise.reports}/${r.id}`, { state: { report: r } })}
+                        onClick={() => {
+                          const reportKey = r?.id ?? r?.reportCode ?? r?.code ?? "";
+                          navigate(`${PATHS.enterprise.reports}/${reportKey}`, { state: { report: r } });
+                        }}
                       />
                     ))
                   ) : (

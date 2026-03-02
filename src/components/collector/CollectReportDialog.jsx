@@ -6,33 +6,22 @@ import ValidationError from '../../shared/ui/ValidationError.jsx'
 import ImageUploader from '../../shared/ui/ImageUploader.jsx'
 import MapPicker from '../../shared/components/maps/GoongMapPicker.jsx'
 
-function fileToDataUrl(file) {
-  return new Promise((resolve) => {
-    if (!file) return resolve(null)
-    if (typeof FileReader === 'undefined') return resolve(null)
-    const reader = new FileReader()
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
-    reader.onerror = () => resolve(null)
-    reader.readAsDataURL(file)
-  })
-}
-
 export default function CollectReportDialog({
   open,
   onClose,
   reportId,
   statusLabel,
   statusVariant,
-  wasteTypes,
+  categories,
   initialAddress,
   initialCoords,
-  initialWeightsByType,
   onSubmit,
 }) {
-  const [weightsByType, setWeightsByType] = useState({})
+  const [quantitiesByCategoryId, setQuantitiesByCategoryId] = useState({})
   const [collectedImages, setCollectedImages] = useState([])
   const [collectedAddress, setCollectedAddress] = useState('')
   const [collectedCoords, setCollectedCoords] = useState(null)
+  const [collectorNote, setCollectorNote] = useState('')
   const [addrLoading, setAddrLoading] = useState(false)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [geoError, setGeoError] = useState('')
@@ -43,17 +32,27 @@ export default function CollectReportDialog({
 
   useEffect(() => {
     if (!open) return
-    setWeightsByType(initialWeightsByType || {})
+    const next = {}
+    const list = Array.isArray(categories) ? categories : []
+    list.forEach((c) => {
+      const id = c?.categoryId
+      if (id == null) return
+      const suggested =
+        c?.suggestedQuantity === 0 ? '0' : c?.suggestedQuantity != null ? String(c.suggestedQuantity) : ''
+      next[String(id)] = suggested
+    })
+    setQuantitiesByCategoryId(next)
     setCollectedImages([])
     setCollectedAddress(typeof initialAddress === 'string' ? initialAddress : '')
     setCollectedCoords(initialCoords ?? null)
+    setCollectorNote('')
     setAddrLoading(false)
     setGpsLoading(false)
     setGeoError('')
     setError('')
     setSubmitting(false)
     sourceRef.current = 'system'
-  }, [open, initialWeightsByType, initialAddress, initialCoords])
+  }, [open, categories, initialAddress, initialCoords])
 
   useEffect(() => {
     if (!open) return
@@ -105,38 +104,43 @@ export default function CollectReportDialog({
       return
     }
 
-    const parsed = {}
-    let total = 0
-    for (const t of wasteTypes || []) {
-      const raw = weightsByType?.[t]
-      const value = raw === '' || raw === null || raw === undefined ? NaN : Number(raw)
-      if (!Number.isFinite(value) || value < 0) {
-        setError(`Please enter a valid weight for ${t}.`)
-        return
-      }
-      parsed[t] = value
-      total += value
+    if (!collectorNote || collectorNote.trim().length < 3) {
+      setError('Please enter a collector note.')
+      return
     }
 
-    if (total <= 0) {
-      setError('Total collected weight must be greater than 0.')
+    const list = Array.isArray(categories) ? categories : []
+    const categoryIds = []
+    const quantities = []
+    for (const c of list) {
+      const id = c?.categoryId
+      if (id == null) continue
+      const raw = quantitiesByCategoryId?.[String(id)]
+      const value = raw === '' || raw === null || raw === undefined ? NaN : Number(raw)
+      if (!Number.isFinite(value) || value < 0) {
+        setError(`Please enter a valid quantity for ${c?.categoryName || 'this category'}.`)
+        return
+      }
+      if (value > 0) {
+        categoryIds.push(Number(id))
+        quantities.push(value)
+      }
+    }
+
+    if (!categoryIds.length) {
+      setError('Please enter at least one collected quantity.')
       return
     }
 
     setSubmitting(true)
     try {
-      const collectedImageUrls = (await Promise.all(collectedImages.map(fileToDataUrl))).filter(Boolean)
-      if (!collectedImageUrls.length) {
-        setError('Unable to read the uploaded images. Please try again.')
-        return
-      }
-
       const ok = await onSubmit?.({
-        collectedWeights: parsed,
-        collectedTotalWeight: total,
-        collectedImages: collectedImageUrls,
-        collectedAddress: collectedAddress.trim(),
-        collectedCoords,
+        images: collectedImages,
+        categoryIds,
+        quantities,
+        collectorNote: collectorNote.trim(),
+        latitude: collectedCoords.lat,
+        longitude: collectedCoords.lng,
       })
       if (ok) onClose?.()
     } catch (e) {
@@ -160,8 +164,8 @@ export default function CollectReportDialog({
       <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 max-h-[calc(100vh-4rem)] flex flex-col">
         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
           <div className="min-w-0">
-            <div className="text-lg font-semibold text-gray-900">Mark as Collected</div>
-            <div className="mt-1 text-sm text-gray-600">Upload photos, confirm location, and enter the real collected weight.</div>
+            <div className="text-lg font-semibold text-gray-900">Submit Collection Report</div>
+            <div className="mt-1 text-sm text-gray-600">Upload photos, confirm location, and enter the collected weight.</div>
           </div>
           <button
             type="button"
@@ -262,13 +266,17 @@ export default function CollectReportDialog({
           </div>
 
           <div className="space-y-3">
-            {(wasteTypes || []).map((t) => {
-              const id = `collected-weight-${t}`
-              const value = weightsByType?.[t] ?? ''
+            <div className="text-sm font-semibold text-gray-900">Collected Quantities</div>
+            {(Array.isArray(categories) ? categories : []).map((c) => {
+              const categoryId = c?.categoryId
+              if (categoryId == null) return null
+              const id = `collected-qty-${categoryId}`
+              const value = quantitiesByCategoryId?.[String(categoryId)] ?? ''
+              const unit = c?.wasteUnit ? String(c.wasteUnit).toLowerCase() : 'kg'
               return (
-                <div key={t} className="grid gap-2">
+                <div key={categoryId} className="grid gap-2">
                   <label htmlFor={id} className="text-sm font-medium text-slate-800">
-                    {t} real weight (kg)
+                    {c?.categoryName || `Category ${categoryId}`} ({unit})
                   </label>
                   <input
                     id={id}
@@ -279,7 +287,7 @@ export default function CollectReportDialog({
                     value={value}
                     onChange={(e) => {
                       const nextValue = e.target.value
-                      setWeightsByType((prev) => ({ ...(prev || {}), [t]: nextValue }))
+                      setQuantitiesByCategoryId((prev) => ({ ...(prev || {}), [String(categoryId)]: nextValue }))
                       if (error) setError('')
                     }}
                     className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-3 pr-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200"
@@ -288,6 +296,20 @@ export default function CollectReportDialog({
                 </div>
               )
             })}
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-gray-900">Collector Note</div>
+            <textarea
+              value={collectorNote}
+              onChange={(e) => {
+                setCollectorNote(e.target.value)
+                if (error) setError('')
+              }}
+              rows={4}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200"
+              placeholder="Describe what you collected and any observations..."
+            />
           </div>
         </div>
 
@@ -302,7 +324,7 @@ export default function CollectReportDialog({
             disabled={submitting}
           >
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-            Confirm Collected
+            Submit Report
           </Button>
         </div>
       </div>

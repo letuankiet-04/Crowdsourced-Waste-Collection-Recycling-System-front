@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, X, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getNotifications, markAsRead, subscribeNotifications } from '../../services/notifications';
+import { getNotifications, markAsRead } from '../../services/notifications';
 import useStoredUser from '../hooks/useStoredUser';
 import { PATHS } from '../../app/routes/paths';
 
@@ -18,12 +18,6 @@ export default function NotificationBell() {
       setNotifications(data);
     };
     loadNotifications();
-
-    const unsubscribe = subscribeNotifications((updated) => {
-      setNotifications([...updated]);
-    });
-
-    return () => unsubscribe();
   }, [user]);
 
   useEffect(() => {
@@ -41,6 +35,9 @@ export default function NotificationBell() {
   const handleNotificationClick = async (notification) => {
     if (!notification.isRead) {
       await markAsRead(notification.id);
+      setNotifications((prev) =>
+        prev.map((n) => (n?.id === notification.id ? { ...n, isRead: true } : n))
+      );
     }
     
     setIsOpen(false);

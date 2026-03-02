@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import logo from '../../../assets/app-logo.jpg'
 import Button from '../../../shared/ui/Button.jsx'
 import Container from '../../../shared/ui/Container.jsx'
 import { PATHS } from '../../../app/routes/paths.js'

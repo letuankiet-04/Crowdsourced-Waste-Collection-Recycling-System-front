@@ -93,12 +93,13 @@ export default function Review_Feedback() {
   const [activeTab, setActiveTab] = useState("All Submissions");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, _setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("All Time");
+  const [feedback] = useState([]);
 
   // Filtering Logic
   const filteredFeedback = useMemo(() => {
-    let result = MOCK_FEEDBACK;
+    let result = feedback;
 
     // Tab Filter
     if (activeTab === "From Citizens") {
@@ -138,7 +139,7 @@ export default function Review_Feedback() {
     }
 
     return result;
-  }, [activeTab, searchQuery, dateFilter]);
+  }, [activeTab, searchQuery, dateFilter, feedback]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredFeedback.length / itemsPerPage);

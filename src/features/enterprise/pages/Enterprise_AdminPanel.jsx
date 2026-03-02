@@ -85,14 +85,25 @@ export default function EnterpriseAdminPanel() {
 
     setPending(true);
     try {
-      await notify.promise(createCollector({ fullName, employeeCode, email, password, phone, vehicleType, vehiclePlate }), {
+      await notify.promise(
+        createCollector({
+          email,
+          password,
+          fullName,
+          phone,
+          employeeCode,
+          vehicleType,
+          vehiclePlate,
+        }),
+        {
         loadingTitle: "Creating collector...",
         loadingMessage: "Sending account details to the server.",
         successTitle: "Collector created",
         successMessage: `${email} can now log in as a collector.`,
         errorTitle: "Create failed",
         errorMessage: (err) => err?.message || "Unable to create collector. Please try again.",
-      });
+        }
+      );
       setValues({
         fullName: "",
         employeeCode: "",

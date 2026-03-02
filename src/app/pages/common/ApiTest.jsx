@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { buildStoredUserFromToken, login, logout, register } from '../../../services/auth.service.js'
 import { getCitizenDashboard } from '../../../services/citizen.service.js'
 import { getCollectorDashboard, getMyCollectionTasks } from '../../../services/collector.service.js'
-import { getEnterpriseRequests } from '../../../services/enterprise.service.js'
 import { PATHS } from '../../routes/paths.js'
 
 export default function ApiTest() {
@@ -107,18 +106,6 @@ export default function ApiTest() {
       print('COLLECTOR TASKS OK', res)
     } catch (err) {
       print('COLLECTOR TASKS ERROR', { message: err?.message || String(err) })
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function handleEnterpriseRequests() {
-    setPending(true)
-    try {
-      const res = await getEnterpriseRequests()
-      print('ENTERPRISE REQUESTS OK', res)
-    } catch (err) {
-      print('ENTERPRISE REQUESTS ERROR', { message: err?.message || String(err) })
     } finally {
       setPending(false)
     }
@@ -253,14 +240,6 @@ export default function ApiTest() {
           <button
             type="button"
             className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            disabled={pending}
-            onClick={() => void handleEnterpriseRequests()}
-          >
-            Enterprise requests
-          </button>
-          <button
-            type="button"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:opacity-60"
             disabled={pending}
             onClick={showStored}
           >

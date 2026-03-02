@@ -153,6 +153,9 @@ export default function PointHistory() {
 
           {/* Table */}
           <div className="overflow-x-auto">
+            {error ? (
+              <div className="p-6 text-sm text-red-600">{error}</div>
+            ) : null}
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-100">

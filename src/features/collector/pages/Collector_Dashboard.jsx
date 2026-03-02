@@ -8,61 +8,43 @@ import useNotify from "../../../shared/hooks/useNotify.js";
 import { ClipboardList, History, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
-import {
-  subscribeReportDeleted,
-  subscribeReportUpdated,
-} from "../../../events/reportEvents.js";
-import { getMockReports, upsertMockReport, deleteMockReport } from "../../../mock/reportStore.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
-import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
+import { getCollectorTasks } from "../../../services/collector.service.js";
 
 export default function CollectorDashboard() {
   const { user, displayName } = useStoredUser();
   const notify = useNotify();
   const navigate = useNavigate();
-  const [reports, setReports] = useState(() => getMockReports());
-  const collectorEmail = user?.email ?? null;
+  const [tasks, setTasks] = useState([]);
 
   const myTasks = useMemo(() => {
-    return reports.filter((r) => {
-        const status = normalizeReportStatus(r.status);
-        if (!["accepted", "on the way"].includes(status)) return false;
-        if (!collectorEmail) return false;
-        const assignedEmails = Array.isArray(r?.assignedCollectors)
-          ? r.assignedCollectors.map((c) => c?.email).filter(Boolean)
-          : [];
-        const legacyEmail = r?.assignedCollector?.email ?? r?.assignedCollectorEmail ?? r?.collectorEmail ?? null;
-        const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
-        return effectiveEmails.includes(collectorEmail);
-    }).slice(0, 10);
-  }, [collectorEmail, reports]);
+    const list = Array.isArray(tasks) ? tasks : [];
+    return list.slice(0, 10).map((t) => ({
+      id: t?.id != null ? String(t.id) : "",
+      reportCode: t?.requestCode ?? null,
+      status: t?.status ?? null,
+      createdAt: t?.createdAt ?? t?.assignedAt ?? t?.updatedAt ?? null,
+    }));
+  }, [tasks]);
 
   useEffect(() => {
-    const unsubUpdated = subscribeReportUpdated((nextReport) => {
-      if (!nextReport || !nextReport.id) return;
-      const next = upsertMockReport(nextReport);
-      setReports(next);
-      const status = normalizeReportStatus(nextReport.status);
-      const assignedEmails = Array.isArray(nextReport?.assignedCollectors)
-        ? nextReport.assignedCollectors.map((c) => c?.email).filter(Boolean)
-        : [];
-      const legacyEmail = nextReport?.assignedCollector?.email ?? nextReport?.assignedCollectorEmail ?? nextReport?.collectorEmail ?? null;
-      const effectiveEmails = assignedEmails.length ? assignedEmails : legacyEmail ? [legacyEmail] : [];
-      if (collectorEmail && effectiveEmails.includes(collectorEmail) && ["accepted"].includes(status)) {
-        notify.info("New task assigned", `${nextReport.id} · ${nextReport.address || "Unknown location"}`);
+    let active = true;
+    const load = async () => {
+      try {
+        const data = await getCollectorTasks();
+        if (!active) return;
+        setTasks(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!active) return;
+        setTasks([]);
+        notify.error("Unable to load tasks", e?.message || "Request failed");
       }
-    });
-    const unsubDeleted = subscribeReportDeleted((reportId) => {
-      if (!reportId) return;
-      const next = deleteMockReport(reportId);
-      setReports(next);
-    });
-
-    return () => {
-      unsubUpdated();
-      unsubDeleted();
     };
-  }, [collectorEmail, notify]);
+    if (user) load();
+    return () => {
+      active = false;
+    };
+  }, [notify, user]);
 
   return (
     <CollectorLayout>

@@ -2,28 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import useNotify from "../../../../shared/hooks/useNotify.js";
-import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
-import { publishReportSubmitted, publishReportUpdated } from "../../../../events/reportEvents.js";
-import { addMockReport, updateMockReport } from "../../../../mock/reportStore.js";
-import { createNotification } from "../../../../services/notifications.js";
+import { createReport, updateReport } from "../../../../services/reports.service.js";
 import MapPicker from "../../../../shared/components/maps/GoongMapPicker.jsx";
 import DescriptionTextarea from "../../../../shared/ui/DescriptionTextarea.jsx";
 import { Card } from "../../../../shared/ui/Card.jsx";
 import ImageUploader from "../../../../shared/ui/ImageUploader.jsx";
 import { PATHS } from "../../../../app/routes/paths.js";
+import { getWasteCategories } from "../../../../services/reports.service.js";
 import WasteItemsTable from "../../../../shared/ui/WasteItemsTable.jsx";
-import { WASTE_TYPE_OPTIONS } from "../../../../shared/constants/wasteTypes.js";
-
-function fileToDataUrl(file) {
-  return new Promise((resolve) => {
-    if (!file) return resolve(null);
-    if (typeof FileReader === "undefined") return resolve(null);
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
 
 function normalizeWeightInput(value) {
   if (value == null) return "";
@@ -35,24 +21,8 @@ function normalizeWeightInput(value) {
   return match ? match[1] : "";
 }
 
-function buildWasteTypeOptions(editReport) {
-  const base = Array.isArray(WASTE_TYPE_OPTIONS) ? WASTE_TYPE_OPTIONS : [];
-  const baseNames = new Set(base.map((t) => String(t?.name ?? "").trim()).filter(Boolean));
-  const legacyNames = Array.isArray(editReport?.types) ? editReport.types.map(String).map((s) => s.trim()).filter(Boolean) : [];
-
-  const extras = [];
-  let nextId = -1;
-  legacyNames.forEach((name) => {
-    if (baseNames.has(name)) return;
-    if (extras.some((x) => x.name === name)) return;
-    extras.push({ id: nextId--, name, unit: "KG" });
-  });
-
-  return [...base, ...extras];
-}
-
-function normalizeWasteItemsInput(rawItems, wasteTypeOptions) {
-  const options = Array.isArray(wasteTypeOptions) ? wasteTypeOptions : [];
+function normalizeWasteItemsInput(rawItems, categoryOptions) {
+  const options = Array.isArray(categoryOptions) ? categoryOptions : [];
   const byId = new Map(options.map((t) => [Number(t.id), t]));
   const byName = new Map(options.map((t) => [String(t.name ?? "").trim().toLowerCase(), t]));
 
@@ -79,32 +49,10 @@ export default function CreateReportForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const notify = useNotify();
-  const { user } = useStoredUser();
   const editReport = location?.state?.editReport ?? null;
   const isEdit = Boolean(editReport?.id);
 
-  const wasteTypeOptions = useMemo(() => buildWasteTypeOptions(editReport), [editReport]);
-
-  const [wasteItems, setWasteItems] = useState(() => {
-    const options = buildWasteTypeOptions(editReport);
-    const normalizedFromItems = normalizeWasteItemsInput(editReport?.wasteItems, options);
-    if (normalizedFromItems.length) return normalizedFromItems;
-
-    const legacyTypes = Array.isArray(editReport?.types) ? editReport.types.map(String).map((s) => s.trim()).filter(Boolean) : [];
-    const legacyWeight = normalizeWeightInput(editReport?.weight);
-    if (legacyTypes.length || legacyWeight) {
-      const legacyName = legacyTypes[0] ?? "";
-      const match = options.find((t) => String(t?.name ?? "").trim().toLowerCase() === legacyName.toLowerCase()) ?? null;
-      return [
-        {
-          wasteTypeId: match ? Number(match.id) : null,
-          estimatedWeight: legacyWeight,
-        },
-      ];
-    }
-
-    return [];
-  });
+  const [wasteItems, setWasteItems] = useState([]);
   const [wasteItemsTouched, setWasteItemsTouched] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [address, setAddress] = useState(() => (typeof editReport?.address === "string" ? editReport.address : ""));
@@ -117,8 +65,49 @@ export default function CreateReportForm() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [geoError, setGeoError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState([])
+  const [categoryLoading, setCategoryLoading] = useState(false)
 
   const sourceRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false
+    setCategoryLoading(true)
+    getWasteCategories()
+      .then((rows) => {
+        if (cancelled) return
+        const list = Array.isArray(rows) ? rows : []
+        setCategoryOptions(
+          list.map((c) => ({
+            id: Number(c.id),
+            name: String(c.name ?? '').trim(),
+            unit: c.unit ?? null,
+            pointPerUnit: c.pointPerUnit ?? null,
+          }))
+        )
+      })
+      .catch((err) => notify.error('Load categories failed', err?.message || 'Unable to load waste categories.'))
+      .finally(() => {
+        if (cancelled) return
+        setCategoryLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [notify])
+
+  useEffect(() => {
+    if (!isEdit || !editReport) return
+    if (!Array.isArray(categoryOptions) || categoryOptions.length === 0) return
+    const normalizedFromItems = normalizeWasteItemsInput(editReport?.wasteItems, categoryOptions)
+    if (normalizedFromItems.length) {
+      setWasteItems(normalizedFromItems)
+      return
+    }
+    const legacyWeight = normalizeWeightInput(editReport?.weight)
+    if (!legacyWeight) return
+    setWasteItems([{ wasteTypeId: null, estimatedWeight: legacyWeight }])
+  }, [isEdit, editReport, categoryOptions])
 
   const handleWasteItemsChange = (next) => {
     setWasteItems(next);
@@ -186,8 +175,9 @@ export default function CreateReportForm() {
     const hasImages = images.length > 0 || existingImages.length > 0;
     const hasLocation = coords != null && address.trim().length >= 3 && !geoError;
     const hasValidWeight = !weightError;
-    return hasItems && hasImages && hasLocation && hasValidWeight;
-  }, [wasteItemsError, images, existingImages, coords, address, geoError, weightError]);
+    const hasCategories = !categoryLoading && categoryOptions.length > 0;
+    return hasItems && hasImages && hasLocation && hasValidWeight && hasCategories;
+  }, [wasteItemsError, images, existingImages, coords, address, geoError, weightError, categoryLoading, categoryOptions]);
 
   const handleClearDraft = () => {
     setWasteItems([]);
@@ -227,21 +217,14 @@ export default function CreateReportForm() {
       notify.warning("Fix location error", geoError);
       return;
     }
-    if (isEdit && editReport && editReport.status && editReport.status !== "pending") {
+    if (isEdit && editReport && editReport.status && String(editReport.status).trim().toLowerCase() !== "pending") {
       notify.error("Cannot update", "Only pending reports can be updated.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const createdBy = user?.email ?? null;
-      if (!createdBy) {
-        notify.error("Not logged in", "Please log in again and retry submitting your report.");
-        return;
-      }
-
-      const imageUrls = (await Promise.all(images.map(fileToDataUrl))).filter(Boolean);
-      const byId = new Map((Array.isArray(wasteTypeOptions) ? wasteTypeOptions : []).map((t) => [Number(t.id), t]));
+      const byId = new Map((Array.isArray(categoryOptions) ? categoryOptions : []).map((t) => [Number(t.id), t]));
       const cleanedItems = (Array.isArray(wasteItems) ? wasteItems : [])
         .map((item) => {
           const typeId = item?.wasteTypeId === "" || item?.wasteTypeId === null || item?.wasteTypeId === undefined ? NaN : Number(item.wasteTypeId);
@@ -251,59 +234,24 @@ export default function CreateReportForm() {
           return found && Number.isFinite(w) ? { wasteTypeId: Number(found.id), name: String(found.name), unit: found.unit ?? null, estimatedWeight: w } : null;
         })
         .filter(Boolean);
-      const total = cleanedItems.reduce((sum, it) => sum + (typeof it.estimatedWeight === "number" ? it.estimatedWeight : 0), 0);
-      const weightValue = String(total);
-      const report = isEdit
-        ? {
-          ...editReport,
-          address: address.trim(),
-          wasteItems: cleanedItems,
-          types: cleanedItems.map((i) => i.name),
-          weight: weightValue,
-          notes,
-          coords,
-          images: [...existingImages, ...imageUrls],
-          updatedAt: new Date().toISOString(),
-        }
-        : {
-          id: `RPT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-          address: address.trim(),
-          wasteItems: cleanedItems,
-          types: cleanedItems.map((i) => i.name),
-          weight: weightValue,
-          notes,
-          coords,
-          images: imageUrls,
-          createdAt: new Date().toISOString(),
-          status: "pending",
-          createdBy,
-        };
+      const payload = {
+        images: images.length ? images : undefined,
+        latude: coords?.lat,
+        longitude: coords?.lng,
+        address: address.trim(),
+        description: String(notes ?? "").trim(),
+        categoryIds: cleanedItems.map((i) => String(i.wasteTypeId)),
+        quantities: cleanedItems.map((i) => String(i.estimatedWeight)),
+      };
 
-      await notify.promise(new Promise((resolve) => setTimeout(resolve, 800)), {
+      const saved = await notify.promise(isEdit ? updateReport(editReport.id, payload) : createReport(payload), {
         loadingTitle: isEdit ? "Updating report..." : "Sending report...",
+        loadingMessage: "Submitting your report to the server.",
         successTitle: isEdit ? "Report updated" : "Report submitted",
         successMessage: "Thank you for helping keep the city clean.",
         errorTitle: "Submit failed",
         errorMessage: (err) => err?.message || "Unable to submit your report.",
       });
-
-      if (isEdit) {
-        updateMockReport(report);
-        publishReportUpdated(report);
-      } else {
-        addMockReport(report);
-        publishReportSubmitted(report);
-
-        // Create notification for Enterprise
-        // Assuming Enterprise ID is 2 for this mock scenario
-        await createNotification({
-          receiverId: 2, 
-          senderId: user?.id || 1,
-          reportId: report.id,
-          type: 'NEW_REPORT',
-          message: `New report submitted by ${user?.name || 'Citizen'}`
-        });
-      }
 
       setWasteItems([]);
       setWasteItemsTouched(false);
@@ -315,7 +263,7 @@ export default function CreateReportForm() {
       setImages([]);
       setImageUploaderKey((x) => x + 1);
       setGeoError("");
-      navigate(isEdit ? `${PATHS.citizen.reports}/${report.id}` : PATHS.citizen.dashboard);
+      navigate(`${PATHS.citizen.reports}/${saved?.id ?? editReport?.id ?? ""}`);
     } finally {
       setSubmitting(false);
     }
@@ -363,7 +311,7 @@ export default function CreateReportForm() {
           onFilesChange={setImages}
         />
 
-
+    
         {existingImages.length ? (
           <div className="mt-6">
             <h4 className="text-sm font-semibold text-gray-500 uppercase">Existing Photos</h4>
@@ -400,7 +348,8 @@ export default function CreateReportForm() {
 
       {/* RIGHT COLUMN */}
       <Card as="section" className="p-6">
-        <WasteItemsTable items={wasteItems} wasteTypes={wasteTypeOptions} onChange={handleWasteItemsChange} />
+        <WasteItemsTable items={wasteItems} wasteTypes={categoryOptions} onChange={handleWasteItemsChange} />
+        {categoryLoading ? <div className="mt-2 text-sm text-gray-500">Loading waste categories...</div> : null}
         {showWasteErrors && wasteItemsError ? <div className="mt-2 text-sm text-red-600">{wasteItemsError}</div> : null}
         {showWasteErrors && !wasteItemsError && weightError ? <div className="mt-3 text-sm text-red-600">{weightError}</div> : null}
 
