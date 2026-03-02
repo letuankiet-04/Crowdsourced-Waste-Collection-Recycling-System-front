@@ -3,6 +3,7 @@ export const PATHS = {
   home: '/home',
   dev: {
     apiTest: '/api-test',
+    apiKnowledge: '/dev/api-knowledge',
   },
 
   auth: {
@@ -35,7 +36,6 @@ export const PATHS = {
     map: '/enterprise/map',
     profile: '/enterprise/profile',
     adminPanel: '/enterprise/admin',
-    settings: '/enterprise/settings',
   },
   admin: {
     dashboard: '/admin/dashboard',

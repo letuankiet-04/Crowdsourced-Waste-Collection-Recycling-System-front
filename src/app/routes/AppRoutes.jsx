@@ -22,9 +22,9 @@ import {
   EnterpriseReports,
   EnterpriseReportDetail,
   EnterpriseRewards,
-  // EnterpriseSettings,
   Home,
   ApiTest,
+  ApiKnowledge,
   Unauthorized,
   CitizenProfile,
   AdminProfile,
@@ -41,6 +41,7 @@ export default function AppRoutes() {
       <Route path={PATHS.auth.signup} element={<AnimatedAuth />} />
       <Route path={PATHS.home} element={<Home />} />
       <Route path={PATHS.dev.apiTest} element={<ApiTest />} />
+      <Route path={PATHS.dev.apiKnowledge} element={<ApiKnowledge />} />
 
       <Route
         path={PATHS.citizen.dashboard}
@@ -208,14 +209,6 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      {/* <Route
-        path={PATHS.enterprise.settings}
-        element={
-          <ProtectedRoute role={['enterprise']}>
-            <EnterpriseSettings />
-          </ProtectedRoute>
-        }
-      /> */}
 
       <Route
         path={PATHS.admin.dashboard}

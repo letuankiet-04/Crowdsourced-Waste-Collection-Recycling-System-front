@@ -23,13 +23,6 @@ export async function getCollectorWorkHistory({ status } = {}) {
   return unwrapApiResponse(data)
 }
 
-export async function getCollectorStats({ year } = {}) {
-  const params = {}
-  if (year) params.year = year
-  const { data } = await api.get(`${COLLECTIONS_BASE}/stats`, { params })
-  return unwrapApiResponse(data)
-}
-
 export async function acceptCollectorTask(requestId) {
   const { data } = await api.post(`${COLLECTIONS_BASE}/${requestId}/accept`)
   return unwrapApiResponse(data)

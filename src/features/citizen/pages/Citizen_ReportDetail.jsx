@@ -54,11 +54,30 @@ export default function CitizenReportDetail() {
       (typeof apiReport?.reportedAddress === "string" && apiReport.reportedAddress.trim()) ||
       (typeof apiReport?.location?.address === "string" && apiReport.location.address.trim()) ||
       "";
+    const lat =
+      apiReport?.latitude ??
+      apiReport?.lat ??
+      apiReport?.coords?.lat ??
+      apiReport?.location?.lat ??
+      apiReport?.reportedLatitude ??
+      null;
+    const lng =
+      apiReport?.longitude ??
+      apiReport?.lng ??
+      apiReport?.coords?.lng ??
+      apiReport?.location?.lng ??
+      apiReport?.reportedLongitude ??
+      null;
+    const coords =
+      lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+        ? { lat: Number(lat), lng: Number(lng) }
+        : null;
     return {
       id: apiReport?.id ?? reportId,
       status: apiReport?.status ?? null,
       createdAt: apiReport?.createdAt ?? null,
       address,
+      coords,
       images,
       wasteItems: categories
         .map((c) => {

@@ -35,7 +35,37 @@ export default function EnterpriseReportDetail() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
 
-  const report = reportOverride ?? reportData ?? (stateReport?.id && String(stateReport.id) === id ? stateReport : null);
+  const report = useMemo(() => {
+    const base = reportOverride ?? reportData ?? (stateReport?.id && String(stateReport.id) === id ? stateReport : null);
+    if (!base) return null;
+
+    const address =
+      (typeof base?.address === "string" && base.address.trim()) ||
+      (typeof base?.reportedAddress === "string" && base.reportedAddress.trim()) ||
+      (typeof base?.location?.address === "string" && base.location.address.trim()) ||
+      "";
+
+    const lat =
+      base?.latitude ??
+      base?.lat ??
+      base?.coords?.lat ??
+      base?.location?.lat ??
+      base?.reportedLatitude ??
+      null;
+    const lng =
+      base?.longitude ??
+      base?.lng ??
+      base?.coords?.lng ??
+      base?.location?.lng ??
+      base?.reportedLongitude ??
+      null;
+    const coords =
+      lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+        ? { lat: Number(lat), lng: Number(lng) }
+        : null;
+
+    return { ...base, id: base?.id ?? id, address, coords };
+  }, [reportOverride, reportData, stateReport, id]);
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
   const canGoAssign = status === "Accepted";
