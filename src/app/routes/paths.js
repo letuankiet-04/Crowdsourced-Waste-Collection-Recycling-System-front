@@ -32,6 +32,8 @@ export const PATHS = {
     dashboard: '/enterprise/dashboard',
     activeCollector: '/enterprise/active-collector',
     reports: '/enterprise/reports',
+    collectorReports: '/enterprise/collector-reports',
+    collectorReportDetail: '/enterprise/collector-reports/:reportId',
     reportDetail: '/enterprise/reports/:reportId',
     rewards: '/enterprise/rewards',
     map: '/enterprise/map',

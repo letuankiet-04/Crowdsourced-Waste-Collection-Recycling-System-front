@@ -22,6 +22,8 @@ import {
   EnterpriseMap,
   EnterpriseProfile,
   EnterpriseReports,
+  EnterpriseCollectorReports,
+  EnterpriseCollectorReportDetail,
   EnterpriseReportDetail,
   EnterpriseRewards,
   // EnterpriseSettings,
@@ -183,6 +185,22 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['enterprise']}>
             <EnterpriseReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.enterprise.collectorReports}
+        element={
+          <ProtectedRoute role={['enterprise']}>
+            <EnterpriseCollectorReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.enterprise.collectorReportDetail}
+        element={
+          <ProtectedRoute role={['enterprise']}>
+            <EnterpriseCollectorReportDetail />
           </ProtectedRoute>
         }
       />

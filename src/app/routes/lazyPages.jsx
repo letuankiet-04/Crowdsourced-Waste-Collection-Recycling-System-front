@@ -33,6 +33,8 @@ export const PointHistory = lazy(() => import('../../features/citizen/pages/Poin
 export const EnterpriseDashboard = lazy(() => import('../../features/enterprise/pages/Enterprise_Dashboard.jsx'))
 export const EnterpriseActiveCollector = lazy(() => import('../../features/enterprise/pages/Enterprise_ActiveCollector.jsx'))
 export const EnterpriseReports = lazy(() => import('../../features/enterprise/pages/Enterprise_Reports.jsx'))
+export const EnterpriseCollectorReports = lazy(() => import('../../features/enterprise/pages/Enterprise_CollectorReports.jsx'))
+export const EnterpriseCollectorReportDetail = lazy(() => import('../../features/enterprise/pages/Enterprise_CollectorReportDetail.jsx'))
 export const EnterpriseReportDetail = lazy(() => import('../../features/enterprise/pages/Enterprise_ReportDetail.jsx'))
 export const EnterpriseRewards = lazy(() => import('../../features/enterprise/pages/Enterprise_Rewards.jsx'))
 export const EnterpriseMap = lazy(() => import('../../features/enterprise/pages/Enterprise_Map.jsx'))
