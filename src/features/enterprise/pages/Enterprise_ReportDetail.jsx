@@ -64,7 +64,70 @@ export default function EnterpriseReportDetail() {
         ? { lat: Number(lat), lng: Number(lng) }
         : null;
 
-    return { ...base, id: base?.id ?? id, address, coords };
+    const reportCode = String(base?.reportCode ?? base?.code ?? "").trim() || null;
+    const requestIdRaw = base?.collectionRequestId ?? base?.requestId ?? base?.collection_request_id ?? null;
+    const collectionRequestId =
+      requestIdRaw === null || requestIdRaw === undefined || requestIdRaw === ""
+        ? null
+        : typeof requestIdRaw === "number"
+          ? requestIdRaw
+          : Number.isFinite(Number(requestIdRaw))
+            ? Number(requestIdRaw)
+            : requestIdRaw;
+
+    const notes =
+      (typeof base?.notes === "string" && base.notes.trim()) ||
+      (typeof base?.description === "string" && base.description.trim()) ||
+      "";
+
+    const imagesRaw = base?.images ?? null;
+    const images =
+      Array.isArray(imagesRaw)
+        ? imagesRaw.filter(Boolean).map(String)
+        : Array.isArray(base?.imageUrls)
+          ? base.imageUrls.filter(Boolean).map(String)
+          : typeof imagesRaw === "string" && imagesRaw.trim()
+            ? imagesRaw
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [];
+
+    const typesRaw = Array.isArray(base?.types) ? base.types.filter(Boolean).map(String) : [];
+    const categoriesRaw = Array.isArray(base?.categories) ? base.categories : [];
+    const categoriesTypes = categoriesRaw
+      .map((c) => (c?.name ? String(c.name).trim() : ""))
+      .filter(Boolean);
+    const wasteType = typeof base?.wasteType === "string" ? base.wasteType.trim() : "";
+    const types = typesRaw.length ? typesRaw : categoriesTypes.length ? categoriesTypes : wasteType ? [wasteType] : [];
+
+    const wasteItemsRaw = Array.isArray(base?.wasteItems) ? base.wasteItems : [];
+    const wasteItems =
+      wasteItemsRaw.length
+        ? wasteItemsRaw
+        : categoriesRaw
+            .map((c) => {
+              const name = c?.name ? String(c.name).trim() : "";
+              const q = c?.quantity;
+              const num = typeof q === "number" ? q : Number(q);
+              const unit = c?.unit ? String(c.unit).trim() : "";
+              if (!name || !Number.isFinite(num)) return null;
+              return { name, estimatedWeight: num, unit };
+            })
+            .filter(Boolean);
+
+    return {
+      ...base,
+      id: base?.id ?? id,
+      address,
+      coords,
+      reportCode,
+      collectionRequestId,
+      notes,
+      images,
+      types,
+      wasteItems,
+    };
   }, [reportOverride, reportData, stateReport, id]);
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
@@ -268,11 +331,12 @@ export default function EnterpriseReportDetail() {
                         errorTitle: "Reject failed",
                         errorMessage: (err) => err?.message || "Unable to reject this report.",
                       });
-                      const next = updated ?? {
+                      const next = {
                         ...report,
-                        status: "rejected",
-                        updatedAt: new Date().toISOString(),
+                        status: updated?.status ?? report?.status ?? "rejected",
+                        updatedAt: updated?.actionAt ?? new Date().toISOString(),
                         rejectionReason: reason.trim(),
+                        collectionRequestId: updated?.collectionRequestId ?? getRequestIdFromReport(report),
                       };
                       setReportOverride(next);
                       setReportData(next);
@@ -317,7 +381,12 @@ export default function EnterpriseReportDetail() {
                         errorTitle: "Accept failed",
                         errorMessage: (err) => err?.message || "Unable to accept this report.",
                       });
-                      const next = updated ?? { ...report, status: "accepted", updatedAt: new Date().toISOString() };
+                      const next = {
+                        ...report,
+                        status: updated?.status ?? report?.status ?? "accepted",
+                        updatedAt: updated?.actionAt ?? new Date().toISOString(),
+                        collectionRequestId: updated?.collectionRequestId ?? getRequestIdFromReport(report),
+                      };
                       setReportOverride(next);
                       setReportData(next);
                       setReportError("");
@@ -472,7 +541,7 @@ export default function EnterpriseReportDetail() {
                         requestId != null
                           ? assignCollectorToRequest({ requestId, collectorId: primaryCollector.id })
                           : assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
-                      await notify.promise(assignPromise, {
+                      const assignedResponse = await notify.promise(assignPromise, {
                         loadingTitle: "Assigning collector...",
                         loadingMessage: "Sending assignment to the server.",
                         successTitle: "Collector assigned",
@@ -483,9 +552,13 @@ export default function EnterpriseReportDetail() {
 
                       const next = {
                         ...report,
+                        status: assignedResponse?.status ?? report?.status,
+                        collectionRequestId:
+                          assignedResponse?.collectionRequestId ??
+                          getRequestIdFromReport(report),
                         assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
                         assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
-                        updatedAt: new Date().toISOString(),
+                        updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
                       };
                       setReportOverride(next);
                       setReportData(next);

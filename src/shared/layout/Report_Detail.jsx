@@ -46,6 +46,8 @@ export default function ReportDetail({
   aside,
 }) {
   const safeReport = report ?? null
+  const reportCode = safeReport?.reportCode ?? safeReport?.code ?? null
+  const collectionRequestId = safeReport?.collectionRequestId ?? safeReport?.requestId ?? null
 
   const types = useMemo(() => {
     const raw = safeReport?.types
@@ -147,6 +149,7 @@ export default function ReportDetail({
             <CardBody className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Field label="Report ID" value={safeReport?.id || '-'} />
+                {reportCode ? <Field label="Report Code" value={String(reportCode)} /> : null}
                 <div>
                   <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Status</div>
                   <div className="mt-2">
@@ -155,6 +158,9 @@ export default function ReportDetail({
                     </StatusPill>
                   </div>
                 </div>
+                {collectionRequestId != null && String(collectionRequestId).trim() !== '' ? (
+                  <Field label="Collection Request ID" value={String(collectionRequestId)} />
+                ) : null}
                 <Field label="Submitted At" value={formatDateTime(safeReport?.createdAt)} />
                 <Field label="Submitted By" value={safeReport?.createdBy || '-'} />
                 {safeReport?.updatedAt ? <Field label="Updated At" value={formatDateTime(safeReport?.updatedAt)} /> : null}
