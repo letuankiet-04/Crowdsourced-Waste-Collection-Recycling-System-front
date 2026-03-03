@@ -68,4 +68,3 @@ export async function deleteReport(id) {
   const { data } = await api.delete(`/api/citizen/reports/${id}`)
   return unwrapApiResponse(data)
 }
-

@@ -11,17 +11,16 @@ import { getEnterpriseCollectors } from "../../../services/enterprise.service.js
 export default function EnterpriseActiveCollector() {
   const notify = useNotify();
   const [collectors, setCollectors] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
     getEnterpriseCollectors()
       .then((rows) => {
         if (cancelled) return;
         setCollectors(Array.isArray(rows) ? rows : []);
+        setError("");
       })
       .catch((err) => {
         if (cancelled) return;

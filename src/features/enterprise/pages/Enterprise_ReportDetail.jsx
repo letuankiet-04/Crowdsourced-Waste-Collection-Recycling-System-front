@@ -15,7 +15,6 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import {
   acceptWasteReport,
   assignCollectorByReportCode,
-  assignCollectorToRequest,
   getEnterpriseCollectors,
   getEnterpriseWasteReportById,
   rejectWasteReport,
@@ -352,9 +351,13 @@ export default function EnterpriseReportDetail() {
                           message: "Your report has been rejected.",
                           reason: reason.trim(),
                         });
-                      } catch {}
+                      } catch {
+                        throw new Error("Report rejected, but failed to send notification to the reporter.");
+                      }
                       navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } catch {}
+                    } catch {
+                      throw new Error("Failed to reject the report. Please try again.");
+                    }
                   }}
                 >
                   <XCircle className="h-5 w-5" aria-hidden="true" />
@@ -400,10 +403,14 @@ export default function EnterpriseReportDetail() {
                           type: "REPORT_ACCEPTED",
                           message: "Your report has been accepted.",
                         });
-                      } catch {}
+                      } catch  {
+                        throw new Error("Report accepted, but failed to send notification to the reporter.");
+                      }
 
                       openAssignDialog(next);
-                    } catch {}
+                    } catch {
+                      throw new Error("Failed to accept the report. Please try again.");
+                    }
                   }}
                 >
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -538,9 +545,7 @@ export default function EnterpriseReportDetail() {
                     try {
                       const requestId = getRequestIdFromReport(report);
                       const assignPromise =
-                        requestId != null
-                          ? assignCollectorToRequest({ requestId, collectorId: primaryCollector.id })
-                          : assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
+                        requestId != assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
                       const assignedResponse = await notify.promise(assignPromise, {
                         loadingTitle: "Assigning collector...",
                         loadingMessage: "Sending assignment to the server.",
@@ -564,7 +569,9 @@ export default function EnterpriseReportDetail() {
                       setReportData(next);
                       setAssignOpen(false);
                       navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } catch {}
+                    } catch {
+                      throw new Error("Failed to assign collector. Please try again.");
+                    }
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
