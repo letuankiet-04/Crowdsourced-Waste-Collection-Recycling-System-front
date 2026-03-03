@@ -16,7 +16,7 @@ export default function RecentReports() {
   const navigate = useNavigate();
   const notify = useNotify();
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const myReports = useMemo(() => {
     const list = Array.isArray(reports) ? reports : [];
@@ -28,7 +28,6 @@ export default function RecentReports() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     getMyReports()
       .then((rows) => {
         if (cancelled) return;

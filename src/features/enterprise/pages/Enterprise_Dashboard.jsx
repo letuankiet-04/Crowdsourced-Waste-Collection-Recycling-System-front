@@ -19,17 +19,16 @@ export default function EnterpriseDashboard() {
   const notify = useNotify();
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
     getEnterpriseReports()
       .then((rows) => {
         if (cancelled) return;
         setReports(Array.isArray(rows) ? rows : []);
+        setError("");
       })
       .catch((err) => {
         if (cancelled) return;

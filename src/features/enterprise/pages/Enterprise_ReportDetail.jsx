@@ -15,7 +15,6 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import {
   acceptWasteReport,
   assignCollectorByReportCode,
-  assignCollectorToRequest,
   getEnterpriseCollectors,
   getEnterpriseWasteReportById,
   rejectWasteReport,
@@ -219,10 +218,6 @@ export default function EnterpriseReportDetail() {
   }, [assignedEmails, collectors]);
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedCollectorEmails, setSelectedCollectorEmails] = useState([]);
-  
-  // Rejection Reason Modal
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
 
   function openAssignDialog(nextReport) {
     const r = nextReport ?? report;
@@ -240,38 +235,6 @@ export default function EnterpriseReportDetail() {
     const n = typeof raw === "number" ? raw : Number(raw);
     return Number.isFinite(n) ? n : raw;
   }
-
-  const handleRejectSubmit = async () => {
-    if (!report || !canDecide) return;
-    if (!rejectionReason.trim()) {
-      alert("Rejection reason is required.");
-      return;
-    }
-    
-    const next = { 
-      ...report, 
-      status: "rejected", 
-      updatedAt: new Date().toISOString(),
-      rejectionReason: rejectionReason 
-    };
-    
-    updateMockReport(next);
-    publishReportUpdated(next);
-    setReportOverride(next);
-    
-    // Notify Citizen
-    await createNotification({
-      receiverId: report.createdBy, // email or id
-      senderId: 2, // Enterprise
-      reportId: report.id,
-      type: 'REPORT_REJECTED',
-      message: 'Your report has been rejected.',
-      reason: rejectionReason
-    });
-
-    setRejectOpen(false);
-    navigate(PATHS.enterprise.dashboard, { replace: true });
-  };
 
   return (
     <EnterpriseLayout>
@@ -388,12 +351,13 @@ export default function EnterpriseReportDetail() {
                           message: "Your report has been rejected.",
                           reason: reason.trim(),
                         });
-                      } catch {}
+                      } catch {
+                        throw new Error("Report rejected, but failed to send notification to the reporter.");
+                      }
                       navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } catch {}
-                  onClick={() => {
-                    setRejectionReason("");
-                    setRejectOpen(true);
+                    } catch {
+                      throw new Error("Failed to reject the report. Please try again.");
+                    }
                   }}
                 >
                   <XCircle className="h-5 w-5" aria-hidden="true" />
@@ -439,10 +403,14 @@ export default function EnterpriseReportDetail() {
                           type: "REPORT_ACCEPTED",
                           message: "Your report has been accepted.",
                         });
-                      } catch {}
+                      } catch  {
+                        throw new Error("Report accepted, but failed to send notification to the reporter.");
+                      }
 
                       openAssignDialog(next);
-                    } catch {}
+                    } catch {
+                      throw new Error("Failed to accept the report. Please try again.");
+                    }
                   }}
                 >
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -463,63 +431,6 @@ export default function EnterpriseReportDetail() {
             ) : null}
           </CardBody>
         </Card>
-
-        {/* Rejection Modal */}
-        {rejectOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
-            role="dialog"
-            aria-modal="true"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) setRejectOpen(false);
-            }}
-          >
-            <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
-              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
-                <div className="min-w-0">
-                  <div className="text-lg font-semibold text-gray-900">Reject Report</div>
-                  <div className="mt-1 text-sm text-gray-600">Please provide a reason for rejecting this report.</div>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-50"
-                  onClick={() => setRejectOpen(false)}
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-
-              <div className="px-6 py-6">
-                <label htmlFor="rejection-reason" className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for Rejection
-                </label>
-                <textarea
-                  id="rejection-reason"
-                  rows={4}
-                  className="w-full rounded-xl border border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm p-3"
-                  placeholder="e.g., Image unclear, Location mismatch, Duplicate report..."
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-end gap-3 px-6 py-5 border-t border-gray-100">
-                <Button variant="outline" size="sm" className="rounded-full" onClick={() => setRejectOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-full bg-red-600 hover:bg-red-700 text-white border-transparent"
-                  onClick={handleRejectSubmit}
-                  disabled={!rejectionReason.trim()}
-                >
-                  Confirm Rejection
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {assignOpen ? (
           <div
@@ -634,9 +545,7 @@ export default function EnterpriseReportDetail() {
                     try {
                       const requestId = getRequestIdFromReport(report);
                       const assignPromise =
-                        requestId != null
-                          ? assignCollectorToRequest({ requestId, collectorId: primaryCollector.id })
-                          : assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
+                        requestId != assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
                       const assignedResponse = await notify.promise(assignPromise, {
                         loadingTitle: "Assigning collector...",
                         loadingMessage: "Sending assignment to the server.",
@@ -660,7 +569,9 @@ export default function EnterpriseReportDetail() {
                       setReportData(next);
                       setAssignOpen(false);
                       navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } catch {}
+                    } catch {
+                      throw new Error("Failed to assign collector. Please try again.");
+                    }
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
