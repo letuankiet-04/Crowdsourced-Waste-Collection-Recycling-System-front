@@ -7,6 +7,13 @@ export function MyVouchersSection({ vouchers = MY_VOUCHERS }) {
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedVoucher, setSelectedVoucher] = useState(null); // State for modal
 
+  const qrValue = selectedVoucher
+    ? (selectedVoucher.code ?? `VOUCHER-${selectedVoucher.id}`)
+    : "";
+  const qrImageSrc = selectedVoucher
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrValue)}`
+    : "";
+
   const filteredVouchers = useMemo(() => {
     if (filterStatus === "All") return vouchers;
     return vouchers.filter(v => v.status === filterStatus);
@@ -68,8 +75,7 @@ export function MyVouchersSection({ vouchers = MY_VOUCHERS }) {
                        filteredVouchers.map((voucher) => (
                            <tr 
                              key={voucher.id} 
-                             className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                             onClick={() => setSelectedVoucher(voucher)} // Open modal on row click
+                             className="hover:bg-gray-50/50 transition-colors"
                            >
                               <td className="py-4 px-6">
                                  <div className="flex items-center gap-4">
@@ -99,7 +105,10 @@ export function MyVouchersSection({ vouchers = MY_VOUCHERS }) {
                               </td>
                               <td className="py-4 px-6 text-right">
                                  {voucher.status === 'Active' ? (
-                                     <button className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-colors">
+                                     <button
+                                       onClick={() => setSelectedVoucher(voucher)}
+                                       className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-colors"
+                                     >
                                         Use Now
                                      </button>
                                  ) : voucher.status === 'Used' ? (
@@ -155,12 +164,12 @@ export function MyVouchersSection({ vouchers = MY_VOUCHERS }) {
                <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 w-full mb-6">
                  {/* Simulate QR Code with an image API or placeholder */}
                  <img 
-                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${selectedVoucher.code || 'VOUCHER-DEMO'}`} 
+                  src={qrImageSrc} 
                    alt="Voucher QR Code" 
                    className="w-48 h-48 mx-auto"
                  />
                  <div className="mt-3 text-xs font-mono font-bold text-gray-400 tracking-widest">
-                   {selectedVoucher.code || 'CODE-HIDDEN'}
+                  {qrValue}
                  </div>
                </div>
 
