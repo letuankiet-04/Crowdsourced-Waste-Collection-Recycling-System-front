@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Settings, User, Users } from "lucide-react";
+import { FileText, LayoutDashboard, User, Users } from "lucide-react";
 import RoleSidebar from "../../../../shared/layout/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../../shared/layout/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../../shared/layout/sidebar/SidebarLogoutButton.jsx";
@@ -31,9 +31,6 @@ export default function EnterpriseLayout({ children }) {
             </SidebarNavItem>,
             <SidebarNavItem key="profile" to={PATHS.enterprise.profile} icon={<User className="h-5 w-5" />}>
               Profile
-            </SidebarNavItem>,
-            <SidebarNavItem key="settings" to={PATHS.enterprise.settings} icon={<Settings className="h-5 w-5" />}>
-              Settings
             </SidebarNavItem>,
           ]}
           footer={<SidebarLogoutButton />}

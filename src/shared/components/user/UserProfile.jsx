@@ -119,6 +119,8 @@ export default function UserProfile({ user: propUser, className }) {
 
   // Extract fields with fallbacks
   const role = (user.role || user.roleCode || "User").toUpperCase();
+  const enterpriseId = user.enterpriseId ?? user.enterprise_id ?? null;
+  const enterpriseName = user.enterpriseName ?? user.enterprise_name ?? null;
   
   // Logic to determine location display
   let location = "Location not set";
@@ -306,6 +308,10 @@ export default function UserProfile({ user: propUser, className }) {
                             {status} {isVerified && "& Verified"}
                         </div>
                     </div>
+                    {enterpriseId != null ? (
+                        <DetailRow label="Enterprise ID" value={String(enterpriseId)} />
+                    ) : null}
+                    {enterpriseName ? <DetailRow label="Enterprise Name" value={enterpriseName} /> : null}
                     <DetailRow label="Membership Class" value={membership} />
                     <DetailRow label="Registration Date" value={formatDate(createdAt)} />
                     <DetailRow label="Last Login" value={formatDateTime(lastLogin)} />

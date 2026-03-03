@@ -21,7 +21,6 @@ export default function EnterpriseNavbar() {
               roleLabel={roleLabel}
               links={[
                 { to: PATHS.enterprise.profile, label: "Profile" },
-                { to: PATHS.enterprise.settings, label: "Settings" },
               ]}
               onLogout={() => {
                 void (async () => {

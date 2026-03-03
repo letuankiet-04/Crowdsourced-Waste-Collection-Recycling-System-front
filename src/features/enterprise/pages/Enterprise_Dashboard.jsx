@@ -108,7 +108,7 @@ export default function EnterpriseDashboard() {
 
           <Card>
             <CardHeader className="py-6 px-8">
-              <CardTitle className="text-2xl">Pending requests</CardTitle>
+              <CardTitle className="text-2xl">Reports</CardTitle>
               <Button as={Link} to={PATHS.enterprise.reports} variant="outline" size="sm" className="rounded-full">
                 View all →
               </Button>

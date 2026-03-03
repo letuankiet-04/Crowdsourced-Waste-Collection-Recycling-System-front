@@ -1,5 +1,4 @@
 import { lazy } from 'react'
-import { PATHS } from './paths.js'
 
 export const AnimatedAuth = lazy(() => import('../../features/auth/pages/AnimatedAuth.jsx'))
 export const Home = lazy(() => import('../../features/home/pages/Home.jsx'))
@@ -14,6 +13,7 @@ export const AdminUserManagement = lazy(() => import('../../features/admin/pages
 export const AdminReviewFeedback = lazy(() => import('../../features/admin/pages/Review_Feedback.jsx'))
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))
 export const ApiTest = lazy(() => import('../pages/common/ApiTest.jsx'))
+export const ApiKnowledge = lazy(() => import('../pages/common/ApiKnowledge.jsx'))
 
 //citizen
 export const CitizenDashboard = lazy(() => import('../../features/citizen/pages/Citizen_Dashboard.jsx'))
@@ -40,4 +40,3 @@ export const EnterpriseRewards = lazy(() => import('../../features/enterprise/pa
 export const EnterpriseMap = lazy(() => import('../../features/enterprise/pages/Enterprise_Map.jsx'))
 export const EnterpriseProfile = lazy(() => import('../../features/enterprise/pages/Enterprise_Profile.jsx'))
 export const EnterpriseAdminPanel = lazy(() => import('../../features/enterprise/pages/Enterprise_AdminPanel.jsx'))
-export const EnterpriseSettings = lazy(() => import('../../features/enterprise/pages/Enterprise_Settings.jsx'))
