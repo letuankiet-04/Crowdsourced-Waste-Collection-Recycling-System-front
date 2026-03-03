@@ -40,3 +40,4 @@ export const EnterpriseRewards = lazy(() => import('../../features/enterprise/pa
 export const EnterpriseMap = lazy(() => import('../../features/enterprise/pages/Enterprise_Map.jsx'))
 export const EnterpriseProfile = lazy(() => import('../../features/enterprise/pages/Enterprise_Profile.jsx'))
 export const EnterpriseAdminPanel = lazy(() => import('../../features/enterprise/pages/Enterprise_AdminPanel.jsx'))
+

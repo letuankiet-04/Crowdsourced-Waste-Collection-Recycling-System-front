@@ -176,13 +176,6 @@ export default function EnterpriseDashboard() {
                 >
                   Refresh requests
                 </Button>
-                <div className="flex items-center gap-2">
-                  <StatusPill variant="yellow">pending</StatusPill>
-                  <StatusPill variant="blue">on the way</StatusPill>
-                  <StatusPill variant="red">rejected</StatusPill>
-                  <StatusPill variant="green">accepted</StatusPill>
-                  <StatusPill variant="green">collected</StatusPill>
-                </div>
               </div>
             </CardBody>
           </Card>

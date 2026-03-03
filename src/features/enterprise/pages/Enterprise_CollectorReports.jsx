@@ -70,6 +70,7 @@ export default function EnterpriseCollectorReports() {
       );
     }
 
+    
     return filtered;
   }, [ordered, filter]);
 
