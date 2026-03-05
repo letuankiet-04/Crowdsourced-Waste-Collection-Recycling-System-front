@@ -1,4 +1,4 @@
-import CollectorLayout from "./layout/CollectorLayout.jsx";
+import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import UserProfile from "../../../shared/components/user/UserProfile.jsx";
 

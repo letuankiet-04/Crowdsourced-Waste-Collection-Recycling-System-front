@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import CollectorLayout from "./layout/CollectorLayout.jsx";
+import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";

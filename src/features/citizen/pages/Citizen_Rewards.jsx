@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from "./Sidebar";
-import Navbar from "./CD_Navbar";
+import Sidebar from "../components/navigation/Sidebar";
+import Navbar from "../components/navigation/CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
-import { RewardsHeader } from "./rewards_comp/RewardsHeader.jsx";
-import { PointsSummary } from "./rewards_comp/PointsSummary.jsx";
-import { RedeemSection } from "./rewards_comp/RedeemSection.jsx";
-import { MyVouchersSection } from "./rewards_comp/MyVouchersSection.jsx";
+import { RewardsHeader } from "../components/rewards/RewardsHeader.jsx";
+import { PointsSummary } from "../components/rewards/PointsSummary.jsx";
+import { RedeemSection } from "../components/rewards/RedeemSection.jsx";
+import { MyVouchersSection } from "../components/rewards/MyVouchersSection.jsx";
 import { getCitizenPoints } from "../../../services/citizen.service.js";
 import { getMyVouchers, getRedeemableVouchers, redeemVoucher } from "../../../services/voucher.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";

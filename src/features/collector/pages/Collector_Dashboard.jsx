@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import CollectorLayout from "./layout/CollectorLayout.jsx";
+import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import ActionCard from "../../../shared/ui/ActionCard.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";

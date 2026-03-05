@@ -1,7 +1,7 @@
-import Sidebar from "./Sidebar";
-import Navbar from "./CD_Navbar";
+import Sidebar from "../components/navigation/Sidebar";
+import Navbar from "../components/navigation/CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
-import CreateReportForm from "./create_report/CreateReportForm.jsx";
+import CreateReportForm from "../components/reports/CreateReportForm.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 

@@ -4,6 +4,7 @@ export const PATHS = {
   dev: {
     apiTest: '/api-test',
     apiKnowledge: '/dev/api-knowledge',
+    featureKnowledge: '/dev/feature-knowledge',
   },
 
   auth: {

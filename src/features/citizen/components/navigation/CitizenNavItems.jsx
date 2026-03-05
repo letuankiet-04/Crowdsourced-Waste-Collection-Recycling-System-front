@@ -1,5 +1,5 @@
-import SidebarNavItem from "../../../shared/layout/sidebar/SidebarNavItem.jsx";
-import { PATHS } from "../../../app/routes/paths.js";
+import SidebarNavItem from "../../../../shared/layout/sidebar/SidebarNavItem.jsx";
+import { PATHS } from "../../../../app/routes/paths.js";
 
 export const citizenNavItems = [
   <SidebarNavItem

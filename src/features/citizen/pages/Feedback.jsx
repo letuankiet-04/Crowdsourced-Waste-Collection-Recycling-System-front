@@ -1,7 +1,7 @@
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import FeedbackForm from "../../../components/feedback/FeedbackForm.jsx";
-import Sidebar from "./Sidebar";
-import Navbar from "./CD_Navbar";
+import Sidebar from "../components/navigation/Sidebar";
+import Navbar from "../components/navigation/CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 

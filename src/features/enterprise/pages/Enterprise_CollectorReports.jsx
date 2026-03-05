@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
+import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";

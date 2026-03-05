@@ -1,4 +1,4 @@
-import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
+import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody } from "../../../shared/ui/Card.jsx";
 

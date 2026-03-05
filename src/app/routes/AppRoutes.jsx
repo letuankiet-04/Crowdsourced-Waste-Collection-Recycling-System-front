@@ -29,6 +29,7 @@ import {
   Home,
   ApiTest,
   ApiKnowledge,
+  FeatureKnowledge,
   Unauthorized,
   CitizenProfile,
   AdminProfile,
@@ -46,6 +47,7 @@ export default function AppRoutes() {
       <Route path={PATHS.home} element={<Home />} />
       <Route path={PATHS.dev.apiTest} element={<ApiTest />} />
       <Route path={PATHS.dev.apiKnowledge} element={<ApiKnowledge />} />
+      <Route path={PATHS.dev.featureKnowledge} element={<FeatureKnowledge />} />
 
       <Route
         path={PATHS.citizen.dashboard}

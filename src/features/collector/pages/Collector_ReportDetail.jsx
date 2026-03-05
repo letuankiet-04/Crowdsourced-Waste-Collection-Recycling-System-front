@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
-import CollectorLayout from "./layout/CollectorLayout.jsx";
+import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";

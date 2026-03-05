@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
+import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { createNotification } from "../../../services/notifications.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
@@ -334,7 +334,7 @@ export default function EnterpriseReportDetail() {
   const [rejectReasonError, setRejectReasonError] = useState("");
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [selectedCollectorEmails, setSelectedCollectorEmails] = useState([]);
+  const [selectedCollectorEmail, setSelectedCollectorEmail] = useState("");
   const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
   const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
   const [assignSubmitting, setAssignSubmitting] = useState(false);
@@ -351,7 +351,9 @@ export default function EnterpriseReportDetail() {
     const assigned = getAssignedEmailsFromReport(r);
     const rejected = getRejectedCollectorsFromReport(r);
     const rejectedSet = new Set((rejected?.emails ?? []).map((e) => String(e).trim().toLowerCase()).filter(Boolean));
-    setSelectedCollectorEmails(assigned.filter((email) => !rejectedSet.has(String(email).trim().toLowerCase())));
+    const candidates = assigned.filter((email) => !rejectedSet.has(String(email).trim().toLowerCase()));
+    const first = candidates.find((email) => collectors.some((c) => c.email === email)) ?? "";
+    setSelectedCollectorEmail(first);
     setAssignOpen(true);
   }
 
@@ -428,10 +430,8 @@ export default function EnterpriseReportDetail() {
   async function handleAssignCollectors() {
     if (!report || !canGoAssign || assignSubmitting) return;
     setAssignConfirmOpen(false);
-    const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
-    if (!selectedCollectors.length) return;
-
-    const primaryCollector = selectedCollectors[0];
+    const primaryCollector = collectors.find((c) => c.email === selectedCollectorEmail);
+    if (!primaryCollector) return;
     const reportCode = getReportCodeFromReport(report);
     if (!reportCode) {
       notify.error("Missing report code", "Unable to identify report code for this report.");
@@ -454,7 +454,7 @@ export default function EnterpriseReportDetail() {
         status: assignedResponse?.status ?? report?.status,
         collectionRequestId: assignedResponse?.collectionRequestId ?? getRequestIdFromReport(report),
         assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
-        assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+        assignedCollectors: [{ id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email }],
         updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
       };
       setReportOverride(next);
@@ -742,14 +742,6 @@ export default function EnterpriseReportDetail() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-gray-900">Collectors</div>
-                    <button
-                      type="button"
-                      className="text-xs font-semibold text-indigo-700 hover:underline disabled:opacity-60"
-                      disabled={!report || !canGoAssign || collectorsLoading || !collectors.length}
-                      onClick={() => setSelectedCollectorEmails(collectors.map((c) => c.email))}
-                    >
-                      Select all
-                    </button>
                   </div>
                   {collectorsError ? <div className="text-sm text-red-600">{collectorsError}</div> : null}
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
@@ -757,27 +749,26 @@ export default function EnterpriseReportDetail() {
                       <div className="px-4 py-5 text-sm text-gray-600">Loading collectors...</div>
                     ) : collectors.length ? (
                       collectors.map((c) => {
-                        const checked = selectedCollectorEmails.includes(c.email);
+                        const checked = selectedCollectorEmail === c.email;
                         return (
                           <label
                             key={c.email}
                             className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50"
                           >
                             <div className="min-w-0">
-                              <div className="truncate font-semibold">{c.name}</div>
+                              <div className="truncate font-semibold">
+                                {c.name}
+                                {c.isOnline ? <span className="ml-2 text-xs font-semibold text-emerald-700">Online</span> : null}
+                              </div>
                               <div className="truncate text-xs text-gray-600">{c.email}</div>
                             </div>
                             <input
-                              type="checkbox"
+                              type="radio"
+                              name="collector"
                               className="h-4 w-4"
                               checked={checked}
-                              disabled={!report || !canGoAssign}
-                              onChange={() => {
-                                setSelectedCollectorEmails((prev) => {
-                                  if (prev.includes(c.email)) return prev.filter((e) => e !== c.email);
-                                  return [...prev, c.email];
-                                });
-                              }}
+                              disabled={!report || !canGoAssign || assignSubmitting}
+                              onChange={() => setSelectedCollectorEmail(c.email)}
                             />
                           </label>
                         );
@@ -796,9 +787,9 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length || assignSubmitting}
+                  disabled={!report || !canGoAssign || !selectedCollectorEmail || assignSubmitting}
                   onClick={() => {
-                    if (!report || !canGoAssign || !selectedCollectorEmails.length || assignSubmitting) return;
+                    if (!report || !canGoAssign || !selectedCollectorEmail || assignSubmitting) return;
                     setAssignConfirmOpen(true);
                   }}
                 >
@@ -824,7 +815,7 @@ export default function EnterpriseReportDetail() {
         <ConfirmDialog
           open={assignConfirmOpen}
           title="Are you sure you want to assign this report?"
-          description="If you continue, the report will be assigned to the selected collectors."
+          description="If you continue, the report will be assigned to the selected collector."
           confirmText="Assign"
           cancelText="Cancel"
           confirmDisabled={assignSubmitting}

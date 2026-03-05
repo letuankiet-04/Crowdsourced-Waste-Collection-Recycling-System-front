@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Voucher } from '../Voucher.jsx';
+import { Voucher } from '../../pages/Voucher.jsx';
 export function RedeemSection({ onRedeem, vouchers = [] }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);

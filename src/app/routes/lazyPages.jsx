@@ -14,6 +14,7 @@ export const AdminReviewFeedback = lazy(() => import('../../features/admin/pages
 export const Unauthorized = lazy(() => import('../pages/common/Unauthorized.jsx'))
 export const ApiTest = lazy(() => import('../pages/common/ApiTest.jsx'))
 export const ApiKnowledge = lazy(() => import('../pages/common/ApiKnowledge.jsx'))
+export const FeatureKnowledge = lazy(() => import('../pages/common/FeatureKnowledge.jsx'))
 
 //citizen
 export const CitizenDashboard = lazy(() => import('../../features/citizen/pages/Citizen_Dashboard.jsx'))

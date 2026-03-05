@@ -10,18 +10,18 @@ import authServiceRaw from '../../../services/auth.service.js?raw'
 import animatedAuthRaw from '../../../features/auth/pages/AnimatedAuth.jsx?raw'
 import apiTestRaw from './ApiTest.jsx?raw'
 import sidebarLogoutButtonRaw from '../../../shared/layout/sidebar/SidebarLogoutButton.jsx?raw'
-import collectorNavbarRaw from '../../../features/collector/pages/navbar/CollectorNavbar.jsx?raw'
-import enterpriseNavbarRaw from '../../../features/enterprise/pages/navbar/EnterpriseNavbar.jsx?raw'
+import collectorNavbarRaw from '../../../features/collector/components/navigation/CollectorNavbar.jsx?raw'
+import enterpriseNavbarRaw from '../../../features/enterprise/components/navigation/EnterpriseNavbar.jsx?raw'
 import userProfileRaw from '../../../shared/components/user/UserProfile.jsx?raw'
 
 import citizenServiceRaw from '../../../services/citizen.service.js?raw'
-import pointWalletRaw from '../../../features/citizen/pages/dashboard_comp/PointWallet.jsx?raw'
+import pointWalletRaw from '../../../features/citizen/components/dashboard/PointWallet.jsx?raw'
 import pointHistoryRaw from '../../../features/citizen/pages/PointHistory.jsx?raw'
 import citizenReportDetailRaw from '../../../features/citizen/pages/Citizen_ReportDetail.jsx?raw'
-import recentReportsRaw from '../../../features/citizen/pages/dashboard_comp/RecentReports.jsx?raw'
+import recentReportsRaw from '../../../features/citizen/components/dashboard/RecentReports.jsx?raw'
 
 import reportsServiceRaw from '../../../services/reports.service.js?raw'
-import createReportFormRaw from '../../../features/citizen/pages/create_report/CreateReportForm.jsx?raw'
+import createReportFormRaw from '../../../features/citizen/components/reports/CreateReportForm.jsx?raw'
 import citizenReportsRaw from '../../../features/citizen/pages/Citizen_Reports.jsx?raw'
 
 import collectorServiceRaw from '../../../services/collector.service.js?raw'
@@ -43,6 +43,17 @@ import notificationBellRaw from '../../../shared/ui/NotificationBell.jsx?raw'
 
 import adminServiceRaw from '../../../services/admin.service.js?raw'
 import adminUserManagementRaw from '../../../features/admin/pages/Admin_UserManagement.jsx?raw'
+
+import rewardsServiceRaw from '../../../services/rewards.service.js?raw'
+import imageUploaderRaw from '../../../shared/ui/ImageUploader.jsx?raw'
+import useImagePreviewsRaw from '../../../shared/hooks/useImagePreviews.js?raw'
+import confirmDialogRaw from '../../../shared/ui/ConfirmDialog.jsx?raw'
+import goongMapPickerRaw from '../../../shared/components/maps/GoongMapPicker.jsx?raw'
+import goongMapViewRaw from '../../../shared/components/maps/GoongMapView.jsx?raw'
+import reportLocationCardRaw from '../../../shared/layout/ReportLocationCard.jsx?raw'
+import reportPhotosCardRaw from '../../../shared/layout/ReportPhotosCard.jsx?raw'
+import wasteItemsTableRaw from '../../../shared/ui/WasteItemsTable.jsx?raw'
+import wasteTypesRaw from '../../../shared/constants/wasteTypes.js?raw'
 
 const ACTOR_LABEL = {
   auth: 'Auth',
@@ -81,6 +92,8 @@ function CodeSection({ title, meta, code, explanation }) {
 }
 
 function ApiEntry({ entry }) {
+  const serviceTitle = entry.serviceTitle ?? 'Xem code chính'
+  const callTitlePrefix = entry.callTitlePrefix ?? 'Xem code nơi được dùng'
   return (
     <details className="rounded-3xl border border-slate-200 bg-white p-5">
       <summary className="cursor-pointer select-none">
@@ -110,7 +123,7 @@ function ApiEntry({ entry }) {
 
       <div className="mt-4 grid gap-3">
         <CodeSection
-          title="Xem code trong service (nơi định nghĩa API)"
+          title={serviceTitle}
           meta={`${entry.service.file} (L${entry.service.from}-L${entry.service.to})`}
           explanation={entry.service.explain}
           code={sliceLines(entry.service.raw, entry.service.from, entry.service.to)}
@@ -118,7 +131,7 @@ function ApiEntry({ entry }) {
         {entry.calls.map((c) => (
           <CodeSection
             key={`${c.file}:${c.from}:${c.to}`}
-            title={`Xem code nơi API được gọi: ${c.label}`}
+            title={`${callTitlePrefix}: ${c.label}`}
             meta={`${c.file} (L${c.from}-L${c.to})`}
             explanation={c.explain}
             code={sliceLines(c.raw, c.from, c.to)}
@@ -149,6 +162,289 @@ export default function ApiKnowledge() {
 
   const entries = useMemo(
     () => [
+      {
+        id: 'ui.images.flow',
+        group: 'UI Patterns',
+        title: 'Ảnh: chọn → preview → upload → hiển thị',
+        request: 'ImageUploader + FormData(images) + report.images/collectedImages',
+        actors: ['citizen', 'collector'],
+        logic: [
+          'UI chọn ảnh bằng <input type="file"> trong ImageUploader, validate type/size, rồi trả File[] về parent qua onFilesChange.',
+          'Preview dùng URL.createObjectURL(file) (blob URL) trong hook useImagePreviews; có revokeObjectURL khi remove/unmount để tránh leak.',
+          'Khi submit, payload chứa images: File[]; service build FormData và append nhiều lần key "images".',
+          'Axios request interceptor xoá Content-Type khi data là FormData để axios tự set multipart boundary.',
+          'Sau khi backend lưu, UI render ảnh bằng chuỗi URL/path từ report.images / report.collectedImages.',
+        ],
+        serviceTitle: 'Xem code chính: chọn ảnh + trả File[]',
+        service: {
+          file: 'src/shared/ui/ImageUploader.jsx',
+          raw: imageUploaderRaw,
+          from: 34,
+          to: 74,
+          explain: 'useImagePreviews quản lý items { file, url }; effect bắn onFilesChange(File[]) và onItemsChange(items) khi items đổi.',
+        },
+        callTitlePrefix: 'Xem code liên quan',
+        calls: [
+          {
+            label: 'Hook tạo preview + cleanup blob URL',
+            file: 'src/shared/hooks/useImagePreviews.js',
+            raw: useImagePreviewsRaw,
+            from: 1,
+            to: 68,
+            explain: 'addFiles/replaceFiles tạo URL.createObjectURL, removeAt/clear/unmount revokeObjectURL.',
+          },
+          {
+            label: 'UI preview + thumbnail + remove',
+            file: 'src/shared/ui/ImageUploader.jsx',
+            raw: imageUploaderRaw,
+            from: 76,
+            to: 135,
+            explain: 'active.url dùng cho ảnh preview; items[idx].url cho thumbnails.',
+          },
+          {
+            label: 'Citizen create report: lấy File[] từ ImageUploader',
+            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            raw: createReportFormRaw,
+            from: 304,
+            to: 313,
+            explain: 'onFilesChange={setImages} đưa File[] vào state images.',
+          },
+          {
+            label: 'Citizen create report: đưa images vào payload submit',
+            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            raw: createReportFormRaw,
+            from: 225,
+            to: 255,
+            explain: 'payload.images = File[]; createReport()/updateReport() nhận payload.',
+          },
+          {
+            label: 'Citizen reports service: build FormData(images)',
+            file: 'src/services/reports.service.js',
+            raw: reportsServiceRaw,
+            from: 14,
+            to: 32,
+            explain: 'append "images" cho từng File; kèm latitude/longitude/address/description/categoryIds/quantities.',
+          },
+          {
+            label: 'Axios interceptor: FormData không set Content-Type thủ công',
+            file: 'src/services/http/client.js',
+            raw: clientRaw,
+            from: 15,
+            to: 31,
+            explain: 'Nếu tự set Content-Type multipart sẽ mất boundary và backend có thể không parse được.',
+          },
+          {
+            label: 'Hiển thị ảnh từ URL backend trả về',
+            file: 'src/shared/layout/ReportPhotosCard.jsx',
+            raw: reportPhotosCardRaw,
+            from: 1,
+            to: 56,
+            explain: 'Render trực tiếp <img src={src}> từ report.images/collectedImages.',
+          },
+        ],
+      },
+      {
+        id: 'ui.confirmDialog.pattern',
+        group: 'UI Patterns',
+        title: 'ConfirmDialog: xác nhận hành động (delete/accept/start/submit)',
+        request: 'ConfirmDialog (portal + lock scroll) + pattern confirmConfig',
+        actors: ['citizen', 'collector', 'enterprise'],
+        logic: [
+          'ConfirmDialog là modal dùng createPortal(document.body), click backdrop để close, có nút Cancel/Confirm.',
+          'Khi open=true, dialog lock body scroll và tự unlock khi đóng/unmount.',
+          'Pattern đơn giản: boolean open + onConfirm thực thi action (Citizen remove report).',
+          'Pattern linh hoạt: confirmConfig lưu title/description/confirmText/action để dùng chung 1 dialog (Collector update status).',
+          'Nên close dialog trước rồi mới chạy action để UI phản hồi nhanh và tránh double submit.',
+        ],
+        serviceTitle: 'Xem code chính: ConfirmDialog',
+        service: {
+          file: 'src/shared/ui/ConfirmDialog.jsx',
+          raw: confirmDialogRaw,
+          from: 1,
+          to: 70,
+          explain: 'useEffect(lockBodyScroll) khi open; createPortal render overlay + buttons.',
+        },
+        callTitlePrefix: 'Xem code nơi dùng',
+        calls: [
+          {
+            label: 'Citizen remove report',
+            file: 'src/features/citizen/pages/Citizen_ReportDetail.jsx',
+            raw: citizenReportDetailRaw,
+            from: 246,
+            to: 288,
+            explain: 'Remove Report mở confirm; onConfirm gọi deleteReport(reportId) rồi navigate.',
+          },
+          {
+            label: 'Collector accept/start/confirm collected (confirmConfig)',
+            file: 'src/features/collector/pages/Collector_ReportDetail.jsx',
+            raw: collectorReportDetailRaw,
+            from: 227,
+            to: 348,
+            explain: 'Các button setConfirmConfig({ title, description, action }) và ConfirmDialog chạy action sau khi đóng.',
+          },
+          {
+            label: 'Collector submit collection report (confirm trước submit)',
+            file: 'src/components/collector/CollectReportDialog.jsx',
+            raw: collectReportDialogRaw,
+            from: 380,
+            to: 410,
+            explain: 'Submit Report mở confirmOpen; onConfirm chạy handleSubmitConfirmed.',
+          },
+        ],
+      },
+      {
+        id: 'ui.maps.goong',
+        group: 'UI Patterns',
+        title: 'Map picker + preview (Goong) + reverse geocode (Nominatim)',
+        request: 'GoongMapPicker / GoongMapView + coords {lat,lng} + address lookup',
+        actors: ['external', 'citizen', 'collector'],
+        logic: [
+          'Map picker (GoongMapPicker) init map 1 lần, click map phát onChange({ lat, lng }).',
+          'Citizen create report: khi chọn GPS/map, UI gọi Nominatim reverse để fill address; khi nhập address, UI gọi Nominatim search để ra coords.',
+          'Map preview (GoongMapView) nhận points=[{ coords:{lat,lng}, label }], vẽ marker, fitBounds và có nút Reset.',
+          'Token map lấy từ import.meta.env.VITE_GOONG_MAPTILES_KEY; thiếu token thì render warning.',
+        ],
+        serviceTitle: 'Xem code chính: map picker (click → coords)',
+        service: {
+          file: 'src/shared/components/maps/GoongMapPicker.jsx',
+          raw: goongMapPickerRaw,
+          from: 1,
+          to: 103,
+          explain: 'map.on("click") lấy e.lngLat và notifyChange({lat,lng}); effect khác sync marker theo value.',
+        },
+        callTitlePrefix: 'Xem code liên quan',
+        calls: [
+          {
+            label: 'Citizen create report: MapPicker + reverse geocode',
+            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            raw: createReportFormRaw,
+            from: 356,
+            to: 427,
+            explain: 'onChange(c) setCoords(c) rồi fetch Nominatim reverse để cập nhật address.',
+          },
+          {
+            label: 'Map preview (fitBounds + markers)',
+            file: 'src/shared/components/maps/GoongMapView.jsx',
+            raw: goongMapViewRaw,
+            from: 1,
+            to: 124,
+            explain: 'safePoints normalize lat/lng; effect vẽ markers; resetView fitBounds/zoom.',
+          },
+          {
+            label: 'Report detail: map preview card',
+            file: 'src/shared/layout/ReportLocationCard.jsx',
+            raw: reportLocationCardRaw,
+            from: 1,
+            to: 49,
+            explain: 'Tạo points từ reportedCoords/collectedCoords rồi render <GoongMapView points={points} />.',
+          },
+        ],
+      },
+      {
+        id: 'citizen.wasteItems.flow',
+        group: 'Citizen',
+        title: 'Waste Items khi citizen tạo report hoạt động như thế nào',
+        request: 'WasteItemsTable → payload(categoryIds/quantities) → FormData → backend categories',
+        actors: ['citizen'],
+        logic: [
+          'UI load waste categories từ API /api/citizen/waste-categories rồi đưa vào WasteItemsTable (dropdown).',
+          'WasteItemsTable không cho chọn trùng waste type; mỗi row gồm wasteTypeId + estimatedWeight.',
+          'Khi submit, CreateReportForm chuẩn hoá + validate, rồi tạo payload.categoryIds và payload.quantities (mảng string).',
+          'reports.service.js build FormData và appendMany(categoryIds/quantities) để backend nhận dạng array qua nhiều lần append cùng key.',
+          'Khi edit report, Citizen_ReportDetail map apiReport.categories → editReport.wasteItems để fill lại bảng.',
+        ],
+        serviceTitle: 'Xem code chính: WasteItemsTable (UI chọn items)',
+        service: {
+          file: 'src/shared/ui/WasteItemsTable.jsx',
+          raw: wasteItemsTableRaw,
+          from: 1,
+          to: 139,
+          explain: 'selectedIds + available filter để tránh chọn trùng; onChange trả array items mới về parent.',
+        },
+        callTitlePrefix: 'Xem code liên quan',
+        calls: [
+          {
+            label: 'Unit label (kg/can/bottle)',
+            file: 'src/shared/constants/wasteTypes.js',
+            raw: wasteTypesRaw,
+            from: 1,
+            to: 28,
+            explain: 'formatWasteTypeUnit() map enum unit → label hiển thị.',
+          },
+          {
+            label: 'Citizen create report: tạo payload categoryIds/quantities',
+            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            raw: createReportFormRaw,
+            from: 225,
+            to: 255,
+            explain: 'cleanedItems map theo categoryOptions; payload.categoryIds/quantities là mảng string.',
+          },
+          {
+            label: 'Reports service: appendMany(categoryIds/quantities)',
+            file: 'src/services/reports.service.js',
+            raw: reportsServiceRaw,
+            from: 4,
+            to: 32,
+            explain: 'appendMany() append nhiều lần cùng key; buildReprotFormData() đóng gói toàn bộ payload.',
+          },
+          {
+            label: 'Citizen edit flow: map categories → wasteItems (Update Details)',
+            file: 'src/features/citizen/pages/Citizen_ReportDetail.jsx',
+            raw: citizenReportDetailRaw,
+            from: 212,
+            to: 242,
+            explain: 'navigate createReport với state.editReport.wasteItems để CreateReportForm fill dữ liệu.',
+          },
+        ],
+      },
+      {
+        id: 'citizen.points.flow',
+        group: 'Citizen',
+        title: 'Điểm citizen sau khi collector submit collection report',
+        request: 'GET /api/citizen/rewards/history → sum item.point (FE) | side-effect tính điểm ở backend',
+        actors: ['citizen', 'collector'],
+        logic: [
+          'Collector complete (POST /api/collector/collections/{id}/complete) không tự cộng điểm ở FE; nếu có cộng điểm thì là side-effect ở backend.',
+          'FE hiển thị điểm bằng cách GET rewards history và tính tổng: totalPoints = sum(item.point).',
+          'FE còn tính monthlyPoints theo createdAt và chỉ cộng point > 0 trong tháng hiện tại.',
+          'Trang Point History nên render theo field point từ backend; hiện đang có chỗ dùng item.points (dễ hiển thị 0).',
+        ],
+        serviceTitle: 'Xem code chính: tính tổng điểm từ reward history',
+        service: {
+          file: 'src/services/rewards.service.js',
+          raw: rewardsServiceRaw,
+          from: 1,
+          to: 33,
+          explain: 'getCitizenPoints() GET /rewards/history rồi reduce theo item.point để ra totalPoints/monthlyPoints.',
+        },
+        callTitlePrefix: 'Xem code nơi dùng',
+        calls: [
+          {
+            label: 'Widget PointWallet fetch totalPoints',
+            file: 'src/features/citizen/pages/dashboard_comp/PointWallet.jsx',
+            raw: pointWalletRaw,
+            from: 1,
+            to: 26,
+            explain: 'useEffect gọi getCitizenPoints() và setPoints(totalPoints).',
+          },
+          {
+            label: 'Points History UI (chú ý field point/points)',
+            file: 'src/features/citizen/pages/PointHistory.jsx',
+            raw: pointHistoryRaw,
+            from: 162,
+            to: 206,
+            explain: 'Table render “Points Earned”; nên đọc đúng field backend trả về (service đang dùng item.point).',
+          },
+          {
+            label: 'Collector complete task (tạo dữ liệu cho backend tính điểm)',
+            file: 'src/services/collector.service.js',
+            raw: collectorServiceRaw,
+            from: 56,
+            to: 77,
+            explain: 'completeCollectorTask() gửi categoryIds/quantities + verificationRate + note + images + coords.',
+          },
+        ],
+      },
       {
         id: 'auth.login',
         group: 'Auth',
@@ -311,18 +607,19 @@ export default function ApiKnowledge() {
         id: 'citizen.dashboard',
         group: 'Citizen',
         title: 'Citizen dashboard (điểm, thống kê)',
-        request: 'GET /api/citizen/dashboard',
+        request: 'Derived: GET /api/citizen/rewards/history → sum(point)',
         actors: ['citizen'],
         logic: [
-          'UI gọi getCitizenDashboard() để lấy data của công dân.',
+          'Project hiện không gọi endpoint /api/citizen/dashboard; dashboard được tính từ rewards history.',
+          'getCitizenDashboard() là hàm compose: gọi getCitizenPoints() rồi map ra points/rewardPoints/monthlyPoints.',
           'Token được gắn tự động bởi axios interceptor.',
         ],
         service: {
           file: 'src/services/citizen.service.js',
           raw: citizenServiceRaw,
-          from: 4,
-          to: 7,
-          explain: 'Trả về unwrapApiResponse(data) để lấy payload thật.',
+          from: 1,
+          to: 6,
+          explain: 'Không call API dashboard; chỉ tổng hợp từ getCitizenPoints() (rewards.service.js).',
         },
         calls: [
           {
@@ -330,9 +627,9 @@ export default function ApiKnowledge() {
             file: 'src/features/citizen/pages/dashboard_comp/PointWallet.jsx',
             raw: pointWalletRaw,
             from: 12,
-            to: 28,
+            to: 25,
             explain:
-              'Component fetch dashboard khi mount, rồi map field points/rewardPoints để hiển thị.',
+              'Widget điểm gọi getCitizenPoints() và hiển thị totalPoints.',
           },
           {
             label: 'ApiTest.handleCitizenDashboard',
@@ -352,14 +649,14 @@ export default function ApiKnowledge() {
         actors: ['citizen'],
         logic: [
           'UI gửi params startDate/endDate (nếu có).',
-          'Service unwrapApiResponse(data) và UI render list lịch sử.',
+          'Service gọi rewards history rồi unwrapApiResponse(data); UI render list lịch sử.',
         ],
         service: {
-          file: 'src/services/citizen.service.js',
-          raw: citizenServiceRaw,
-          from: 9,
-          to: 15,
-          explain: 'getCitizenRewardHistory() build params và GET endpoint history.',
+          file: 'src/services/rewards.service.js',
+          raw: rewardsServiceRaw,
+          from: 4,
+          to: 13,
+          explain: 'getCitizenPointsHistory() GET /rewards/history; getCitizenRewardHistory() chỉ alias.',
         },
         calls: [
           {
@@ -368,7 +665,7 @@ export default function ApiKnowledge() {
             raw: pointHistoryRaw,
             from: 16,
             to: 37,
-            explain: 'Page gọi getCitizenRewardHistory() và set state để render.',
+            explain: 'Page gọi getCitizenPoints() + getCitizenPointsHistory() (re-export từ citizen.service.js).',
           },
         ],
       },
@@ -1230,7 +1527,7 @@ export default function ApiKnowledge() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Project Knowledge · API</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Project Knowledge · API & UI</h1>
         <div className="flex flex-wrap gap-3 text-sm">
           <Link className="underline underline-offset-4" to={PATHS.home}>
             Home
@@ -1238,11 +1535,14 @@ export default function ApiKnowledge() {
           <Link className="underline underline-offset-4" to={PATHS.dev.apiTest}>
             API Test
           </Link>
+          <Link className="underline underline-offset-4" to={PATHS.dev.featureKnowledge}>
+            Feature Knowledge
+          </Link>
         </div>
       </div>
 
       <div className="mt-2 text-sm text-slate-600">
-        Trang này tổng hợp nơi định nghĩa API (services), nơi UI gọi API, và giải thích logic.
+        Trang này tổng hợp nơi định nghĩa API (services), các UI patterns/hook quan trọng, nơi UI gọi, và giải thích logic.
       </div>
 
       <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
@@ -1256,7 +1556,7 @@ export default function ApiKnowledge() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="text-base font-semibold text-slate-900">Danh mục API (đang dùng)</div>
+        <div className="text-base font-semibold text-slate-900">Danh mục kiến thức (đang dùng)</div>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}

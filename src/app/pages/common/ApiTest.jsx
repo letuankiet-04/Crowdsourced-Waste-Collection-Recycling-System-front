@@ -134,6 +134,12 @@ export default function ApiTest() {
           <Link className="underline underline-offset-4" to={PATHS.home}>
             Home
           </Link>
+          <Link className="underline underline-offset-4" to={PATHS.dev.apiKnowledge}>
+            API Knowledge
+          </Link>
+          <Link className="underline underline-offset-4" to={PATHS.dev.featureKnowledge}>
+            Feature Knowledge
+          </Link>
         </div>
       </div>
 

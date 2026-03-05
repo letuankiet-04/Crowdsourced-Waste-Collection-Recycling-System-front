@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Car, Eye, EyeOff, Lock, Mail, Phone, Truck, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
-import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
+import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";

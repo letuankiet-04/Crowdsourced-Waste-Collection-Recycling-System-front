@@ -1,13 +1,12 @@
-import { FileText, LayoutDashboard, Settings, User, Users } from "lucide-react";
-import RoleSidebar from "../../../../components/sidebar/RoleSidebar.jsx";
-import SidebarNavItem from "../../../../components/sidebar/SidebarNavItem.jsx";
-import SidebarLogoutButton from "../../../../components/sidebar/SidebarLogoutButton.jsx";
-import RoleLayout from "../../../../components/layout/RoleLayout.jsx";
-import logo from "../../../../assets/app-logo.jpg";
-import { PATHS } from "../../../../routes/paths.js";
-import EnterpriseNavbar from "../navbar/EnterpriseNavbar.jsx";
-import CD_Footer from "../../../../components/layout/CD_Footer.jsx";
-import CD_Header from "../../../../components/layout/CD_Header.jsx";
+import { ClipboardList, FileText, LayoutDashboard, User, Users } from "lucide-react";
+import RoleSidebar from "../../../shared/layout/sidebar/RoleSidebar.jsx";
+import SidebarNavItem from "../../../shared/layout/sidebar/SidebarNavItem.jsx";
+import SidebarLogoutButton from "../../../shared/layout/sidebar/SidebarLogoutButton.jsx";
+import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
+import logo from "../../../assets/app-logo.jpg";
+import { PATHS } from "../../../app/routes/paths.js";
+import EnterpriseNavbar from "../components/navigation/EnterpriseNavbar.jsx";
+import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 
 export default function EnterpriseLayout({ children }) {
   return (
@@ -29,9 +28,12 @@ export default function EnterpriseLayout({ children }) {
             <SidebarNavItem key="reports" to={PATHS.enterprise.reports} icon={<FileText className="h-5 w-5" />}>
               Reports
             </SidebarNavItem>,
+            <SidebarNavItem key="collectorReports" to={PATHS.enterprise.collectorReports} icon={<ClipboardList className="h-5 w-5" />}>
+              Collector Reports
+            </SidebarNavItem>,
             <SidebarNavItem key="profile" to={PATHS.enterprise.profile} icon={<User className="h-5 w-5" />}>
               Profile
-            </SidebarNavItem>,  
+            </SidebarNavItem>,
           ]}
           footer={<SidebarLogoutButton />}
         />

@@ -13,8 +13,8 @@ import {
   Eye,
   MessageCircle
 } from "lucide-react";
-import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
-import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
+import AdminNavbar from "../components/navigation/AdminNavbar.jsx";
+import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";

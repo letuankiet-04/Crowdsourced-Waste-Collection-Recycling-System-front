@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import Sidebar from "./Sidebar";
-import Navbar from "./CD_Navbar";
+import Sidebar from "../components/navigation/Sidebar";
+import Navbar from "../components/navigation/CD_Navbar";
 import Header from "../../../shared/layout/CD_Header.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
@@ -199,7 +199,7 @@ export default function PointHistory() {
                         {item.category || 'N/A'}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right font-bold text-green-600">+{item.points || 0} pts</td>
+                    <td className="py-4 px-6 text-right font-bold text-green-600">+{(item.point ?? item.points ?? 0) || 0} pts</td>
                   </tr>
                 ))}
               </tbody>

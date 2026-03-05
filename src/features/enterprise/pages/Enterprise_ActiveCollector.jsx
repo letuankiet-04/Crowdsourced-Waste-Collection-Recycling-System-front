@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
+import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";

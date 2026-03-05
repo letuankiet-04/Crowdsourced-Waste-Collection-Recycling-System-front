@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle, Loader2 } from "lucide-react";
-import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
+import AdminNavbar from "../components/navigation/AdminNavbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
-import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
-import StatCard from "./dashboard_comp/StatCard.jsx";
+import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
+import StatCard from "../components/dashboard/StatCard.jsx";
 import { getAdminAccounts } from "../../../services/admin.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 

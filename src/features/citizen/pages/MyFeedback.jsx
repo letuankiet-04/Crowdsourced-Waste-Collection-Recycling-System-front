@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../shared/ui/Card.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
-import Sidebar from "./Sidebar.jsx";
-import Navbar from "./CD_Navbar.jsx";
+import Sidebar from "../components/navigation/Sidebar.jsx";
+import Navbar from "../components/navigation/CD_Navbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import { MessageSquare, ChevronRight, Clock, CheckCircle, AlertCircle, Filter } from "lucide-react";
 

@@ -1,13 +1,13 @@
-import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
+import AdminNavbar from "../components/navigation/AdminNavbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import CD_Header from "../../../shared/layout/CD_Header.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 
-import SummaryCards from "./dashboard_comp/SummaryCards.jsx";
-import ImpactLeaderboard from "./dashboard_comp/ImpactLeaderboard.jsx";
-import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
+import SummaryCards from "../components/dashboard/SummaryCards.jsx";
+import ImpactLeaderboard from "../components/dashboard/ImpactLeaderboard.jsx";
+import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import { Server, Database, Globe } from "lucide-react";
 
 export default function AdminDashboard() {

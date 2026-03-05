@@ -1,7 +1,7 @@
 
-import useStoredUser from "../../../shared/hooks/useStoredUser.js";
+import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 
-import NotificationBell from "../../../shared/ui/NotificationBell.jsx";
+import NotificationBell from "../../../../shared/ui/NotificationBell.jsx";
 
 export default function CD_Navbar({ brandTitle = "" }) {
   const { displayName, roleLabel, user } = useStoredUser();
