@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import Button from '../../shared/ui/Button.jsx'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
+import { lockBodyScroll, unlockBodyScroll } from '../../shared/lib/lockBodyScroll.js'
 import StatusPill from '../../shared/ui/StatusPill.jsx'
 import ValidationError from '../../shared/ui/ValidationError.jsx'
 import ImageUploader from '../../shared/ui/ImageUploader.jsx'
@@ -21,12 +24,15 @@ export default function CollectReportDialog({
   const [collectedImages, setCollectedImages] = useState([])
   const [collectedAddress, setCollectedAddress] = useState('')
   const [collectedCoords, setCollectedCoords] = useState(null)
+  const [verificationRate, setVerificationRate] = useState(0)
   const [collectorNote, setCollectorNote] = useState('')
   const [addrLoading, setAddrLoading] = useState(false)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [geoError, setGeoError] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingPayload, setPendingPayload] = useState(null)
 
   const sourceRef = useRef(null)
 
@@ -45,14 +51,23 @@ export default function CollectReportDialog({
     setCollectedImages([])
     setCollectedAddress(typeof initialAddress === 'string' ? initialAddress : '')
     setCollectedCoords(initialCoords ?? null)
+    setVerificationRate(0)
     setCollectorNote('')
     setAddrLoading(false)
     setGpsLoading(false)
     setGeoError('')
     setError('')
     setSubmitting(false)
+    setConfirmOpen(false)
+    setPendingPayload(null)
     sourceRef.current = 'system'
   }, [open, categories, initialAddress, initialCoords])
+
+  useEffect(() => {
+    if (!open) return
+    lockBodyScroll()
+    return () => unlockBodyScroll()
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -104,6 +119,11 @@ export default function CollectReportDialog({
       return
     }
 
+    if (![0, 50, 100].includes(Number(verificationRate))) {
+      setError('Please choose a valid verification rate.')
+      return
+    }
+
     if (!collectorNote || collectorNote.trim().length < 3) {
       setError('Please enter a collector note.')
       return
@@ -132,16 +152,28 @@ export default function CollectReportDialog({
       return
     }
 
+    setPendingPayload({
+      images: collectedImages,
+      categoryIds,
+      quantities,
+      verificationRate: Number(verificationRate),
+      collectorNote: collectorNote.trim(),
+      latitude: collectedCoords.lat,
+      longitude: collectedCoords.lng,
+    })
+    setConfirmOpen(true)
+  }
+
+  const handleSubmitConfirmed = async () => {
+    if (!open || submitting) return
+    const payload = pendingPayload
+    setConfirmOpen(false)
+    setPendingPayload(null)
+    if (!payload) return
+
     setSubmitting(true)
     try {
-      const ok = await onSubmit?.({
-        images: collectedImages,
-        categoryIds,
-        quantities,
-        collectorNote: collectorNote.trim(),
-        latitude: collectedCoords.lat,
-        longitude: collectedCoords.lng,
-      })
+      const ok = await onSubmit?.(payload)
       if (ok) onClose?.()
     } catch (e) {
       setError(e?.message || 'Unable to save collected info.')
@@ -152,9 +184,9 @@ export default function CollectReportDialog({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
       onMouseDown={(e) => {
@@ -299,6 +331,38 @@ export default function CollectReportDialog({
           </div>
 
           <div className="space-y-2">
+            <div className="text-sm font-semibold text-gray-900">Verification Rate</div>
+            <div role="radiogroup" aria-label="Verification Rate" className="inline-flex rounded-2xl border border-gray-200 bg-gray-50 p-1">
+              {[0, 50, 100].map((rate) => {
+                const active = Number(verificationRate) === rate
+                const activeClass =
+                  rate === 0
+                    ? 'bg-red-600 text-white shadow-sm ring-1 ring-black/5'
+                    : rate === 50
+                      ? 'bg-yellow-500 text-white shadow-sm ring-1 ring-black/5'
+                      : 'bg-green-600 text-white shadow-sm ring-1 ring-black/5'
+                return (
+                  <button
+                    key={rate}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setVerificationRate(rate)
+                      if (error) setError('')
+                    }}
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-2xl transition ${
+                      active ? activeClass : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {rate}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <div className="text-sm font-semibold text-gray-900">Collector Note</div>
             <textarea
               value={collectorNote}
@@ -328,6 +392,24 @@ export default function CollectReportDialog({
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Are you sure you want to submit this collection report?"
+        description="If you continue, the system will save it and update the status."
+        confirmText="Submit"
+        cancelText="Cancel"
+        confirmDisabled={submitting}
+        confirmClassName="bg-green-600 hover:bg-green-700 text-white"
+        onClose={() => {
+          if (submitting) return
+          setConfirmOpen(false)
+          setPendingPayload(null)
+        }}
+        onConfirm={handleSubmitConfirmed}
+      />
     </div>
+    ,
+    document.body
   )
 }

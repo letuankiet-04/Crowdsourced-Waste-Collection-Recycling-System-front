@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle, Loader2 } from "lucide-react";
 import AdminNavbar from "./dashboard_comp/AdminNavbar.jsx";
@@ -6,7 +6,7 @@ import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import AdminSidebar from "./dashboard_comp/Admin_Sidebar.jsx";
 import StatCard from "./dashboard_comp/StatCard.jsx";
-import { getUsers, getAdminStats, suspendUser, activateUser, getUserDetail } from "../../../services/admin.service.js";
+import { getAdminAccounts } from "../../../services/admin.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 
 export default function AdminUserManagement() {
@@ -33,24 +33,10 @@ export default function AdminUserManagement() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null); // For detail view
 
-  // Fetch Data
-  useEffect(() => {
-    fetchUsers();
-    fetchStats();
-  }, [currentPage, filter]); // Re-fetch when page or filters change
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        // API might not support pagination yet based on controller code, but sending just in case
-        page: currentPage,
-        limit: itemsPerPage,
-        status: filter.status,
-        role: filter.role
-      };
-      
-      const data = await getUsers(params);
+      const data = await getAdminAccounts();
       if (Array.isArray(data)) {
         // Client-side filtering if backend returns all users
         let filteredData = data;
@@ -62,6 +48,12 @@ export default function AdminUserManagement() {
             u.email?.toLowerCase().includes(searchLower)
           );
         }
+
+        setStats({
+          totalUsers: filteredData.length,
+          activeToday: filteredData.filter((u) => String(u?.status || "").toLowerCase() === "active").length,
+          newRequests: 0,
+        });
 
         // Calculate pagination locally since backend returns list
         setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
@@ -77,40 +69,25 @@ export default function AdminUserManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, filter, itemsPerPage, notify]);
 
-  const fetchStats = async () => {
-    try {
-      const data = await getAdminStats();
-      if (data) {
-        setStats(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch admin stats:", error);
-    }
-  };
+  // Fetch Data
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]); // Re-fetch when page or filters change
 
-  const handleStatusToggle = async (user) => {
+  const handleStatusToggle = async () => {
     try {
-      const currentStatus = (user.status || '').toLowerCase();
-      if (currentStatus === 'active') {
-        await suspendUser(user.id);
-        notify.success("Success", `User ${user.fullName} has been suspended.`);
-      } else {
-        await activateUser(user.id);
-        notify.success("Success", `User ${user.fullName} has been activated.`);
-      }
-      await fetchUsers(); // Refresh list
+      notify.error("Not supported", "This action is not available in the current API.");
     } catch (error) {
       console.error("Failed to update status:", error);
       notify.error("Error", "Failed to update user status.");
     }
   };
 
-  const handleViewUser = async (userId) => {
+  const handleViewUser = async () => {
     try {
-      const userData = await getUserDetail(userId);
-      setSelectedUser(userData);
+      notify.error("Not supported", "This action is not available in the current API.");
     } catch (error) {
       console.error("Failed to fetch user detail:", error);
       notify.error("Error", "Failed to load user details.");

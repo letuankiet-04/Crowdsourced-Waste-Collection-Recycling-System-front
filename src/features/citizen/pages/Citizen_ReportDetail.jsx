@@ -8,6 +8,7 @@ import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import Button from "../../../shared/ui/Button.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
+import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import { PATHS } from "../../../app/routes/paths.js";
@@ -21,6 +22,7 @@ export default function CitizenReportDetail() {
   const [apiReport, setApiReport] = useState(null);
   const [apiResult, setApiResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!reportId) return;
@@ -245,19 +247,7 @@ export default function CitizenReportDetail() {
                     disabled={!report || !canManage}
                     onClick={() => {
                       if (!report || !canManage) return;
-                      const ok = window.confirm("Remove this report?");
-                      if (!ok) return;
-                      notify
-                        .promise(deleteReport(reportId), {
-                          loadingTitle: "Deleting report...",
-                          loadingMessage: "Removing report from the server.",
-                          successTitle: "Report removed",
-                          successMessage: "The report has been deleted.",
-                          errorTitle: "Delete failed",
-                          errorMessage: (err) => err?.message || "Unable to delete report.",
-                        })
-                        .then(() => navigate(PATHS.citizen.reports))
-                        .catch(() => {});
+                      setRemoveConfirmOpen(true);
                     }}
                   >
                     Remove Report
@@ -269,6 +259,30 @@ export default function CitizenReportDetail() {
               </Card>
             </>
           }
+        />
+
+        <ConfirmDialog
+          open={removeConfirmOpen}
+          title="Are you sure you want to remove this report?"
+          description="If you continue, this report will be permanently removed."
+          confirmText="Remove"
+          cancelText="Cancel"
+          confirmClassName="bg-red-600 hover:bg-red-700 text-white"
+          onClose={() => setRemoveConfirmOpen(false)}
+          onConfirm={() => {
+            setRemoveConfirmOpen(false);
+            notify
+              .promise(deleteReport(reportId), {
+                loadingTitle: "Deleting report...",
+                loadingMessage: "Removing report from the server.",
+                successTitle: "Report removed",
+                successMessage: "The report has been deleted.",
+                errorTitle: "Delete failed",
+                errorMessage: (err) => err?.message || "Unable to delete report.",
+              })
+              .then(() => navigate(PATHS.citizen.reports))
+              .catch(() => {});
+          }}
         />
       </div>
     </RoleLayout>

@@ -12,6 +12,22 @@ import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { getCollectorTasks } from "../../../services/collector.service.js";
 
+function getTaskAddress(t) {
+  const loc = t?.location;
+  if (typeof loc === "string") return loc;
+  return loc?.address ?? t?.address ?? t?.collectedAddress ?? null;
+}
+
+function getTaskCoords(t) {
+  const loc = t?.location;
+  const latRaw = (loc && typeof loc === "object" ? loc.latitude : undefined) ?? t?.latitude ?? t?.lat ?? t?.coords?.lat;
+  const lngRaw = (loc && typeof loc === "object" ? loc.longitude : undefined) ?? t?.longitude ?? t?.lng ?? t?.coords?.lng;
+  const lat = Number(latRaw);
+  const lng = Number(lngRaw);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
 export default function CollectorTasks() {
   const { user, displayName } = useStoredUser();
   const notify = useNotify();
@@ -34,6 +50,8 @@ export default function CollectorTasks() {
       reportCode: t?.requestCode ?? null,
       status: t?.status ?? null,
       createdAt: t?.createdAt ?? t?.assignedAt ?? t?.updatedAt ?? null,
+      address: getTaskAddress(t),
+      coords: getTaskCoords(t),
     }));
   }, [tasks]);
 
@@ -72,7 +90,8 @@ export default function CollectorTasks() {
       result = result.filter(
         (r) =>
           String(r.id).toLowerCase().includes(term) ||
-          String(r.reportCode ?? "").toLowerCase().includes(term)
+          String(r.reportCode ?? "").toLowerCase().includes(term) ||
+          String(r.address ?? "").toLowerCase().includes(term)
       );
     }
 

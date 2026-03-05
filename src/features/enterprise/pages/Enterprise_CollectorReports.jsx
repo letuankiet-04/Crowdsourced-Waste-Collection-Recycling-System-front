@@ -13,7 +13,6 @@ export default function EnterpriseCollectorReports() {
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   // Filter states
   const initialFilterState = {
@@ -34,7 +33,6 @@ export default function EnterpriseCollectorReports() {
       setReports(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch collector reports:", err);
-      setError("Failed to load reports.");
     } finally {
       setLoading(false);
     }

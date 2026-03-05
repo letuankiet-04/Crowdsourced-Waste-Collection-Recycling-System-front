@@ -79,9 +79,9 @@ export default function ApiTest() {
     setPending(true)
     try {
       const res = await getCitizenDashboard()
-      print('CITIZEN DASHBOARD OK', res)
+      print('CITIZEN POINTS OK', res)
     } catch (err) {
-      print('CITIZEN DASHBOARD ERROR', { message: err?.message || String(err) })
+      print('CITIZEN POINTS ERROR', { message: err?.message || String(err) })
     } finally {
       setPending(false)
     }
@@ -219,7 +219,7 @@ export default function ApiTest() {
             disabled={pending}
             onClick={() => void handleCitizenDashboard()}
           >
-            Citizen dashboard
+            Citizen points
           </button>
           <button
             type="button"

@@ -11,6 +11,7 @@ export default function PointHistory() {
   const [activeTab, setActiveTab] = useState('All Activities');
   const [historyData, setHistoryData] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -21,8 +22,10 @@ export default function PointHistory() {
         ]);
         if (points) setPointsData(points);
         if (history && Array.isArray(history)) setHistoryData(history);
+        setError('');
       } catch (error) {
         console.error("Failed to fetch data:", error);
+        setError('Unable to load points history. Please try again.')
       }
     }
     fetchData();
@@ -166,8 +169,8 @@ export default function PointHistory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {historyData.map((item) => (
-                  <tr key={item.id || Math.random()} className="hover:bg-gray-50/50 transition-colors">
+                {historyData.map((item, idx) => (
+                  <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 px-6 text-sm font-medium text-gray-900">{item.date || new Date().toLocaleDateString()}</td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">

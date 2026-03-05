@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from "../../../../shared/ui/Card.jsx";
-import { getCitizenDashboard } from "../../../../services/citizen.service.js";
+import { getCitizenPoints } from "../../../../services/rewards.service.js";
 import { PATHS } from "../../../../app/routes/paths.js";
 
 export default function PointWallet() {
@@ -12,11 +12,8 @@ export default function PointWallet() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getCitizenDashboard();
-        // Fallback to 0 if data or points field is missing
-        // Checking common field names for points
-        const fetchedPoints = data?.points ?? data?.rewardPoints ?? 0;
-        setPoints(fetchedPoints);
+        const data = await getCitizenPoints();
+        setPoints(data?.totalPoints ?? 0);
       } catch (error) {
         console.error("Failed to fetch citizen dashboard data:", error);
         setPoints(0);

@@ -779,7 +779,7 @@ export default function ApiKnowledge() {
         request: 'POST /api/collector/collections/{requestId}/complete (multipart/form-data)',
         actors: ['collector'],
         logic: [
-          'UI gửi ảnh + categoryIds + quantities + note + toạ độ.',
+          'UI gửi ảnh + categoryIds + quantities + verificationRate + note + toạ độ.',
           'Service build FormData; interceptor xoá Content-Type để axios tự set boundary.',
         ],
         service: {

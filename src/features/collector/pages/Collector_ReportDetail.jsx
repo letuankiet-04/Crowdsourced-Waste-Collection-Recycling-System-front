@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import CollectorLayout from "./layout/CollectorLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
@@ -6,8 +7,9 @@ import { normalizeReportStatus, reportStatusToPillVariant } from "../../../share
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";
+import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
-import { CheckCircle2, Truck } from "lucide-react";
+import { CheckCircle2, Truck, X, XCircle } from "lucide-react";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import CollectReportDialog from "../../../components/collector/CollectReportDialog.jsx";
 import {
@@ -17,6 +19,7 @@ import {
   getCollectorTasks,
   getCollectorWorkHistory,
   markCollectorCollected,
+  rejectCollectorTask,
   startCollectorTask,
 } from "../../../services/collector.service.js";
 
@@ -117,11 +120,17 @@ export default function CollectorReportDetail() {
   const rawStatus = String(task?.status || "").trim().toLowerCase();
   const statusLabel = normalizeReportStatus(task?.status);
   const canAccept = rawStatus === "assigned";
+  const canReject = canAccept;
   const canStart = rawStatus === "accepted_collector";
   const canCollect = rawStatus === "on_the_way";
   const canSubmitReport = rawStatus === "collected";
 
   const [collectOpen, setCollectOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState(null);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectReasonError, setRejectReasonError] = useState("");
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   function openCollectDialog() {
     if (!report || !canSubmitReport) return;
@@ -195,45 +204,81 @@ export default function CollectorReportDetail() {
           <CardBody className="p-8">
              <div className="flex flex-wrap justify-end gap-3">
                 {canAccept && (
-                    <Button
-                    size="lg"
-                    className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-                    disabled={loading}
-                    onClick={async () => {
-                      const requestId = Number(id);
-                      if (!Number.isFinite(requestId)) return;
-                      try {
-                        await acceptCollectorTask(requestId);
-                        const data = await getCollectorTasks({ all: true });
-                        const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-                        setTask(next);
-                        notify.success("Accepted", "Task accepted successfully.");
-                      } catch (e) {
-                        notify.error("Unable to accept task", e?.message || "Request failed");
-                      }
-                    }}
+                  <>
+                    {canReject && (
+                      <Button
+                        size="lg"
+                        className="rounded-full bg-red-600 hover:bg-red-700 text-white"
+                        disabled={loading || rejectSubmitting}
+                        onClick={() => {
+                          setRejectReason("");
+                          setRejectReasonError("");
+                          setRejectOpen(true);
+                        }}
+                      >
+                        <XCircle className="h-5 w-5" aria-hidden="true" />
+                        Reject Task
+                      </Button>
+                    )}
+
+                                 <Button
+                      size="lg"
+                      className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={loading}
+                      onClick={() => {
+                        setConfirmConfig({
+                          title: "Are you sure you want to accept this task?",
+                          description: "If you continue, the task status will be updated to Accepted.",
+                          confirmText: "Accept",
+                          confirmClassName: "bg-blue-600 hover:bg-blue-700 text-white",
+                          action: async () => {
+                            const requestId = Number(id);
+                            if (!Number.isFinite(requestId)) return;
+                            try {
+                              await acceptCollectorTask(requestId);
+                              const data = await getCollectorTasks({ all: true });
+                              const next = Array.isArray(data)
+                                ? data.find((t) => Number(t?.id) === requestId) ?? null
+                                : null;
+                              setTask(next);
+                              notify.success("Accepted", "Task accepted successfully.");
+                            } catch (e) {
+                              notify.error("Unable to accept task", e?.message || "Request failed");
+                            }
+                          },
+                        });
+                      }}
                     >
-                    <Truck className="h-5 w-5" aria-hidden="true" />
-                    Accept Task
+                      <Truck className="h-5 w-5" aria-hidden="true" />
+                      Accept Task
                     </Button>
+                  </>
                 )}
                 {canStart && (
                   <Button
                     size="lg"
                     className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white"
                     disabled={loading}
-                    onClick={async () => {
-                      const requestId = Number(id);
-                      if (!Number.isFinite(requestId)) return;
-                      try {
-                        await startCollectorTask(requestId);
-                        const data = await getCollectorTasks({ all: true });
-                        const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-                        setTask(next);
-                        notify.success("Started", "Task started successfully.");
-                      } catch (e) {
-                        notify.error("Unable to start task", e?.message || "Request failed");
-                      }
+                    onClick={() => {
+                      setConfirmConfig({
+                        title: "Are you sure you want to start this task?",
+                        description: "If you continue, the task status will be updated to On the way.",
+                        confirmText: "Start",
+                        confirmClassName: "bg-indigo-600 hover:bg-indigo-700 text-white",
+                        action: async () => {
+                          const requestId = Number(id);
+                          if (!Number.isFinite(requestId)) return;
+                          try {
+                            await startCollectorTask(requestId);
+                            const data = await getCollectorTasks({ all: true });
+                            const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
+                            setTask(next);
+                            notify.success("Started", "Task started successfully.");
+                          } catch (e) {
+                            notify.error("Unable to start task", e?.message || "Request failed");
+                          }
+                        },
+                      });
                     }}
                   >
                     <Truck className="h-5 w-5" aria-hidden="true" />
@@ -244,7 +289,15 @@ export default function CollectorReportDetail() {
                     <Button
                     size="lg"
                     className="rounded-full bg-green-600 hover:bg-green-700 text-white"
-                    onClick={confirmCollected}
+                    onClick={() => {
+                      setConfirmConfig({
+                        title: "Are you sure you want to confirm collected?",
+                        description: "If you continue, the task status will be updated to Collected.",
+                        confirmText: "Confirm",
+                        confirmClassName: "bg-green-600 hover:bg-green-700 text-white",
+                        action: confirmCollected,
+                      });
+                    }}
                     >
                     <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
                     Confirm Collected
@@ -274,6 +327,120 @@ export default function CollectorReportDetail() {
              </div>
           </CardBody>
         </Card>
+
+        <ConfirmDialog
+          open={Boolean(confirmConfig)}
+          title={confirmConfig?.title}
+          description={confirmConfig?.description}
+          confirmText={confirmConfig?.confirmText}
+          cancelText="Cancel"
+          confirmDisabled={loading}
+          confirmClassName={confirmConfig?.confirmClassName}
+          onClose={() => setConfirmConfig(null)}
+          onConfirm={async () => {
+            const action = confirmConfig?.action;
+            setConfirmConfig(null);
+            await action?.();
+          }}
+        />
+
+        {rejectOpen
+          ? createPortal(
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                role="dialog"
+                aria-modal="true"
+                onMouseDown={(e) => {
+                  if (rejectSubmitting) return;
+                  if (e.target === e.currentTarget) setRejectOpen(false);
+                }}
+              >
+                <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
+                  <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
+                    <div className="min-w-0">
+                      <div className="text-lg font-semibold text-gray-900">Reject task</div>
+                      <div className="mt-1 text-sm text-gray-600">Provide a reason so the enterprise can reassign.</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                      onClick={() => setRejectOpen(false)}
+                      aria-label="Close"
+                      disabled={rejectSubmitting}
+                    >
+                      <X className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div className="px-6 py-6 space-y-4">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">Reason</div>
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          value={rejectReason}
+                          onChange={(e) => {
+                            setRejectReason(e.target.value);
+                            if (rejectReasonError) setRejectReasonError("");
+                          }}
+                          maxLength={500}
+                          className="w-full min-h-[120px] px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-200 resize-y transition"
+                          placeholder="Enter rejection reason..."
+                          disabled={rejectSubmitting}
+                        />
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm text-red-600">{rejectReasonError}</div>
+                          <div className="text-sm text-gray-500">{rejectReason.length} / 500</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-5 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/60">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      disabled={rejectSubmitting}
+                      onClick={() => setRejectOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-full bg-red-600 hover:bg-red-700 text-white"
+                      disabled={rejectSubmitting}
+                      onClick={async () => {
+                        const requestId = Number(id);
+                        if (!Number.isFinite(requestId)) return;
+                        const reason = rejectReason.trim();
+                        if (!reason) {
+                          setRejectReasonError("Rejection reason is required.");
+                          return;
+                        }
+
+                        try {
+                          setRejectSubmitting(true);
+                          await rejectCollectorTask(requestId, reason);
+                          const data = await getCollectorTasks({ all: true });
+                          const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
+                          if (next) setTask(next);
+                          else navigate(PATHS.collector.dashboard, { replace: true });
+                          setRejectOpen(false);
+                          notify.success("Rejected", "Task rejected. The enterprise can reassign it.");
+                        } catch (e) {
+                          setRejectSubmitting(false);
+                          setRejectReasonError(e?.message || "Request failed");
+                        }
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
 
         <CollectReportDialog
           open={collectOpen}

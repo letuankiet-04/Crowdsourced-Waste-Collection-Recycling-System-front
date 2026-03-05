@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { createNotification } from "../../../services/notifications.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
+import { lockBodyScroll, unlockBodyScroll } from "../../../shared/lib/lockBodyScroll.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";
+import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Users, X, XCircle } from "lucide-react";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
@@ -19,6 +22,97 @@ import {
   getEnterpriseWasteReportById,
   rejectWasteReport,
 } from "../../../services/enterprise.service.js";
+
+function collectRejectedCollectorTokensFromValue(value, emails, ids, depth = 0) {
+  if (value == null) return;
+  if (depth > 4) return;
+
+  if (Array.isArray(value)) {
+    value.forEach((v) => collectRejectedCollectorTokensFromValue(v, emails, ids, depth + 1));
+    return;
+  }
+
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return;
+    if (s.includes("@")) {
+      emails.add(s.toLowerCase());
+      return;
+    }
+    if (/^[a-z0-9_-]{1,80}$/i.test(s)) ids.add(s);
+    return;
+  }
+
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) ids.add(String(value));
+    return;
+  }
+
+  if (typeof value !== "object") return;
+
+  const emailKeys = ["email", "mail", "collectorEmail", "collector_email", "emailAddress", "email_address"];
+  emailKeys.forEach((k) => {
+    if (value?.[k] == null) return;
+    collectRejectedCollectorTokensFromValue(value[k], emails, ids, depth + 1);
+  });
+
+  const idKeys = ["id", "_id", "collectorId", "collector_id", "collectorID", "collector_id"];
+  idKeys.forEach((k) => {
+    if (value?.[k] == null) return;
+    collectRejectedCollectorTokensFromValue(value[k], emails, ids, depth + 1);
+  });
+
+  Object.entries(value).forEach(([key, val]) => {
+    const k = String(key).toLowerCase();
+    if (!k.includes("reject")) return;
+    if (k.includes("collector") || k.includes("assignee") || k.includes("email") || k.includes("id")) {
+      collectRejectedCollectorTokensFromValue(val, emails, ids, depth + 1);
+    }
+  });
+}
+
+function getRejectedCollectorsFromReport(r) {
+  const emails = new Set();
+  const ids = new Set();
+
+  const candidates = [
+    r,
+    r?.collectionRequest,
+    r?.collection_request,
+    r?.collection,
+    r?.request,
+    r?.task,
+    r?.collectionTask,
+    r?.collection_task,
+    r?.collectionRequest?.task,
+    r?.collectionRequest?.request,
+  ].filter(Boolean);
+
+  candidates.forEach((c) => collectRejectedCollectorTokensFromValue(c, emails, ids));
+
+  const rejectedCollectorEmails =
+    r?.rejectedCollectorEmails ??
+    r?.rejectedCollectorsEmails ??
+    r?.rejectedCollectorsEmail ??
+    r?.rejectedByEmails ??
+    r?.collectorRejectedEmails ??
+    null;
+  collectRejectedCollectorTokensFromValue(rejectedCollectorEmails, emails, ids);
+
+  const rejectedCollectorIds =
+    r?.rejectedCollectorIds ??
+    r?.rejectedCollectorsIds ??
+    r?.rejectedCollectorId ??
+    r?.rejectedByCollectorIds ??
+    r?.collectorRejectedIds ??
+    null;
+  collectRejectedCollectorTokensFromValue(rejectedCollectorIds, emails, ids);
+
+  const rejectedCollectors = r?.rejectedCollectors ?? null;
+  collectRejectedCollectorTokensFromValue(rejectedCollectors, emails, ids);
+
+  return { emails: [...emails], ids: [...ids] };
+}
 
 export default function EnterpriseReportDetail() {
   const { reportId } = useParams();
@@ -130,7 +224,7 @@ export default function EnterpriseReportDetail() {
   }, [reportOverride, reportData, stateReport, id]);
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
-  const canGoAssign = status === "Accepted";
+  const canGoAssign = status === "Accepted" || status === "Assigned";
 
   const [collectorSource, setCollectorSource] = useState([]);
   const [collectorsLoading, setCollectorsLoading] = useState(false);
@@ -193,6 +287,19 @@ export default function EnterpriseReportDetail() {
     return singleEmail ? [singleEmail] : [];
   }
 
+  const rejected = useMemo(() => getRejectedCollectorsFromReport(report), [report]);
+  const rejectedEmails = rejected.emails;
+  const rejectedCollectorIds = rejected.ids;
+  const rejectedEmailSet = useMemo(() => {
+    const set = new Set();
+    rejectedEmails.forEach((email) => {
+      if (!email) return;
+      set.add(String(email).trim().toLowerCase());
+    });
+    return set;
+  }, [rejectedEmails]);
+  const rejectedCollectorIdSet = useMemo(() => new Set(rejectedCollectorIds.map(String)), [rejectedCollectorIds]);
+
   const collectors = useMemo(() => {
     const list = Array.isArray(collectorSource) ? collectorSource : [];
     return list
@@ -204,8 +311,14 @@ export default function EnterpriseReportDetail() {
         const isOnline = c?.online === true || ["online", "active", "available"].includes(statusRaw);
         return { id, name, email, isOnline };
       })
-      .filter((c) => Boolean(c.email));
-  }, [collectorSource]);
+      .filter((c) => {
+        if (!c.email) return false;
+        const emailKey = String(c.email).trim().toLowerCase();
+        if (rejectedEmailSet.has(emailKey)) return false;
+        if (rejectedCollectorIdSet.has(String(c.id))) return false;
+        return true;
+      });
+  }, [collectorSource, rejectedCollectorIdSet, rejectedEmailSet]);
 
   const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
   const assignedLabel = useMemo(() => {
@@ -222,6 +335,9 @@ export default function EnterpriseReportDetail() {
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedCollectorEmails, setSelectedCollectorEmails] = useState([]);
+  const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
+  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
 
   function openRejectDialog() {
     setRejectReason("");
@@ -232,9 +348,24 @@ export default function EnterpriseReportDetail() {
 
   function openAssignDialog(nextReport) {
     const r = nextReport ?? report;
-    setSelectedCollectorEmails(getAssignedEmailsFromReport(r));
+    const assigned = getAssignedEmailsFromReport(r);
+    const rejected = getRejectedCollectorsFromReport(r);
+    const rejectedSet = new Set((rejected?.emails ?? []).map((e) => String(e).trim().toLowerCase()).filter(Boolean));
+    setSelectedCollectorEmails(assigned.filter((email) => !rejectedSet.has(String(email).trim().toLowerCase())));
     setAssignOpen(true);
   }
+
+  useEffect(() => {
+    if (!assignOpen) return;
+    lockBodyScroll();
+    return () => unlockBodyScroll();
+  }, [assignOpen]);
+
+  useEffect(() => {
+    if (!rejectOpen) return;
+    lockBodyScroll();
+    return () => unlockBodyScroll();
+  }, [rejectOpen]);
 
   function getReportCodeFromReport(r) {
     return String(r?.reportCode ?? r?.code ?? r?.id ?? "").trim();
@@ -245,6 +376,94 @@ export default function EnterpriseReportDetail() {
     if (raw === null || raw === undefined || raw === "") return null;
     const n = typeof raw === "number" ? raw : Number(raw);
     return Number.isFinite(n) ? n : raw;
+  }
+
+  async function handleAcceptReport() {
+    if (!report || !canDecide) return;
+    setAcceptConfirmOpen(false);
+    const reportCode = getReportCodeFromReport(report);
+    if (!reportCode) {
+      notify.error("Missing report code", "Unable to identify report code for this report.");
+      return;
+    }
+
+    try {
+      const updated = await notify.promise(acceptWasteReport({ reportCode }), {
+        loadingTitle: "Accepting report...",
+        loadingMessage: "Sending acceptance to the server.",
+        successTitle: "Report accepted",
+        successMessage: "You can now assign a collector.",
+        errorTitle: "Accept failed",
+        errorMessage: (err) => err?.message || "Unable to accept this report.",
+      });
+      const next = {
+        ...report,
+        status: updated?.status ?? report?.status ?? "accepted",
+        updatedAt: updated?.actionAt ?? new Date().toISOString(),
+        collectionRequestId: updated?.collectionRequestId ?? getRequestIdFromReport(report),
+      };
+      setReportOverride(next);
+      setReportData(next);
+      setReportError("");
+
+      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
+      try {
+        await createNotification({
+          receiverId: report.createdBy,
+          senderId,
+          reportId: report.id,
+          type: "REPORT_ACCEPTED",
+          message: "Your report has been accepted.",
+        });
+      } catch {
+        throw new Error("Report accepted, but failed to send notification to the reporter.");
+      }
+
+      openAssignDialog(next);
+    } catch {
+      throw new Error("Failed to accept the report. Please try again.");
+    }
+  }
+
+  async function handleAssignCollectors() {
+    if (!report || !canGoAssign || assignSubmitting) return;
+    setAssignConfirmOpen(false);
+    const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
+    if (!selectedCollectors.length) return;
+
+    const primaryCollector = selectedCollectors[0];
+    const reportCode = getReportCodeFromReport(report);
+    if (!reportCode) {
+      notify.error("Missing report code", "Unable to identify report code for this report.");
+      return;
+    }
+
+    try {
+      setAssignSubmitting(true);
+      const assignedResponse = await notify.promise(assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id }), {
+        loadingTitle: "Assigning collector...",
+        loadingMessage: "Sending assignment to the server.",
+        successTitle: "Collector assigned",
+        successMessage: "Assignment saved successfully.",
+        errorTitle: "Assign failed",
+        errorMessage: (err) => err?.message || "Unable to assign collector.",
+      });
+
+      const next = {
+        ...report,
+        status: assignedResponse?.status ?? report?.status,
+        collectionRequestId: assignedResponse?.collectionRequestId ?? getRequestIdFromReport(report),
+        assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
+        assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+        updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
+      };
+      setReportOverride(next);
+      setReportData(next);
+      setAssignOpen(false);
+      navigate(PATHS.enterprise.dashboard, { replace: true });
+    } finally {
+      setAssignSubmitting(false);
+    }
   }
 
   return (
@@ -330,50 +549,9 @@ export default function EnterpriseReportDetail() {
                   size="lg"
                   className="rounded-full"
                   disabled={!report || !canDecide}
-                  onClick={async () => {
+                  onClick={() => {
                     if (!report || !canDecide) return;
-                    const reportCode = getReportCodeFromReport(report);
-                    if (!reportCode) {
-                      notify.error("Missing report code", "Unable to identify report code for this report.");
-                      return;
-                    }
-
-                    try {
-                      const updated = await notify.promise(acceptWasteReport({ reportCode }), {
-                        loadingTitle: "Accepting report...",
-                        loadingMessage: "Sending acceptance to the server.",
-                        successTitle: "Report accepted",
-                        successMessage: "You can now assign a collector.",
-                        errorTitle: "Accept failed",
-                        errorMessage: (err) => err?.message || "Unable to accept this report.",
-                      });
-                      const next = {
-                        ...report,
-                        status: updated?.status ?? report?.status ?? "accepted",
-                        updatedAt: updated?.actionAt ?? new Date().toISOString(),
-                        collectionRequestId: updated?.collectionRequestId ?? getRequestIdFromReport(report),
-                      };
-                      setReportOverride(next);
-                      setReportData(next);
-                      setReportError("");
-
-                      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
-                      try {
-                        await createNotification({
-                          receiverId: report.createdBy,
-                          senderId,
-                          reportId: report.id,
-                          type: "REPORT_ACCEPTED",
-                          message: "Your report has been accepted.",
-                        });
-                      } catch  {
-                        throw new Error("Report accepted, but failed to send notification to the reporter.");
-                      }
-
-                      openAssignDialog(next);
-                    } catch {
-                      throw new Error("Failed to accept the report. Please try again.");
-                    }
+                    setAcceptConfirmOpen(true);
                   }}
                 >
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
@@ -395,9 +573,9 @@ export default function EnterpriseReportDetail() {
           </CardBody>
         </Card>
 
-        {rejectOpen ? (
+        {rejectOpen ? createPortal(
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             role="dialog"
             aria-modal="true"
             onMouseDown={(e) => {
@@ -518,12 +696,13 @@ export default function EnterpriseReportDetail() {
                 </Button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         ) : null}
 
-        {assignOpen ? (
+        {assignOpen ? createPortal(
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             role="dialog"
             aria-modal="true"
             onMouseDown={(e) => {
@@ -617,50 +796,10 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length}
-                  onClick={async () => {
-                    if (!report || !canGoAssign) return;
-                    const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
-                    if (!selectedCollectors.length) return;
-                    const ok = window.confirm("Assign this report to selected collectors?");
-                    if (!ok) return;
-                    const primaryCollector = selectedCollectors[0];
-                    const reportCode = getReportCodeFromReport(report);
-                    if (!reportCode) {
-                      notify.error("Missing report code", "Unable to identify report code for this report.");
-                      return;
-                    }
-
-                    try {
-                      const requestId = getRequestIdFromReport(report);
-                      const assignPromise =
-                        requestId != assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
-                      const assignedResponse = await notify.promise(assignPromise, {
-                        loadingTitle: "Assigning collector...",
-                        loadingMessage: "Sending assignment to the server.",
-                        successTitle: "Collector assigned",
-                        successMessage: "Assignment saved successfully.",
-                        errorTitle: "Assign failed",
-                        errorMessage: (err) => err?.message || "Unable to assign collector.",
-                      });
-
-                      const next = {
-                        ...report,
-                        status: assignedResponse?.status ?? report?.status,
-                        collectionRequestId:
-                          assignedResponse?.collectionRequestId ??
-                          getRequestIdFromReport(report),
-                        assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
-                        assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
-                        updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
-                      };
-                      setReportOverride(next);
-                      setReportData(next);
-                      setAssignOpen(false);
-                      navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } catch {
-                      throw new Error("Failed to assign collector. Please try again.");
-                    }
+                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length || assignSubmitting}
+                  onClick={() => {
+                    if (!report || !canGoAssign || !selectedCollectorEmails.length || assignSubmitting) return;
+                    setAssignConfirmOpen(true);
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
@@ -668,8 +807,30 @@ export default function EnterpriseReportDetail() {
                 </Button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         ) : null}
+
+        <ConfirmDialog
+          open={acceptConfirmOpen}
+          title="Are you sure you want to accept this report?"
+          description="If you continue, the report status will be updated to Accepted."
+          confirmText="Accept"
+          cancelText="Cancel"
+          onClose={() => setAcceptConfirmOpen(false)}
+          onConfirm={handleAcceptReport}
+        />
+
+        <ConfirmDialog
+          open={assignConfirmOpen}
+          title="Are you sure you want to assign this report?"
+          description="If you continue, the report will be assigned to the selected collectors."
+          confirmText="Assign"
+          cancelText="Cancel"
+          confirmDisabled={assignSubmitting}
+          onClose={() => setAssignConfirmOpen(false)}
+          onConfirm={handleAssignCollectors}
+        />
       </div>
     </EnterpriseLayout>
   );
