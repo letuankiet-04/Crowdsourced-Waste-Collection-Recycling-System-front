@@ -8,6 +8,7 @@ import { PATHS } from "../../app/routes/paths.js"
 export default function FeedbackForm() {
   const navigate = useNavigate()
   const [feedback, setFeedback] = useState("")
+  const [type, setType] = useState("System") // Default type
   const [file, setFile] = useState(null)
 
   const handleSubmit = (e) => {
@@ -20,10 +21,12 @@ export default function FeedbackForm() {
 
     const formData = new FormData()
     formData.append("feedback", feedback)
+    formData.append("type", type)
     if (file) formData.append("evidence", file)
 
     console.log("Submit feedback:", {
       feedback,
+      type,
       file,
     })
 
@@ -31,6 +34,7 @@ export default function FeedbackForm() {
     const payload = {
       id: `FDB-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       message: feedback.trim(),
+      type,
       fileName: file?.name ?? null,
       createdAt: new Date().toISOString(),
     }
@@ -42,11 +46,43 @@ export default function FeedbackForm() {
 
   const handleDiscard = () => {
     setFeedback("")
+    setType("System")
     setFile(null)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-3xl mx-auto">
+      {/* Feedback Type */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <label className="block text-sm font-semibold text-gray-700 mb-3">
+          FEEDBACK TYPE
+        </label>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="radio" 
+              name="feedbackType" 
+              value="System" 
+              checked={type === "System"} 
+              onChange={(e) => setType(e.target.value)} 
+              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-gray-900">System</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="radio" 
+              name="feedbackType" 
+              value="Service" 
+              checked={type === "Service"} 
+              onChange={(e) => setType(e.target.value)} 
+              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-gray-900">Service</span>
+          </label>
+        </div>
+      </div>
+
       {/* Feedback reason */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <label className="block text-sm font-semibold text-gray-700 mb-3">

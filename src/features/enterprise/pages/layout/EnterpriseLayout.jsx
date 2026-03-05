@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, User, Users } from "lucide-react";
+import { ClipboardList, FileText, LayoutDashboard, User, Users } from "lucide-react";
 import RoleSidebar from "../../../../shared/layout/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../../shared/layout/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../../shared/layout/sidebar/SidebarLogoutButton.jsx";
@@ -7,7 +7,6 @@ import logo from "../../../../assets/app-logo.jpg";
 import { PATHS } from "../../../../app/routes/paths.js";
 import EnterpriseNavbar from "../navbar/EnterpriseNavbar.jsx";
 import CD_Footer from "../../../../shared/layout/CD_Footer.jsx";
-import CD_Header from "../../../../shared/layout/CD_Header.jsx";
 
 export default function EnterpriseLayout({ children }) {
   return (
@@ -29,6 +28,9 @@ export default function EnterpriseLayout({ children }) {
             <SidebarNavItem key="reports" to={PATHS.enterprise.reports} icon={<FileText className="h-5 w-5" />}>
               Reports
             </SidebarNavItem>,
+            <SidebarNavItem key="collectorReports" to={PATHS.enterprise.collectorReports} icon={<ClipboardList className="h-5 w-5" />}>
+              Collector Reports
+            </SidebarNavItem>,
             <SidebarNavItem key="profile" to={PATHS.enterprise.profile} icon={<User className="h-5 w-5" />}>
               Profile
             </SidebarNavItem>,
@@ -44,11 +46,6 @@ export default function EnterpriseLayout({ children }) {
         </div>
       }
     >
-      <CD_Header
-        title="Enterprise Portal"
-        description="Welcome back! Manage recycling operations and review incoming requests."
-        showBadge={false}
-      />
       {children}
     </RoleLayout>
 

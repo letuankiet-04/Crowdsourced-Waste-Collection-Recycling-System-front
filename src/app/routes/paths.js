@@ -16,6 +16,8 @@ export const PATHS = {
     reports: '/citizen/reports',
     reportDetail: '/citizen/reports/:reportId',
     feedback: '/citizen/feedback',
+    myFeedback: '/citizen/my-feedback',
+    feedbackDetail: '/citizen/feedback/:feedbackId',
     profile: '/citizen/profile',
     rewards: '/citizen/rewards',
     pointsHistory: '/citizen/points-history',
@@ -31,6 +33,8 @@ export const PATHS = {
     dashboard: '/enterprise/dashboard',
     activeCollector: '/enterprise/active-collector',
     reports: '/enterprise/reports',
+    collectorReports: '/enterprise/collector-reports',
+    collectorReportDetail: '/enterprise/collector-reports/:reportId',
     reportDetail: '/enterprise/reports/:reportId',
     rewards: '/enterprise/rewards',
     map: '/enterprise/map',
@@ -47,5 +51,6 @@ export const PATHS = {
   unauthorized: '/unauthorized',
   contact: '/home#contact',
 }
+
 
 

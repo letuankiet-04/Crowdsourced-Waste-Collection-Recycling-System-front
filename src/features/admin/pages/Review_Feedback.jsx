@@ -20,6 +20,74 @@ import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 
+// Mock Data
+const MOCK_FEEDBACK = [
+  {
+    id: 1,
+    sender: { name: "Sarah Jenkins", role: "Citizen", avatar: "S" },
+    subject: "Bin overflow on 5th Avenue",
+    date: "2023-10-24T10:30:00",
+    status: "NEW",
+    content: "The bin has been overflowing for 2 days..."
+  },
+  {
+    id: 2,
+    sender: { name: "Green Collect Ltd", role: "Collector", avatar: "G" },
+    subject: "Route optimization suggestion",
+    date: "2023-10-23T14:15:00",
+    status: "IN PROGRESS",
+    content: "We noticed that the current route for..."
+  },
+  {
+    id: 3,
+    sender: { name: "Mike Ross", role: "Citizen", avatar: "M" },
+    subject: "App crashing on login",
+    date: "2023-10-22T09:00:00",
+    status: "RESOLVED",
+    content: "I cannot log in to my account..."
+  },
+  {
+    id: 4,
+    sender: { name: "City Waste Dept", role: "Collector", avatar: "C" },
+    subject: "New recycling guidelines query",
+    date: "2023-10-21T16:45:00",
+    status: "NEW",
+    content: "Clarification needed on the new plastic types..."
+  },
+  {
+    id: 5,
+    sender: { name: "Emma Watson", role: "Citizen", avatar: "E" },
+    subject: "Late pickup complaint",
+    date: "2023-10-20T11:20:00",
+    status: "RESOLVED",
+    content: "My trash was not picked up last Tuesday..."
+  },
+  {
+    id: 6,
+    sender: { name: "John Doe", role: "Citizen", avatar: "J" },
+    subject: "Feature request: Dark mode",
+    date: "2023-10-19T13:10:00",
+    status: "IN PROGRESS",
+    content: "It would be great to have a dark mode..."
+  },
+  {
+    id: 7,
+    sender: { name: "Eco Solutions", role: "Enterprise", avatar: "E" },
+    subject: "Partnership inquiry",
+    date: "2023-10-18T10:00:00",
+    status: "NEW",
+    content: "We are interested in partnering with you..."
+  },
+  {
+    id: 8,
+    sender: { name: "Alice Cooper", role: "Citizen", avatar: "A" },
+    subject: "Missed recycling pickup",
+    date: "2023-10-17T09:30:00",
+    status: "RESOLVED",
+    content: "Recycling bin was skipped today..."
+  }
+];
+
 export default function Review_Feedback() {
   // State
   const [activeTab, setActiveTab] = useState("All Submissions");

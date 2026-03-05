@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { Voucher } from "../../../../shared/ui/Voucher.jsx";
+import React, { useState } from 'react';
+import { Voucher } from '../Voucher.jsx';
 import { REDEEMABLE_VOUCHERS } from "../../../../mock/voucherData.js";
-
-export function RedeemSection() {
+export function RedeemSection({ onRedeem }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
   const itemsPerPage = 6;
@@ -43,6 +42,10 @@ export function RedeemSection() {
     }
   };
 
+  const handleRedeemClick = (voucher) => {
+      onRedeem(voucher);
+  };
+
   return (
     <div id="redeem-section-top" className="scroll-mt-24">
        <div className="flex items-center justify-between mb-6">
@@ -63,7 +66,12 @@ export function RedeemSection() {
          }`}
        >
           {currentVouchers.map((voucher) => (
-              <Voucher key={voucher.id} voucher={voucher} className="w-full" />
+              <Voucher 
+                  key={voucher.id} 
+                  voucher={voucher} 
+                  className="w-full" 
+                  onRedeem={() => handleRedeemClick(voucher)}
+              />
           ))}
        </div>
 

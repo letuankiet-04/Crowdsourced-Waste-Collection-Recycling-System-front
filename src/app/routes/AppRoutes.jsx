@@ -8,6 +8,8 @@ import {
   CitizenReportDetail,
   CitizenReports,
   CitizenFeedback,
+  CitizenMyFeedback,
+  CitizenFeedbackDetails,
   CollectorDashboard,
   CollectorHistory,
   CollectorProfile,
@@ -20,6 +22,8 @@ import {
   EnterpriseMap,
   EnterpriseProfile,
   EnterpriseReports,
+  EnterpriseCollectorReports,
+  EnterpriseCollectorReportDetail,
   EnterpriseReportDetail,
   EnterpriseRewards,
   Home,
@@ -72,7 +76,23 @@ export default function AppRoutes() {
         path={PATHS.citizen.feedback}
         element={
           <ProtectedRoute role={['citizen']}>
-           <CitizenFeedback/>
+            <CitizenFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.citizen.myFeedback}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenMyFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.citizen.feedbackDetail}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenFeedbackDetails />
           </ProtectedRoute>
         }
       />
@@ -170,6 +190,22 @@ export default function AppRoutes() {
         }
       />
       <Route
+        path={PATHS.enterprise.collectorReports}
+        element={
+          <ProtectedRoute role={['enterprise']}>
+            <EnterpriseCollectorReports />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.enterprise.collectorReportDetail}
+        element={
+          <ProtectedRoute role={['enterprise']}>
+            <EnterpriseCollectorReportDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path={PATHS.enterprise.reportDetail}
         element={
           <ProtectedRoute role={['enterprise']}>
@@ -263,3 +299,4 @@ export default function AppRoutes() {
     </Routes>
   )
 }
+
