@@ -9,7 +9,6 @@ import useNotify from "../../../shared/hooks/useNotify.js";
 import { FileText, MessageSquareText, UserPlus, Users } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
-import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { getEnterpriseReports } from "../../../services/enterprise.service.js";
@@ -45,8 +44,12 @@ export default function EnterpriseDashboard() {
     };
   }, [notify]);
 
+  const pendingCount = useMemo(() => {
+    return reports.filter((r) => r && normalizeReportStatus(r.status) === "Pending").length;
+  }, [reports]);
+
   const pendingReports = useMemo(() => {
-    return reports.filter((r) => r && normalizeReportStatus(r.status) !== "closed").slice(0, 8);
+    return reports.filter((r) => r && normalizeReportStatus(r.status) === "Pending").slice(0, 8);
   }, [reports]);
 
   return (
@@ -57,23 +60,8 @@ export default function EnterpriseDashboard() {
           description={
             <>
               Welcome back to your dashboard. All systems are operational. You have{" "}
-              <span className="font-bold text-emerald-700">{pendingReports.length}</span> pending requests waiting for review in your region.
+              <span className="font-bold text-emerald-700">{pendingCount}</span> pending requests waiting for review in your region.
             </>
-          }
-          right={
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => {
-                const ok = window.confirm("Clear dashboard list? This will not delete saved reports.");
-                if (!ok) return;
-                setReports([]);
-                notify.success("Dashboard cleared", "Report list cleared for this dashboard only.");
-              }}
-            >
-              Clear reports
-            </Button>
           }
         />
 

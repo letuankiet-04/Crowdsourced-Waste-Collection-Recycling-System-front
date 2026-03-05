@@ -7,68 +7,43 @@ import { RewardsHeader } from "./rewards_comp/RewardsHeader.jsx";
 import { PointsSummary } from "./rewards_comp/PointsSummary.jsx";
 import { RedeemSection } from "./rewards_comp/RedeemSection.jsx";
 import { MyVouchersSection } from "./rewards_comp/MyVouchersSection.jsx";
-import { MY_VOUCHERS } from "../../../mock/voucherData.js";
 import { getCitizenPoints } from "../../../services/citizen.service.js";
+import { getMyVouchers, getRedeemableVouchers, redeemVoucher } from "../../../services/voucher.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 
 export default function CitizenRewards() {
-  const [myVouchers, setMyVouchers] = useState(MY_VOUCHERS);
+  const [myVouchers, setMyVouchers] = useState([]);
+  const [redeemableVouchers, setRedeemableVouchers] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
   const notify = useNotify();
 
   useEffect(() => {
-    async function fetchPoints() {
+    async function fetchData() {
       try {
         const data = await getCitizenPoints();
         if (data) {
           setPointsData(data);
         }
+        const [my, redeemable] = await Promise.all([getMyVouchers(), getRedeemableVouchers()]);
+        setMyVouchers(my || []);
+        setRedeemableVouchers(redeemable || []);
       } catch (error) {
         console.error("Failed to fetch points:", error);
       }
     }
-    fetchPoints();
+    fetchData();
   }, []);
 
-  const handleRedeem = (voucher) => {
-    const cost = parseInt(voucher.pointsRequired.replace(/,/g, ''), 10);
-    
-    if (pointsData.totalPoints < cost) {
-      notify.error("Insufficient Points", `You need ${cost - pointsData.totalPoints} more points to redeem this voucher.`);
-      return;
+  const handleRedeem = async (voucher) => {
+    try {
+      await redeemVoucher(voucher);
+      const [points, my] = await Promise.all([getCitizenPoints(), getMyVouchers()]);
+      if (points) setPointsData(points);
+      setMyVouchers(my || []);
+      notify.success("Redemption Successful", `You have successfully redeemed ${voucher.title}!`);
+    } catch (error) {
+      notify.error("Redemption Failed", error?.message || "Failed to redeem voucher.");
     }
-
-    // Deduct points locally (mock logic since no backend endpoint for redemption)
-    setPointsData(prev => ({
-      ...prev,
-      totalPoints: prev.totalPoints - cost
-    }));
-
-    // Generate a unique voucher code
-    let uniqueCode;
-    let isUnique = false;
-    while (!isUnique) {
-      const randomStr = Math.random().toString(36).substring(2, 10).toUpperCase();
-      uniqueCode = `VOUCHER-${randomStr}`;
-      // Check against current state to ensure uniqueness
-      isUnique = !myVouchers.some(v => v.code === uniqueCode);
-    }
-
-    // Simulate API call and saving to My Vouchers
-    const newVoucher = {
-      id: Date.now(), // Generate unique ID
-      brandName: voucher.title.split(' ')[0], // Simple extraction
-      logoUrl: voucher.logoUrl,
-      title: voucher.title,
-      value: voucher.value,
-      validDate: voucher.validUntil,
-      points: cost,
-      status: "Active",
-      code: uniqueCode // Use the unique code
-    };
-
-    setMyVouchers(prev => [newVoucher, ...prev]);
-    notify.success("Redemption Successful", `You have successfully redeemed ${voucher.title}!`);
   };
 
   return (
@@ -91,7 +66,7 @@ export default function CitizenRewards() {
         <PointsSummary pointsData={pointsData} />
 
         {/* Redeem Gifts Section */}
-        <RedeemSection onRedeem={handleRedeem} />
+        <RedeemSection onRedeem={handleRedeem} vouchers={redeemableVouchers} />
 
         {/* My Vouchers Section */}
         <MyVouchersSection vouchers={myVouchers} />

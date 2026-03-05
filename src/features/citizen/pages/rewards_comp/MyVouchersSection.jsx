@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from "../../../../shared/ui/Card.jsx";
-import { MY_VOUCHERS } from "../../../../mock/voucherData.js";
 import { X, QrCode } from "lucide-react"; // Import Icons
 
-export function MyVouchersSection({ vouchers = MY_VOUCHERS }) {
+export function MyVouchersSection({ vouchers = [] }) {
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedVoucher, setSelectedVoucher] = useState(null); // State for modal
 

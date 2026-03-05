@@ -187,6 +187,9 @@ export default function CollectorReportDetail() {
           title="Task Detail"
           description={id ? `Viewing task: ${id}` : "Viewing task"}
           backLabel="Back to dashboard"
+          showWaste
+          showWasteTypes={false}
+          wasteItemsLabel="Waste item"
         />
 
         <Card className="overflow-hidden bg-gradient-to-br from-blue-50/70 via-white to-white">

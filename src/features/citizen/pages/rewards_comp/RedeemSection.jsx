@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Voucher } from '../Voucher.jsx';
-import { REDEEMABLE_VOUCHERS } from "../../../../mock/voucherData.js";
-export function RedeemSection({ onRedeem }) {
+export function RedeemSection({ onRedeem, vouchers = [] }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
   const itemsPerPage = 6;
@@ -9,8 +8,8 @@ export function RedeemSection({ onRedeem }) {
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentVouchers = REDEEMABLE_VOUCHERS.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(REDEEMABLE_VOUCHERS.length / itemsPerPage);
+  const currentVouchers = vouchers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(vouchers.length / itemsPerPage);
 
   // Smooth scroll and animation logic
   const handlePageChange = (pageNumber) => {

@@ -135,6 +135,8 @@ export default function CitizenReportDetail() {
           title="Report Detail"
           description={reportId ? `Viewing report: ${reportId}` : "Viewing report"}
           backLabel="Back to reports"
+          showWasteTypes={false}
+          wasteItemsLabel="Waste item"
           aside={
             <>
               <Card className="overflow-hidden">

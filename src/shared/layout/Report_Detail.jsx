@@ -44,10 +44,15 @@ export default function ReportDetail({
   backLabel = 'Back',
   headerRight,
   aside,
+  showWaste = true,
+  showWasteTypes = true,
+  wasteItemsLabel = 'Estimated Items',
 }) {
   const safeReport = report ?? null
   const reportCode = safeReport?.reportCode ?? safeReport?.code ?? null
   const collectionRequestId = safeReport?.collectionRequestId ?? safeReport?.requestId ?? null
+  const displayReportCode = reportCode != null && String(reportCode).trim() !== '' ? String(reportCode) : null
+  const displayReportId = safeReport?.id != null && String(safeReport.id).trim() !== '' ? String(safeReport.id) : null
 
   const types = useMemo(() => {
     const raw = safeReport?.types
@@ -130,7 +135,7 @@ export default function ReportDetail({
     <div className="space-y-8">
       <PageHeader
         title={title}
-        description={description || `Details for ${safeReport?.id || '-'}.`}
+        description={description || `Details for ${displayReportCode || displayReportId || '-'}.`}
         right={
           headerRight ?? (
             <Button as={Link} to={backTo} variant="outline" size="sm" className="rounded-full">
@@ -148,8 +153,7 @@ export default function ReportDetail({
             </CardHeader>
             <CardBody className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label="Report ID" value={safeReport?.id || '-'} />
-                {reportCode ? <Field label="Report Code" value={String(reportCode)} /> : null}
+                <Field label="Report Code" value={displayReportCode || displayReportId || '-'} />
                 <div>
                   <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Status</div>
                   <div className="mt-2">
@@ -169,82 +173,88 @@ export default function ReportDetail({
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader className="py-6 px-8">
-              <CardTitle className="text-2xl">Waste</CardTitle>
-            </CardHeader>
-            <CardBody className="p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Types</div>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {types.length ? (
-                      types.map((t) => (
-                        <span
-                          key={t}
-                          className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100"
-                        >
-                          {t}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-600">-</span>
-                    )}
-                  </div>
-                </div>
-                {safeReport?.weight != null && String(safeReport.weight).trim() !== '' ? (
-                  <Field label="Estimated Weight" value={safeReport.weight} />
-                ) : null}
-                {wasteItemsEntries.length ? (
-                  <div className="md:col-span-2">
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Estimated Items</div>
-                    <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-gray-50 text-gray-600">
-                          <tr>
-                            <th className="px-4 py-3 text-left font-semibold">Name</th>
-                            <th className="px-4 py-3 text-left font-semibold">Estimated weight</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                          {wasteItemsEntries.map((it) => (
-                            <tr key={it.name}>
-                              <td className="px-4 py-3 text-gray-900">{it.name}</td>
-                              <td className="px-4 py-3 text-gray-900">
-                                {it.estimatedWeight} {it.unit ? String(it.unit).toLowerCase() : 'kg'}
-                              </td>
+          {showWaste ? (
+            <Card>
+              <CardHeader className="py-6 px-8">
+                <CardTitle className="text-2xl">Waste</CardTitle>
+              </CardHeader>
+              <CardBody className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {showWasteTypes ? (
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Types</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {types.length ? (
+                          types.map((t) => (
+                            <span
+                              key={t}
+                              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100"
+                            >
+                              {t}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-600">-</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                  {safeReport?.weight != null && String(safeReport.weight).trim() !== '' ? (
+                    <Field label="Estimated Weight" value={safeReport.weight} />
+                  ) : null}
+                  {wasteItemsEntries.length ? (
+                    <div className="md:col-span-2">
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">{wasteItemsLabel}</div>
+                      <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-gray-50 text-gray-600">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-semibold">Name</th>
+                              <th className="px-4 py-3 text-left font-semibold">Estimated weight</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 bg-white">
+                            {wasteItemsEntries.map((it) => (
+                              <tr key={it.name}>
+                                <td className="px-4 py-3 text-gray-900">{it.name}</td>
+                                <td className="px-4 py-3 text-gray-900">
+                                  {it.estimatedWeight} {it.unit ? String(it.unit).toLowerCase() : 'kg'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-                {collectedTotalWeight !== null ? (
-                  <Field label="Collected Total Weight" value={`${collectedTotalWeight} kg`} />
-                ) : null}
-                {collectedWeightsEntries.length ? (
+                  ) : null}
+                  {collectedTotalWeight !== null ? (
+                    <Field label="Collected Total Weight" value={`${collectedTotalWeight} kg`} />
+                  ) : null}
+                  {collectedWeightsEntries.length ? (
+                    <div className="md:col-span-2">
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Weights</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {collectedWeightsEntries.map(([t, w]) => (
+                          <span
+                            key={t}
+                            className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          >
+                            {t}: {w} kg
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="md:col-span-2">
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Weights</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {collectedWeightsEntries.map(([t, w]) => (
-                        <span
-                          key={t}
-                          className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100"
-                        >
-                          {t}: {w} kg
-                        </span>
-                      ))}
+                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Notes</div>
+                    <div className="mt-2 text-gray-800 whitespace-pre-wrap">
+                      {safeReport?.notes ? String(safeReport.notes) : '-'}
                     </div>
                   </div>
-                ) : null}
-                <div className="md:col-span-2">
-                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Notes</div>
-                  <div className="mt-2 text-gray-800 whitespace-pre-wrap">{safeReport?.notes ? String(safeReport.notes) : '-'}</div>
                 </div>
-              </div>
-            </CardBody>
-          </Card>
+              </CardBody>
+            </Card>
+          ) : null}
 
           <ReportLocationCard
             reportedAddress={safeReport?.address}

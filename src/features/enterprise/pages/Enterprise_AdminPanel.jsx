@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Car, Eye, EyeOff, Hash, Lock, Mail, Phone, Truck, UserRound } from "lucide-react";
+import { Car, Eye, EyeOff, Lock, Mail, Phone, Truck, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import EnterpriseLayout from "./layout/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
@@ -21,7 +21,6 @@ export default function EnterpriseAdminPanel() {
   const [successHint, setSuccessHint] = useState("");
   const [values, setValues] = useState({
     fullName: "",
-    employeeCode: "",
     email: "",
     phone: "",
     vehicleType: "",
@@ -43,7 +42,6 @@ export default function EnterpriseAdminPanel() {
     if (pending) return;
     setValues({
       fullName: "",
-      employeeCode: "",
       email: "",
       phone: "",
       vehicleType: "",
@@ -62,7 +60,6 @@ export default function EnterpriseAdminPanel() {
     if (pending) return;
 
     const fullName = values.fullName.trim();
-    const employeeCode = values.employeeCode.trim();
     const email = values.email.trim();
     const phone = values.phone.trim();
     const vehicleType = values.vehicleType.trim();
@@ -70,7 +67,7 @@ export default function EnterpriseAdminPanel() {
     const password = values.password;
     const confirmPassword = values.confirmPassword;
 
-    if (!fullName || !employeeCode || !email || !phone || !vehicleType || !vehiclePlate || !password || !confirmPassword) {
+    if (!fullName || !email || !phone || !vehicleType || !vehiclePlate || !password || !confirmPassword) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -91,7 +88,6 @@ export default function EnterpriseAdminPanel() {
           password,
           fullName,
           phone,
-          employeeCode,
           vehicleType,
           vehiclePlate,
         }),
@@ -106,7 +102,6 @@ export default function EnterpriseAdminPanel() {
       );
       setValues({
         fullName: "",
-        employeeCode: "",
         email: "",
         phone: "",
         vehicleType: "",
@@ -165,18 +160,6 @@ export default function EnterpriseAdminPanel() {
                         className="sm:col-span-2"
                       />
                       <TextField
-                        id="collector_employee_code"
-                        label="Employee code"
-                        autoComplete="off"
-                        value={values.employeeCode}
-                        onChange={handleChange("employeeCode")}
-                        placeholder="EMP-0001"
-                        disabled={pending}
-                        leftIcon={Hash}
-                        accent="emerald"
-                        inputClassName="uppercase tracking-wide"
-                      />
-                      <TextField
                         id="collector_email"
                         label="Email"
                         type="email"
@@ -187,6 +170,7 @@ export default function EnterpriseAdminPanel() {
                         disabled={pending}
                         leftIcon={Mail}
                         accent="emerald"
+                        className="sm:col-span-2"
                       />
                       <TextField
                         id="collector_phone"
@@ -341,7 +325,7 @@ export default function EnterpriseAdminPanel() {
                       <div className="min-w-0">
                         <div className="font-semibold text-slate-900">Required fields</div>
                         <div className="mt-1 text-slate-600">
-                          Full name, employee code, email, phone, vehicle type, vehicle plate, password.
+                          Full name, email, phone, vehicle type, vehicle plate, password.
                         </div>
                       </div>
                     </div>
