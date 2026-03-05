@@ -36,6 +36,7 @@ import {
   AdminReviewFeedback,
   CitizenRewards,
   PointHistory,
+  CitizenTerms,
 } from './lazyPages.jsx'
 
 export default function AppRoutes() {
@@ -111,6 +112,15 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['citizen']}>
             <CitizenRewards />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.citizen.terms}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenTerms />
           </ProtectedRoute>
         }
       />
