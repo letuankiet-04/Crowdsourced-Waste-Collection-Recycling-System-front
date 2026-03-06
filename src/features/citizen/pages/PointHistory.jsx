@@ -162,17 +162,16 @@ export default function PointHistory() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Activity</th>
-                  <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Waste Category</th>
-                  <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Points Earned</th>
+                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Activity</th>
+                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Points Earned</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {historyData.map((item, idx) => (
                   <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4 px-6 text-sm font-medium text-gray-900">{item.date || new Date().toLocaleDateString()}</td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.date || new Date().toLocaleDateString()}</td>
+                    <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className={`p-1.5 rounded-full ${(item.activity || '').includes('Bonus') || (item.activity || '').includes('Hero') ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
                            {(item.activity || '').includes('Bonus') || (item.activity || '').includes('Hero') ? (
@@ -188,18 +187,8 @@ export default function PointHistory() {
                         <span className="font-bold text-gray-800 text-sm">{item.activity || 'Unknown Activity'}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide
-                        ${item.category === 'RECYCLABLE' ? 'bg-blue-100 text-blue-700' : ''}
-                        ${item.category === 'ORGANIC' ? 'bg-green-100 text-green-700' : ''}
-                        ${item.category === 'HAZARDOUS' ? 'bg-red-100 text-red-700' : ''}
-                        ${item.category === 'SPECIAL' ? 'bg-purple-100 text-purple-700' : ''}
-                        ${item.category === 'N/A' ? 'bg-gray-100 text-gray-600' : ''}
-                      `}>
-                        {item.category || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right font-bold text-green-600">+{(item.point ?? item.points ?? 0) || 0} pts</td>
+                    
+                    <td className="py-3 px-4 text-right font-bold text-green-600">+{(item.point ?? item.points ?? 0) || 0} pts</td>
                   </tr>
                 ))}
               </tbody>
