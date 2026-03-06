@@ -24,6 +24,7 @@ export const citizenNavItems = [
   >
     Dashboard
   </SidebarNavItem>,
+
   <SidebarNavItem
     key="my-reports"
     to={PATHS.citizen.reports}
@@ -90,7 +91,7 @@ export const citizenNavItems = [
   >
     View Feedback
   </SidebarNavItem>,
-   <SidebarNavItem
+      <SidebarNavItem
     key="terms"
     to={PATHS.citizen.terms}
     icon={
@@ -105,7 +106,7 @@ export const citizenNavItems = [
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={2}
-          d="M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2zm3 4h6M7 8h.01M7 12h10M7 16h10"
+          d="M12 8c.828 0 1.5-.672 1.5-1.5S12.828 5 12 5s-1.5.672-1.5 1.5S11.172 8 12 8zm0 3v7m-7 1h14a2 2 0 002-2V6a2 2 0 00-2-2H9l-4 4v10a2 2 0 002 2z"
         />
       </svg>
     }
@@ -134,5 +135,7 @@ export const citizenNavItems = [
   >
     Profile
   </SidebarNavItem>,
+
  
 ];
+

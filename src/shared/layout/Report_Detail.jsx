@@ -7,6 +7,7 @@ import StatusPill from '../ui/StatusPill.jsx'
 import { normalizeReportStatus, reportStatusToPillVariant } from '../lib/reportStatus.js'
 import ReportLocationCard from './ReportLocationCard.jsx'
 import ReportPhotosCard from './ReportPhotosCard.jsx'
+import { getIconForCategory } from '../lib/wasteIcons.js'
 
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   year: 'numeric',
@@ -185,14 +186,18 @@ export default function ReportDetail({
                       <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Types</div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {types.length ? (
-                          types.map((t) => (
-                            <span
-                              key={t}
-                              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100"
-                            >
-                              {t}
-                            </span>
-                          ))
+                          types.map((t) => {
+                            const { Icon, cls } = getIconForCategory(t)
+                            return (
+                              <span
+                                key={t}
+                                className={['inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border', cls].join(' ')}
+                              >
+                                {Icon ? <Icon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> : null}
+                                {t}
+                              </span>
+                            )
+                          })
                         ) : (
                           <span className="text-gray-600">-</span>
                         )}

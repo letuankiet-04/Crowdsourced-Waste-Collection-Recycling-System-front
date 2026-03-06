@@ -58,6 +58,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path={PATHS.citizen.reports}
         element={
@@ -118,14 +119,7 @@ export default function AppRoutes() {
         }
       />
 
-      <Route
-        path={PATHS.citizen.terms}
-        element={
-          <ProtectedRoute role={['citizen']}>
-            <CitizenTerms />
-          </ProtectedRoute>
-        }
-      />
+ 
 
       <Route
         path={PATHS.citizen.pointsHistory}
@@ -135,6 +129,15 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+            <Route
+        path={PATHS.citizen.terms}
+        element={
+          <ProtectedRoute role={['citizen']}>
+            <CitizenTerms />
+          </ProtectedRoute>
+        }
+      />
+
 
       <Route
         path={PATHS.collector.dashboard}
@@ -311,4 +314,5 @@ export default function AppRoutes() {
     </Routes>
   )
 }
+
 

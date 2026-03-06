@@ -30,7 +30,7 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
     const email = values.email.trim()
     const password = values.password
     if (!agreed) {
-      setError('You must agree to the Terms to create an account.')
+      setError('You must agree to the Terms of Service and Privacy Policy to create an account.')
       return
     }
     if (!name || !email || !password) {
@@ -154,7 +154,7 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
               onClick={() => setShowTerms(true)}
               className="font-semibold text-emerald-700 underline-offset-4 hover:text-emerald-800 hover:underline"
             >
-              Terms and Privacy Policy
+              Terms of Service and Privacy Policy
             </button>
             .
           </span>
@@ -188,7 +188,7 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
           <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
             <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
               <div className="min-w-0">
-                <div className="text-lg font-semibold text-gray-900">Terms & Privacy Policy</div>
+                <div className="text-lg font-semibold text-gray-900">Terms of Service & Privacy Policy</div>
                 <div className="mt-1 text-sm text-gray-600">
                   Please review these terms before creating your account.
                 </div>
@@ -203,23 +203,23 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
               </button>
             </div>
             <div className="max-h-[65vh] overflow-y-auto px-6 py-5 text-sm leading-6 text-gray-700 space-y-4">
-              <p>
-                By using this service, you agree to provide accurate information. Do not upload
-                illegal, offensive, or misleading content. Reports may be reviewed and shared with
-                authorized parties for processing.
+              <p className="text-gray-800">
+                By creating an account, you agree to the terms below. These terms summarize our{' '}
+                <a href="#" className="text-emerald-700 font-semibold hover:underline">Terms of Service</a>{' '}
+                and{' '}
+                <a href="#" className="text-emerald-700 font-semibold hover:underline">Privacy Policy</a>.
               </p>
-              <p>
-                Photos and location help facilitate collection. Ensure you have rights to any images
-                you upload and that they comply with file policies. Reward points are granted for valid
-                reports and may be adjusted in cases of misuse.
-              </p>
-              <p>
-                We process your data to operate the platform, prevent abuse, and improve services.
-                You can request account deletion according to our data policies.
-              </p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Provide accurate information and do not submit illegal, harmful, or misleading content.</li>
+                <li>Photos and location data help coordinate collection. Only upload images you have rights to.</li>
+                <li>File uploads must follow platform rules (type and size limits). Violations may lead to removal.</li>
+                <li>Reward points are issued for valid reports and may be adjusted in cases of misuse or fraud.</li>
+                <li>We process your data to operate, secure, and improve the service, and to prevent abuse.</li>
+                <li>You may request account deletion as described in our data practices.</li>
+                <li>We may update these terms; continued use after updates signifies acceptance of the changes.</li>
+              </ul>
               <p className="text-xs text-gray-500">
-                This is a summary. Policies may be updated. By closing this dialog and proceeding,
-                you acknowledge you have read and agree to the terms.
+                This summary is provided for convenience. Please refer to the full policies for complete terms.
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3 px-6 py-5 border-t border-gray-100">
@@ -229,6 +229,17 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
                 onClick={() => setShowTerms(false)}
               >
                 Close
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={() => {
+                  setAgreed(true)
+                  setShowTerms(false)
+                  if (error) setError('')
+                }}
+              >
+                Agree and Close
               </button>
             </div>
           </div>
