@@ -27,6 +27,7 @@ export const CitizenFeedbackDetails = lazy(() => import('../../features/citizen/
 export const CitizenProfile = lazy(() => import('../../features/citizen/pages/Citizen_Profile.jsx'))
 export const CitizenRewards = lazy(() => import('../../features/citizen/pages/Citizen_Rewards.jsx'))
 export const PointHistory = lazy(() => import('../../features/citizen/pages/PointHistory.jsx'))
+export const CitizenTerms = lazy(() => import('../../features/citizen/pages/Citizen_Terms.jsx'))
 
 
 
