@@ -12,7 +12,8 @@ import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import { PATHS } from "../../../app/routes/paths.js";
-import { deleteReport, getMyReportById, getMyReportResult } from "../../../services/reports.service.js";
+import { deleteReport, getMyReportById, getMyReportResult, getWasteCategories } from "../../../services/reports.service.js";
+import { formatWasteTypeUnit } from "../../../shared/constants/wasteTypes.js";
 
 export default function CitizenReportDetail() {
   const { reportId } = useParams();
@@ -23,6 +24,7 @@ export default function CitizenReportDetail() {
   const [apiResult, setApiResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState([]);
 
   useEffect(() => {
     if (!reportId) return;
@@ -30,11 +32,20 @@ export default function CitizenReportDetail() {
     Promise.resolve().then(() => {
       if (cancelled) return;
       setLoading(true);
-      Promise.all([getMyReportById(reportId), getMyReportResult(reportId)])
-        .then(([r, res]) => {
+      Promise.all([getMyReportById(reportId), getMyReportResult(reportId), getWasteCategories()])
+        .then(([r, res, cats]) => {
           if (cancelled) return;
           setApiReport(r ?? null);
           setApiResult(res ?? null);
+          const list = Array.isArray(cats) ? cats : [];
+          setCategoryOptions(
+            list.map((c) => ({
+              id: Number(c.id),
+              name: String(c.name ?? "").trim(),
+              unit: c.unit ?? null,
+              pointPerUnit: c.pointPerUnit ?? null,
+            }))
+          );
         })
         .catch((err) => notify.error("Load report failed", err?.message || "Unable to load report."))
         .finally(() => {
@@ -110,6 +121,95 @@ export default function CitizenReportDetail() {
       ? { label: "On The Way", sub: "Collector is on the way." }
       : { label: "Assign Collector", sub: "Awaiting unit assignment" };
 
+  const pointsBreakdown = useMemo(() => {
+    const types = Array.isArray(categoryOptions) ? categoryOptions : [];
+    const byId = new Map(types.map((t) => [Number(t.id), t]));
+    const byName = new Map(types.map((t) => [String(t.name).toLowerCase(), t]));
+    const source = Array.isArray(apiReport?.categories) ? apiReport.categories : [];
+    if (source.length) {
+      return source
+        .map((c) => {
+          const id = c?.id == null ? null : Number(c.id);
+          const found = Number.isFinite(id) ? byId.get(id) : byName.get(String(c?.name ?? "").toLowerCase());
+          const qty = typeof c?.quantity === "number" ? c.quantity : Number(c?.quantity);
+          if (!found || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(Number(found.pointPerUnit))) return null;
+          return {
+            id: Number(found.id),
+            name: String(found.name),
+            unit: found.unit ?? null,
+            qty,
+            points: Number(found.pointPerUnit) * qty,
+          };
+        })
+        .filter(Boolean);
+    }
+    const items = Array.isArray(report?.wasteItems) ? report.wasteItems : [];
+    return items
+      .map((it) => {
+        const found = byName.get(String(it?.name ?? "").toLowerCase());
+        const qty = typeof it?.estimatedWeight === "number" ? it.estimatedWeight : Number(it?.estimatedWeight);
+        if (!found || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(Number(found.pointPerUnit))) return null;
+        return {
+          id: Number(found.id),
+          name: String(found.name),
+          unit: found.unit ?? null,
+          qty,
+          points: Number(found.pointPerUnit) * qty,
+        };
+      })
+      .filter(Boolean);
+  }, [apiReport, report, categoryOptions]);
+
+  const totalEstimatedPoints = useMemo(
+    () => (Array.isArray(pointsBreakdown) ? pointsBreakdown : []).reduce((sum, r) => sum + (Number.isFinite(r?.points) ? r.points : 0), 0),
+    [pointsBreakdown]
+  );
+
+  const formatPoints = (n) => {
+    if (!Number.isFinite(n)) return "0";
+    const rounded = Math.round(n);
+    if (Math.abs(n - rounded) < 1e-9) return String(rounded);
+    return n.toFixed(2);
+  };
+
+  const reportInfoExtra = useMemo(() => {
+    if (!pointsBreakdown.length) return null;
+    return (
+      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <span>🎁</span>
+          </div>
+          <div className="font-semibold text-emerald-800">Estimated Reward</div>
+        </div>
+        <div className="mt-4 space-y-2">
+          {pointsBreakdown.map((r) => {
+            const unitLabel = r.unit ? formatWasteTypeUnit(r.unit) : "";
+            return (
+              <div key={r.id} className="flex items-center justify-between text-sm">
+                <div className="text-gray-700">
+                  {r.name} ({r.qty} {unitLabel})
+                </div>
+                <div className="font-semibold text-emerald-700">+{formatPoints(r.points)} pts</div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="my-4 border-t border-emerald-100" />
+        <div className="flex items-end justify-between">
+          <div className="text-xs font-semibold tracking-wider text-gray-500">TOTAL</div>
+          <div className="flex items-baseline gap-2">
+            <div className="text-3xl font-bold text-emerald-600">{formatPoints(totalEstimatedPoints)}</div>
+            <div className="text-emerald-700 font-semibold">pts</div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl bg-white/80 text-emerald-800 border border-emerald-100 p-3 text-xs">
+          Points are officially credited after staff verification.
+        </div>
+      </div>
+    );
+  }, [pointsBreakdown, totalEstimatedPoints]);
+
   const steps = [
     { label: "Pending Review", sub: report?.createdAt ? new Date(report.createdAt).toLocaleString() : null },
     { label: "Accepted", sub: "Processing report details..." },
@@ -137,6 +237,7 @@ export default function CitizenReportDetail() {
           backLabel="Back to reports"
           showWasteTypes={false}
           wasteItemsLabel="Waste item"
+          reportInfoExtra={reportInfoExtra}
           aside={
             <>
               <Card className="overflow-hidden">
