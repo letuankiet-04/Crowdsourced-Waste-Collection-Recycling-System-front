@@ -22,6 +22,7 @@ export const PATHS = {
     profile: '/citizen/profile',
     rewards: '/citizen/rewards',
     pointsHistory: '/citizen/points-history',
+    terms: '/citizen/terms',
   },
   collector: {
     dashboard: '/collector/dashboard',
@@ -52,6 +53,7 @@ export const PATHS = {
   unauthorized: '/unauthorized',
   contact: '/home#contact',
 }
+
 
 
 

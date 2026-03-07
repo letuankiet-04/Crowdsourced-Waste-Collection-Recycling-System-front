@@ -27,6 +27,7 @@ export const CitizenFeedbackDetails = lazy(() => import('../../features/citizen/
 export const CitizenProfile = lazy(() => import('../../features/citizen/pages/Citizen_Profile.jsx'))
 export const CitizenRewards = lazy(() => import('../../features/citizen/pages/Citizen_Rewards.jsx'))
 export const PointHistory = lazy(() => import('../../features/citizen/pages/PointHistory.jsx'))
+export const CitizenTerms = lazy(() => import('../../features/citizen/pages/Citizen_Terms.jsx'))
 
 
 
@@ -41,4 +42,5 @@ export const EnterpriseRewards = lazy(() => import('../../features/enterprise/pa
 export const EnterpriseMap = lazy(() => import('../../features/enterprise/pages/Enterprise_Map.jsx'))
 export const EnterpriseProfile = lazy(() => import('../../features/enterprise/pages/Enterprise_Profile.jsx'))
 export const EnterpriseAdminPanel = lazy(() => import('../../features/enterprise/pages/Enterprise_AdminPanel.jsx'))
+
 

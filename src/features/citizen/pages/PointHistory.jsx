@@ -16,6 +16,7 @@ export default function PointHistory() {
   useEffect(() => {
     async function fetchData() {
       try {
+        setError(null);
         const [points, history] = await Promise.all([
           getCitizenPoints(),
           getCitizenPointsHistory()

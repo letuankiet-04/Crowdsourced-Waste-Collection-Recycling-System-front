@@ -89,3 +89,11 @@ export async function updateProfile(userData) {
   const { data } = await api.put('/api/users/profile', userData ?? {})
   return unwrapApiResponse(data)
 }
+
+export async function changePassword({ currentPassword, newPassword }) {
+  const { data } = await api.post('/api/users/change-password', {
+    currentPassword,
+    newPassword,
+  })
+  return unwrapApiResponse(data)
+}

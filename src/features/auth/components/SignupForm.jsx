@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Lock, Mail, UserRound } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, UserRound, X } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn.js'
 import TextField from '../../../shared/ui/TextField.jsx'
 import LoadingButton from '../../../shared/ui/LoadingButton.jsx'
@@ -10,6 +10,8 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
   const passwordVisibility = usePasswordVisibility(false)
   const confirmVisibility = usePasswordVisibility(false)
   const [error, setError] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
   const isActive = mode === 'signup'
   const accent = 'emerald'
 
@@ -27,6 +29,10 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
     const name = values.name.trim()
     const email = values.email.trim()
     const password = values.password
+    if (!agreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy to create an account.')
+      return
+    }
     if (!name || !email || !password) {
       setError('Please fill in all fields.')
       return
@@ -130,7 +136,29 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
         }
       />
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-        <span>By signing up, you agree to the Terms and Privacy Policy.</span>
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-300"
+            checked={agreed}
+            onChange={(e) => {
+              setAgreed(e.target.checked)
+              if (error) setError('')
+            }}
+            disabled={pending}
+          />
+          <span>
+            By signing up, you agree to the{' '}
+            <button
+              type="button"
+              onClick={() => setShowTerms(true)}
+              className="font-semibold text-emerald-700 underline-offset-4 hover:text-emerald-800 hover:underline"
+            >
+              Terms of Service and Privacy Policy
+            </button>
+            .
+          </span>
+        </label>
         {onSwitchToLogin ? (
           <button
             type="button"
@@ -145,9 +173,78 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
       ) : null}
-      <LoadingButton type="submit" loading={pending} accent={accent}>
+      <LoadingButton type="submit" loading={pending} accent={accent} disabled={!agreed}>
         Create account
       </LoadingButton>
+      {showTerms ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowTerms(false)
+          }}
+        >
+          <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
+            <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
+              <div className="min-w-0">
+                <div className="text-lg font-semibold text-gray-900">Terms of Service & Privacy Policy</div>
+                <div className="mt-1 text-sm text-gray-600">
+                  Please review these terms before creating your account.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-50"
+                onClick={() => setShowTerms(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto px-6 py-5 text-sm leading-6 text-gray-700 space-y-4">
+              <p className="text-gray-800">
+                By creating an account, you agree to the terms below. These terms summarize our{' '}
+                <a href="#" className="text-emerald-700 font-semibold hover:underline">Terms of Service</a>{' '}
+                and{' '}
+                <a href="#" className="text-emerald-700 font-semibold hover:underline">Privacy Policy</a>.
+              </p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Provide accurate information and do not submit illegal, harmful, or misleading content.</li>
+                <li>Photos and location data help coordinate collection. Only upload images you have rights to.</li>
+                <li>File uploads must follow platform rules (type and size limits). Violations may lead to removal.</li>
+                <li>Reward points are issued for valid reports and may be adjusted in cases of misuse or fraud.</li>
+                <li>We process your data to operate, secure, and improve the service, and to prevent abuse.</li>
+                <li>You may request account deletion as described in our data practices.</li>
+                <li>We may update these terms; continued use after updates signifies acceptance of the changes.</li>
+              </ul>
+              <p className="text-xs text-gray-500">
+                This summary is provided for convenience. Please refer to the full policies for complete terms.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3 px-6 py-5 border-t border-gray-100">
+              <button
+                type="button"
+                className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowTerms(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={() => {
+                  setAgreed(true)
+                  setShowTerms(false)
+                  if (error) setError('')
+                }}
+              >
+                Agree and Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   )
 }
