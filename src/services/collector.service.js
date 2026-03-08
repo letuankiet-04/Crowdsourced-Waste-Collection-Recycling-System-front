@@ -89,3 +89,40 @@ export async function getMyCollectionTasks() {
 export async function updateCollectionStatus({ id, status }) {
   return updateCollectorTaskStatus(id, status)
 }
+
+export async function updateCollectorPresence({ status, availability, online } = {}) {
+  const desired =
+    typeof status === 'string'
+      ? status
+      : typeof availability === 'string'
+        ? availability
+        : typeof online === 'boolean'
+          ? online
+            ? 'active'
+            : 'available'
+          : null
+
+  if (!desired) throw new Error('Missing collector status')
+
+  const candidates = [
+    { url: '/api/collector/status', body: { status: desired } },
+    { url: '/api/collector/presence', body: { status: desired } },
+    { url: '/api/collector/availability', body: { availability: desired } },
+    { url: '/api/collector/availability', body: { status: desired } },
+  ]
+
+  let lastError = null
+  for (const c of candidates) {
+    try {
+      const { data } = await api.patch(c.url, c.body)
+      return unwrapApiResponse(data)
+    } catch (err) {
+      lastError = err
+      const statusCode = err?.status
+      if (statusCode === 404 || statusCode === 405) continue
+      throw err
+    }
+  }
+
+  throw lastError ?? new Error('Unable to update collector status')
+}

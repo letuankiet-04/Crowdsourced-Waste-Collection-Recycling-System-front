@@ -17,6 +17,21 @@ export async function getEnterpriseWasteReportById(id) {
   return unwrapApiResponse(data)
 }
 
+export async function getEnterpriseReportsWasteVolume(params) {
+  const { data } = await api.get('/api/enterprise/reports/waste-volume', { params })
+  return unwrapApiResponse(data)
+}
+
+export async function getEnterpriseReportsGeneral(params) {
+  const { data } = await api.get('/api/enterprise/reports/general', { params })
+  return unwrapApiResponse(data)
+}
+
+export async function getEnterpriseReportsCitizens(params) {
+  const { data } = await api.get('/api/enterprise/reports/citizens', { params })
+  return unwrapApiResponse(data)
+}
+
 export async function acceptWasteReport({ reportCode, estimatedWeight }) {
   if (!reportCode) throw new Error('Report Code is required')
   const body = estimatedWeight != null ? { estimatedWeight } : {}
@@ -40,7 +55,7 @@ export async function rejectWasteReport({ reportCode, reason }) {
 export async function assignCollectorToRequest({ requestId, collectorId }) {
   if (requestId == null) throw new Error('Request ID is required')
   if (collectorId == null) throw new Error('Collector ID is required')
-  const { data } = await api.post(`/api/enterprise/requests/${requestId}/assign`, {
+  const { data } = await api.post(`/api/enterprise/requests/${encodeURIComponent(requestId)}/assign-collector`, {
     collectorId,
   })
   return unwrapApiResponse(data)
@@ -80,6 +95,14 @@ export async function createCollector({
 
 export async function getEnterpriseCollectors() {
   const { data } = await api.get('/api/enterprise/collectors')
+  return unwrapApiResponse(data)
+}
+
+export async function getEligibleCollectorsForRequest(requestId) {
+  if (requestId == null) throw new Error('Request ID is required')
+  const { data } = await api.get(
+    `/api/enterprise/requests/${encodeURIComponent(requestId)}/eligible-collectors`
+  )
   return unwrapApiResponse(data)
 }
 

@@ -18,6 +18,7 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import {
   acceptWasteReport,
   assignCollectorByReportCode,
+  assignCollectorToRequest,
   getEnterpriseCollectors,
   getEnterpriseWasteReportById,
   rejectWasteReport,
@@ -168,6 +169,12 @@ export default function EnterpriseReportDetail() {
             ? Number(requestIdRaw)
             : requestIdRaw;
 
+    const submitBy =
+      (typeof base?.submitBy === "string" && base.submitBy.trim()) ||
+      (typeof base?.submit_by === "string" && base.submit_by.trim()) ||
+      (typeof base?.createdByName === "string" && base.createdByName.trim()) ||
+      null;
+
     const notes =
       (typeof base?.notes === "string" && base.notes.trim()) ||
       (typeof base?.description === "string" && base.description.trim()) ||
@@ -220,11 +227,22 @@ export default function EnterpriseReportDetail() {
       images,
       types,
       wasteItems,
+      submitBy,
     };
   }, [reportOverride, reportData, stateReport, id]);
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
-  const canGoAssign = status === "Accepted" || status === "Assigned";
+  const canGoAssign = status === "Accepted" || status === "Assigned" || status === "Reassign";
+  const isReassign = status === "Reassign";
+  const assignActionLabel = isReassign ? "Reassign collector" : "Assign collector";
+  const assignDialogTitle = isReassign ? "Reassign Collector" : "Assign Collector";
+  const assignConfirmTitle = isReassign
+    ? "Are you sure you want to reassign this report?"
+    : "Are you sure you want to assign this report?";
+  const assignConfirmDescription = isReassign
+    ? "If you continue, the report will be reassigned to the selected collector."
+    : "If you continue, the report will be assigned to the selected collector.";
+  const assignConfirmText = isReassign ? "Reassign" : "Assign";
 
   const [collectorSource, setCollectorSource] = useState([]);
   const [collectorsLoading, setCollectorsLoading] = useState(false);
@@ -432,30 +450,36 @@ export default function EnterpriseReportDetail() {
     setAssignConfirmOpen(false);
     const primaryCollector = collectors.find((c) => c.email === selectedCollectorEmail);
     if (!primaryCollector) return;
-    const reportCode = getReportCodeFromReport(report);
-    if (!reportCode) {
+    const requestId = getRequestIdFromReport(report);
+    const reportCode = requestId == null ? getReportCodeFromReport(report) : null;
+    if (requestId == null && !reportCode) {
       notify.error("Missing report code", "Unable to identify report code for this report.");
       return;
     }
 
     try {
       setAssignSubmitting(true);
-      const assignedResponse = await notify.promise(assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id }), {
-        loadingTitle: "Assigning collector...",
-        loadingMessage: "Sending assignment to the server.",
-        successTitle: "Collector assigned",
-        successMessage: "Assignment saved successfully.",
-        errorTitle: "Assign failed",
-        errorMessage: (err) => err?.message || "Unable to assign collector.",
-      });
+      const assignedResponse = await notify.promise(
+        requestId == null
+          ? assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id })
+          : assignCollectorToRequest({ requestId, collectorId: primaryCollector.id }),
+        {
+          loadingTitle: "Assigning collector...",
+          loadingMessage: "Sending assignment to the server.",
+          successTitle: "Collector assigned",
+          successMessage: "Assignment saved successfully.",
+          errorTitle: "Assign failed",
+          errorMessage: (err) => err?.message || "Unable to assign collector.",
+        }
+      );
 
       const next = {
         ...report,
         status: assignedResponse?.status ?? report?.status,
-        collectionRequestId: assignedResponse?.collectionRequestId ?? getRequestIdFromReport(report),
+        collectionRequestId: assignedResponse?.collectionRequestId ?? requestId ?? getRequestIdFromReport(report),
         assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
         assignedCollectors: [{ id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email }],
-        updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
+        updatedAt: assignedResponse?.assignedAt ?? assignedResponse?.actionAt ?? new Date().toISOString(),
       };
       setReportOverride(next);
       setReportData(next);
@@ -565,7 +589,7 @@ export default function EnterpriseReportDetail() {
                 <div>This report is already {status}. Accept/Reject is available only while status is pending.</div>
                 {canGoAssign ? (
                   <Button variant="outline" size="sm" className="rounded-full" onClick={() => openAssignDialog()}>
-                    Assign collector
+                    {assignActionLabel}
                   </Button>
                 ) : null}
               </div>
@@ -712,7 +736,7 @@ export default function EnterpriseReportDetail() {
             <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
               <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
                 <div className="min-w-0">
-                  <div className="text-lg font-semibold text-gray-900">Assign Collector</div>
+                  <div className="text-lg font-semibold text-gray-900">{assignDialogTitle}</div>
                   <div className="mt-1 text-sm text-gray-600">Select a collector for {report?.id ?? "-"}. </div>
                 </div>
                 <button
@@ -794,7 +818,7 @@ export default function EnterpriseReportDetail() {
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
-                  Assign
+                  {assignConfirmText}
                 </Button>
               </div>
             </div>
@@ -814,9 +838,9 @@ export default function EnterpriseReportDetail() {
 
         <ConfirmDialog
           open={assignConfirmOpen}
-          title="Are you sure you want to assign this report?"
-          description="If you continue, the report will be assigned to the selected collector."
-          confirmText="Assign"
+          title={assignConfirmTitle}
+          description={assignConfirmDescription}
+          confirmText={assignConfirmText}
           cancelText="Cancel"
           confirmDisabled={assignSubmitting}
           onClose={() => setAssignConfirmOpen(false)}

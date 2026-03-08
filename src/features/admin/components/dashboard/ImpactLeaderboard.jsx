@@ -1,4 +1,6 @@
 import { Card, CardBody, CardHeader, CardTitle } from "../../../../shared/ui/Card.jsx";
+import { useEffect, useState } from "react";
+import { getCitizenLeaderboard } from "../../../../services/citizen.service.js";
 
 function LeaderboardPlaceholder({ title }) {
   return (
@@ -28,7 +30,84 @@ function LeaderboardPlaceholder({ title }) {
   );
 }
 
+function CitizenLeaderboardTable({ title, rows, loading, error }) {
+  return (
+    <div>
+      <h3 className="text-base font-semibold text-gray-900 mb-4">{title}</h3>
+      <div className="overflow-hidden rounded-xl border border-gray-100">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-gray-50/50">
+            <tr>
+              <th className="py-3 px-4 font-medium text-gray-500">Rank</th>
+              <th className="py-3 px-4 font-medium text-gray-500">Name</th>
+              <th className="py-3 px-4 font-medium text-gray-500 text-right">Score</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {loading ? (
+              <tr>
+                <td className="py-3 px-4 text-gray-400" colSpan={3}>
+                  Loading...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td className="py-3 px-4 text-red-600" colSpan={3}>
+                  {error}
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td className="py-3 px-4 text-gray-400" colSpan={3}>
+                  No data
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.citizenId ?? row.rank}>
+                  <td className="py-3 px-4 text-gray-700">#{row.rank}</td>
+                  <td className="py-3 px-4 text-gray-700">{row.fullName}</td>
+                  <td className="py-3 px-4 text-right text-gray-700 font-semibold">{row.totalPoint ?? 0}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ImpactLeaderboard() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getCitizenLeaderboard({ limit: 5 });
+        if (!active) return;
+        setRows(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!active) return;
+        setError(e?.message || "Unable to load leaderboard.");
+        setRows([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="py-6 px-8">
@@ -45,7 +124,12 @@ export default function ImpactLeaderboard() {
       </CardHeader>
       <CardBody className="p-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <LeaderboardPlaceholder title="Top Contributors (Citizens)" />
+          <CitizenLeaderboardTable
+            title="Top Contributors (Citizens)"
+            rows={rows}
+            loading={loading}
+            error={error}
+          />
           <LeaderboardPlaceholder title="Top Performing Collectors" />
         </div>
       </CardBody>

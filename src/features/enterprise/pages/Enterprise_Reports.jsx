@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
@@ -94,7 +94,15 @@ export default function EnterpriseReports() {
   return (
     <EnterpriseLayout>
       <div className="space-y-8">
-        <PageHeader title="Reports" description="Review incoming reports and take actions." />
+        <PageHeader
+          title="Reports"
+          description="Review incoming reports and take actions."
+          right={
+            <Button as={Link} to={PATHS.enterprise.analytics} variant="outline" size="sm" className="rounded-full">
+              View analytics →
+            </Button>
+          }
+        />
         
         {/* Filter Section */}
         <Card>

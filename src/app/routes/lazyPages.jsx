@@ -35,6 +35,7 @@ export const CitizenTerms = lazy(() => import('../../features/citizen/pages/Citi
 export const EnterpriseDashboard = lazy(() => import('../../features/enterprise/pages/Enterprise_Dashboard.jsx'))
 export const EnterpriseActiveCollector = lazy(() => import('../../features/enterprise/pages/Enterprise_ActiveCollector.jsx'))
 export const EnterpriseReports = lazy(() => import('../../features/enterprise/pages/Enterprise_Reports.jsx'))
+export const EnterpriseReportsAnalytics = lazy(() => import('../../features/enterprise/pages/Enterprise_ReportsAnalytics.jsx'))
 export const EnterpriseCollectorReports = lazy(() => import('../../features/enterprise/pages/Enterprise_CollectorReports.jsx'))
 export const EnterpriseCollectorReportDetail = lazy(() => import('../../features/enterprise/pages/Enterprise_CollectorReportDetail.jsx'))
 export const EnterpriseReportDetail = lazy(() => import('../../features/enterprise/pages/Enterprise_ReportDetail.jsx'))
