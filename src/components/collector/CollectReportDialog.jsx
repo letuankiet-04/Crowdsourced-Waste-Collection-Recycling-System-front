@@ -8,6 +8,9 @@ import StatusPill from '../../shared/ui/StatusPill.jsx'
 import ValidationError from '../../shared/ui/ValidationError.jsx'
 import ImageUploader from '../../shared/ui/ImageUploader.jsx'
 import MapPicker from '../../shared/components/maps/GoongMapPicker.jsx'
+import WasteItemsTable from '../../shared/ui/WasteItemsTable.jsx'
+import { getWasteCategories } from '../../services/reports.service.js'
+import { WASTE_TYPE_OPTIONS } from '../../shared/constants/wasteTypes.js'
  
 
 export default function CollectReportDialog({
@@ -21,12 +24,13 @@ export default function CollectReportDialog({
   initialCoords,
   onSubmit,
 }) {
-  const [quantitiesByCategoryId, setQuantitiesByCategoryId] = useState({})
+  const [collectedItems, setCollectedItems] = useState([])
   const [collectedImages, setCollectedImages] = useState([])
   const [collectedAddress, setCollectedAddress] = useState('')
   const [collectedCoords, setCollectedCoords] = useState(null)
   const [verificationRate, setVerificationRate] = useState(0)
   const [collectorNote, setCollectorNote] = useState('')
+  const [wasteTypes, setWasteTypes] = useState([])
   const [addrLoading, setAddrLoading] = useState(false)
   const [gpsLoading, setGpsLoading] = useState(false)
   const [geoError, setGeoError] = useState('')
@@ -40,20 +44,43 @@ export default function CollectReportDialog({
 
   useEffect(() => {
     if (!open) return
-    const next = {}
     const list = Array.isArray(categories) ? categories : []
-    list.forEach((c, idx) => {
-      const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id ?? `__idx_${idx}`
+    const nextItems = list.map((c) => {
+      const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id ?? null
       const baseSuggested = c?.suggestedQuantity ?? c?.estimatedWeight
       const suggested = baseSuggested === 0 ? '0' : baseSuggested != null ? String(baseSuggested) : ''
-      next[String(id)] = suggested
+      return { wasteTypeId: id, estimatedWeight: suggested }
     })
-    setQuantitiesByCategoryId(next)
+    const nextTypes = list
+      .map((c) => {
+        const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id
+        if (id == null) return null
+        return {
+          id: Number(id),
+          name: c?.categoryName ?? c?.name ?? String(id),
+          unit: c?.wasteUnit ?? c?.unit ?? '',
+        }
+      })
+      .filter(Boolean)
+    const builtInTypes = (Array.isArray(WASTE_TYPE_OPTIONS) ? WASTE_TYPE_OPTIONS : [])
+      .map((t) => {
+        const id = t?.id
+        if (id == null) return null
+        return { id: Number(id), name: t?.name ?? String(id), unit: t?.unit ?? '' }
+      })
+      .filter(Boolean)
+    const mergedInitial = new Map()
+    ;[...builtInTypes, ...nextTypes].forEach((t) => {
+      if (!t || t.id == null || !Number.isFinite(t.id)) return
+      mergedInitial.set(t.id, t)
+    })
+    setCollectedItems(nextItems)
     setCollectedImages([])
     setCollectedAddress(typeof initialAddress === 'string' ? initialAddress : '')
     setCollectedCoords(initialCoords ?? null)
     setVerificationRate(0)
     setCollectorNote('')
+    setWasteTypes(Array.from(mergedInitial.values()))
     setAddrLoading(false)
     setGpsLoading(false)
     setGeoError('')
@@ -63,6 +90,66 @@ export default function CollectReportDialog({
     setPendingPayload(null)
     sourceRef.current = 'system'
   }, [open, categories, initialAddress, initialCoords])
+
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    ;(async () => {
+      const fromReport = (Array.isArray(categories) ? categories : [])
+        .map((c) => {
+          const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id
+          if (id == null) return null
+          return {
+            id: Number(id),
+            name: c?.categoryName ?? c?.name ?? String(id),
+            unit: c?.wasteUnit ?? c?.unit ?? '',
+          }
+        })
+        .filter(Boolean)
+      const builtInTypes = (Array.isArray(WASTE_TYPE_OPTIONS) ? WASTE_TYPE_OPTIONS : [])
+        .map((t) => {
+          const id = t?.id
+          if (id == null) return null
+          return { id: Number(id), name: t?.name ?? String(id), unit: t?.unit ?? '' }
+        })
+        .filter(Boolean)
+
+      try {
+        const fetched = await getWasteCategories()
+        const normalizedFetched = (Array.isArray(fetched) ? fetched : [])
+          .map((c) => {
+            const id = c?.id ?? c?.categoryId ?? c?.wasteTypeId
+            if (id == null) return null
+            return {
+              id: Number(id),
+              name: c?.name ?? c?.categoryName ?? String(id),
+              unit: c?.unit ?? c?.wasteUnit ?? '',
+            }
+          })
+          .filter(Boolean)
+
+        const merged = new Map()
+        ;[...builtInTypes, ...normalizedFetched, ...fromReport].forEach((t) => {
+          if (!t || t.id == null || !Number.isFinite(t.id)) return
+          merged.set(t.id, t)
+        })
+
+        if (!alive) return
+        setWasteTypes(Array.from(merged.values()))
+      } catch {
+        const merged = new Map()
+        ;[...builtInTypes, ...fromReport].forEach((t) => {
+          if (!t || t.id == null || !Number.isFinite(t.id)) return
+          merged.set(t.id, t)
+        })
+        if (!alive) return
+        setWasteTypes(Array.from(merged.values()))
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [open, categories])
 
   useEffect(() => {
     if (!open) return
@@ -128,35 +215,40 @@ export default function CollectReportDialog({
       return
     }
 
-    const list = Array.isArray(categories) ? categories : []
     const categoryIds = []
     const quantities = []
-    let missingIdCount = 0
+    const selected = new Set()
+    const list = Array.isArray(collectedItems) ? collectedItems : []
     for (let i = 0; i < list.length; i++) {
-      const c = list[i]
-      const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id
-      const key = id != null ? String(id) : `__idx_${i}`
-      const raw = quantitiesByCategoryId?.[key]
-      const value = raw === '' || raw === null || raw === undefined ? NaN : Number(raw)
-      if (!Number.isFinite(value) || value < 0) {
-        setError(`Please enter a valid quantity for ${c?.categoryName ?? c?.name ?? 'this category'}.`)
+      const it = list[i] || {}
+      const idRaw = it.wasteTypeId
+      const id = idRaw === '' || idRaw === null || idRaw === undefined ? null : Number(idRaw)
+      if (!Number.isInteger(id)) {
+        setError(`Please select a waste type for row ${i + 1}.`)
         return
       }
-      if (id == null && value > 0) {
-        missingIdCount++
+      if (selected.has(id)) {
+        const name = wasteTypes.find((t) => Number(t?.id) === id)?.name
+        setError(`Duplicate waste type${name ? `: ${name}` : ''}. Please choose different types.`)
+        return
       }
-      if (id != null && value > 0) {
-        categoryIds.push(Number(id))
+      selected.add(id)
+
+      const raw = it.estimatedWeight
+      const value = raw === '' || raw === null || raw === undefined ? NaN : Number(raw)
+      if (!Number.isFinite(value) || value < 0) {
+        const name = wasteTypes.find((t) => Number(t?.id) === id)?.name
+        setError(`Please enter a valid quantity for ${name || `row ${i + 1}`}.`)
+        return
+      }
+      if (value > 0) {
+        categoryIds.push(id)
         quantities.push(value)
       }
     }
 
     if (!categoryIds.length) {
       setError('Please enter at least one collected quantity.')
-      return
-    }
-    if (missingIdCount > 0) {
-      setError('Some items are missing category IDs from server; please contact support.')
       return
     }
 
@@ -307,38 +399,14 @@ export default function CollectReportDialog({
 
           <div className="space-y-3">
             <div className="text-sm font-semibold text-gray-900">Collected Quantities</div>
-            {(Array.isArray(categories) ? categories : []).map((c, idx) => {
-              const categoryId = c?.categoryId ?? c?.wasteTypeId ?? c?.id
-              const idBase = categoryId != null ? String(categoryId) : `__idx_${idx}`
-              const id = `collected-qty-${idBase}`
-              const value = quantitiesByCategoryId?.[String(categoryId)] ?? ''
-              const unitRaw = c?.wasteUnit ?? c?.unit
-              const unit = unitRaw ? String(unitRaw).toLowerCase() : 'kg'
-              return (
-                <div key={idBase} className="grid gap-2">
-                  <label htmlFor={id} className="text-sm font-medium text-slate-800">
-                    {c?.categoryName ?? c?.name ?? `Category ${categoryId}`} ({unit})
-                  </label>
-                  <input
-                    id={id}
-                    name={id}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={value}
-                    onChange={(e) => {
-                      const nextValue = e.target.value
-                      const key = categoryId != null ? String(categoryId) : `__idx_${idx}`
-                      setQuantitiesByCategoryId((prev) => ({ ...(prev || {}), [key]: nextValue }))
-                      if (error) setError('')
-                    }}
-                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-3 pr-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200"
-                    placeholder="0.00"
-                  />
-                </div>
-              )
-            })}
-            
+            <WasteItemsTable
+              items={collectedItems}
+              wasteTypes={wasteTypes}
+              onChange={(next) => {
+                setCollectedItems(next)
+                if (error) setError('')
+              }}
+            />
           </div>
 
           <div className="space-y-2">

@@ -424,7 +424,7 @@ export default function EnterpriseReportsAnalytics() {
                               {generalStatusRows.slice(0, 8).map((row, idx) => (
                                 <div
                                   key={row.key}
-                                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2"
+                                  className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2"
                                 >
                                   <div className="flex min-w-0 items-center gap-2">
                                     <span
@@ -433,7 +433,6 @@ export default function EnterpriseReportsAnalytics() {
                                     />
                                     <div className="min-w-0 text-xs font-semibold leading-tight text-slate-700">{row.label}</div>
                                   </div>
-                                  <div className="shrink-0 text-xs font-black text-slate-900">{formatNumber(row.value)}</div>
                                 </div>
                               ))}
                             </div>

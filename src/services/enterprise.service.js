@@ -106,6 +106,14 @@ export async function getEligibleCollectorsForRequest(requestId) {
   return unwrapApiResponse(data)
 }
 
+export async function getEnterpriseRequestReportDetail(requestId) {
+  if (requestId == null) throw new Error('Request ID is required')
+  const { data } = await api.get(
+    `/api/enterprise/requests/${encodeURIComponent(requestId)}/report-detail`
+  )
+  return unwrapApiResponse(data)
+}
+
 export async function getCollectorReports(params) {
   const { data } = await api.get('/api/enterprise/collector-reports', { params })
   return unwrapApiResponse(data)

@@ -1,4 +1,5 @@
 import { ClipboardList, LayoutDashboard, User, History } from "lucide-react";
+import { useEffect } from "react";
 import RoleSidebar from "../../../shared/layout/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../shared/layout/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../shared/layout/sidebar/SidebarLogoutButton.jsx";
@@ -7,9 +8,58 @@ import logo from "../../../assets/app-logo.jpg";
 import { PATHS } from "../../../app/routes/paths.js";
 import CollectorNavbar from "../components/navigation/CollectorNavbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
-import CD_Header from "../../../shared/layout/CD_Header.jsx";
+import useStoredUser from "../../../shared/hooks/useStoredUser.js";
+import { updateCollectorPresence } from "../../../services/collector.service.js";
+
+function isStoredOnline(user) {
+  if (!user) return false;
+  if (user.online === true || user.active === true || user.isActive === true) return true;
+  const raw = String(user.availability ?? user.status ?? "").trim().toLowerCase();
+  return raw === "online" || raw === "active";
+}
 
 export default function CollectorLayout({ children }) {
+  const { user } = useStoredUser();
+
+  useEffect(() => {
+    if (!user) return;
+
+    if (isStoredOnline(user)) {
+      void (async () => {
+        try {
+          await updateCollectorPresence({ status: "ONLINE" });
+        } catch (e) {
+          void e;
+        }
+      })();
+    }
+
+    const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    const normalizedBaseUrl = typeof configuredBaseUrl === "string" ? configuredBaseUrl.trim() : "";
+    const baseURL = import.meta.env.DEV ? "" : normalizedBaseUrl;
+
+    function sendOfflineKeepalive() {
+      const token = typeof window !== "undefined" ? window.sessionStorage.getItem("token") : null;
+      if (!token) return;
+      void fetch(`${baseURL}/api/collector/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: "OFFLINE" }),
+        keepalive: true,
+      }).catch((e) => void e);
+    }
+
+    window.addEventListener("pagehide", sendOfflineKeepalive);
+    window.addEventListener("beforeunload", sendOfflineKeepalive);
+    return () => {
+      window.removeEventListener("pagehide", sendOfflineKeepalive);
+      window.removeEventListener("beforeunload", sendOfflineKeepalive);
+    };
+  }, [user]);
+
   return (
     <RoleLayout
       sidebar={

@@ -162,25 +162,6 @@ export default function CreateReportForm() {
     navigate(isEdit && editReport?.id ? `${PATHS.citizen.reports}/${editReport.id}` : PATHS.citizen.dashboard);
   };
 
-  const totalEstimatedWeight = useMemo(() => {
-    const sum = (Array.isArray(wasteItems) ? wasteItems : []).reduce((acc, item) => {
-      const id = item?.wasteTypeId;
-      if (id === null || id === undefined || id === "") return acc;
-      const raw = String(item?.estimatedWeight ?? "").trim();
-      if (!raw) return acc;
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n < 0) return acc;
-      return acc + n;
-    }, 0);
-
-    return sum;
-  }, [wasteItems]);
-
-  const weightError = useMemo(() => {
-    if (totalEstimatedWeight >= 10) return "Weight must be less than 10 kg.";
-    return "";
-  }, [totalEstimatedWeight]);
-
   const wasteItemsError = useMemo(() => {
     const list = Array.isArray(wasteItems) ? wasteItems : [];
     if (!list.length) return "Please add at least one waste item.";
@@ -207,10 +188,9 @@ export default function CreateReportForm() {
     const hasItems = !wasteItemsError;
     const hasImages = images.length > 0 || existingImages.length > 0;
     const hasLocation = coords != null && address.trim().length >= 3 && !geoError;
-    const hasValidWeight = !weightError;
     const hasCategories = !categoryLoading && categoryOptions.length > 0;
-    return hasItems && hasImages && hasLocation && hasValidWeight && hasCategories;
-  }, [wasteItemsError, images, existingImages, coords, address, geoError, weightError, categoryLoading, categoryOptions]);
+    return hasItems && hasImages && hasLocation && hasCategories;
+  }, [wasteItemsError, images, existingImages, coords, address, geoError, categoryLoading, categoryOptions]);
 
   const handleClearDraft = () => {
     setWasteItems([]);
@@ -240,10 +220,6 @@ export default function CreateReportForm() {
     }
     if (!coords) {
       notify.error("Missing location", "Please choose a location using GPS, map, or address.");
-      return;
-    }
-    if (weightError) {
-      notify.error("Invalid weight", weightError);
       return;
     }
     if (geoError) {
@@ -384,7 +360,6 @@ export default function CreateReportForm() {
         <WasteItemsTable items={wasteItems} wasteTypes={categoryOptions} onChange={handleWasteItemsChange} />
         {categoryLoading ? <div className="mt-2 text-sm text-gray-500">Loading waste categories...</div> : null}
         {showWasteErrors && wasteItemsError ? <div className="mt-2 text-sm text-red-600">{wasteItemsError}</div> : null}
-        {showWasteErrors && !wasteItemsError && weightError ? <div className="mt-3 text-sm text-red-600">{weightError}</div> : null}
 
         {pointsBreakdown.length > 0 ? (
           <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5">

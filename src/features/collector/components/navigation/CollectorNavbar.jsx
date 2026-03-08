@@ -35,7 +35,7 @@ function writeStoredPresence(nextOnline) {
     const raw = typeof window !== "undefined" ? window.sessionStorage.getItem("user") : null;
     const parsed = raw ? JSON.parse(raw) : null;
     if (!parsed || typeof parsed !== "object") return;
-    const nextStatus = nextOnline ? "active" : "available";
+    const nextStatus = nextOnline ? "online" : "offline";
     const nextUser = {
       ...parsed,
       status: typeof parsed.status === "string" ? nextStatus : parsed.status,
@@ -66,11 +66,12 @@ export default function CollectorNavbar() {
   useEffect(() => {
     let active = true;
     if (!user) return () => void 0;
+    const desiredOnline = coerceCollectorOnline(user, false);
     void (async () => {
       try {
         const dash = await getCollectorDashboard();
         if (!active) return;
-        setOnline((prev) => coerceCollectorOnline(dash, prev));
+        setOnline((prev) => (desiredOnline ? true : coerceCollectorOnline(dash, prev)));
       } catch (e) {
         void e;
       }
@@ -82,22 +83,24 @@ export default function CollectorNavbar() {
 
   async function handleTogglePresence() {
     if (presencePending) return;
-    const nextOnline = !online;
+    if (online) {
+      notify.info("Trạng thái", "Chỉ chuyển Offline khi logout hoặc tắt trang.");
+      return;
+    }
     setPresencePending(true);
-    setOnline(nextOnline);
     try {
-      await notify.promise(updateCollectorPresence({ online: nextOnline }), {
+      await notify.promise(updateCollectorPresence({ status: "ONLINE" }), {
         loadingTitle: "Updating status...",
-        loadingMessage: nextOnline ? "Switching to online." : "Switching to offline.",
+        loadingMessage: "Switching to online.",
         successTitle: "Status updated",
-        successMessage: nextOnline ? "You are now online." : "You are now offline.",
+        successMessage: "You are now online.",
         errorTitle: "Update failed",
         errorMessage: (err) => err?.message || "Unable to update status.",
       });
-      writeStoredPresence(nextOnline);
+      setOnline(true);
+      writeStoredPresence(true);
     } catch (e) {
       void e;
-      setOnline(!nextOnline);
     } finally {
       setPresencePending(false);
     }
@@ -112,25 +115,25 @@ export default function CollectorNavbar() {
               <span className={cn("text-xs font-semibold tracking-wide", online ? "text-emerald-700" : "text-slate-600")}>
                 {online ? "Online" : "Offline"}
               </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={online}
-                aria-label="Toggle online status"
-                onClick={handleTogglePresence}
-                disabled={presencePending}
-                className={cn(
-                  "relative inline-flex h-7 w-12 items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60",
-                  online ? "bg-emerald-600" : "bg-slate-300"
-                )}
-              >
-                <span
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={online}
+                  aria-label="Toggle online status"
+                  onClick={handleTogglePresence}
+                  disabled={presencePending}
                   className={cn(
-                    "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition",
-                    online ? "translate-x-6" : "translate-x-1"
+                    "relative inline-flex h-7 w-12 items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60",
+                    online ? "bg-emerald-600" : "bg-slate-300"
                   )}
-                />
-              </button>
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition",
+                      online ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
             </div>
 
             <button
@@ -152,6 +155,12 @@ export default function CollectorNavbar() {
               onLogout={() => {
                 void (async () => {
                   try {
+                      await updateCollectorPresence({ status: "OFFLINE" });
+                      writeStoredPresence(false);
+                    } catch (err) {
+                      void err;
+                    }
+                    try {
                     await logout();
                   } catch (err) {
                     void err;

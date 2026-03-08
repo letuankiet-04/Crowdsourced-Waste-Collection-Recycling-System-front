@@ -98,8 +98,8 @@ export async function updateCollectorPresence({ status, availability, online } =
         ? availability
         : typeof online === 'boolean'
           ? online
-            ? 'active'
-            : 'available'
+            ? 'ONLINE'
+            : 'OFFLINE'
           : null
 
   if (!desired) throw new Error('Missing collector status')
