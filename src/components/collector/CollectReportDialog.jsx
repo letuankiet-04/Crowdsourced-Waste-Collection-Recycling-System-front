@@ -8,6 +8,7 @@ import StatusPill from '../../shared/ui/StatusPill.jsx'
 import ValidationError from '../../shared/ui/ValidationError.jsx'
 import ImageUploader from '../../shared/ui/ImageUploader.jsx'
 import MapPicker from '../../shared/components/maps/GoongMapPicker.jsx'
+ 
 
 export default function CollectReportDialog({
   open,
@@ -33,6 +34,7 @@ export default function CollectReportDialog({
   const [submitting, setSubmitting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingPayload, setPendingPayload] = useState(null)
+ 
 
   const sourceRef = useRef(null)
 
@@ -40,11 +42,10 @@ export default function CollectReportDialog({
     if (!open) return
     const next = {}
     const list = Array.isArray(categories) ? categories : []
-    list.forEach((c) => {
-      const id = c?.categoryId
-      if (id == null) return
-      const suggested =
-        c?.suggestedQuantity === 0 ? '0' : c?.suggestedQuantity != null ? String(c.suggestedQuantity) : ''
+    list.forEach((c, idx) => {
+      const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id ?? `__idx_${idx}`
+      const baseSuggested = c?.suggestedQuantity ?? c?.estimatedWeight
+      const suggested = baseSuggested === 0 ? '0' : baseSuggested != null ? String(baseSuggested) : ''
       next[String(id)] = suggested
     })
     setQuantitiesByCategoryId(next)
@@ -68,6 +69,8 @@ export default function CollectReportDialog({
     lockBodyScroll()
     return () => unlockBodyScroll()
   }, [open])
+
+  
 
   useEffect(() => {
     if (!open) return
@@ -119,29 +122,30 @@ export default function CollectReportDialog({
       return
     }
 
-    if (![0, 50, 100].includes(Number(verificationRate))) {
-      setError('Please choose a valid verification rate.')
-      return
-    }
-
-    if (!collectorNote || collectorNote.trim().length < 3) {
-      setError('Please enter a collector note.')
+    const vr = Number(verificationRate)
+    if (!Number.isFinite(vr) || vr < 0 || vr > 100) {
+      setError('Please choose a verification rate between 0 and 100.')
       return
     }
 
     const list = Array.isArray(categories) ? categories : []
     const categoryIds = []
     const quantities = []
-    for (const c of list) {
-      const id = c?.categoryId
-      if (id == null) continue
-      const raw = quantitiesByCategoryId?.[String(id)]
+    let missingIdCount = 0
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i]
+      const id = c?.categoryId ?? c?.wasteTypeId ?? c?.id
+      const key = id != null ? String(id) : `__idx_${i}`
+      const raw = quantitiesByCategoryId?.[key]
       const value = raw === '' || raw === null || raw === undefined ? NaN : Number(raw)
       if (!Number.isFinite(value) || value < 0) {
-        setError(`Please enter a valid quantity for ${c?.categoryName || 'this category'}.`)
+        setError(`Please enter a valid quantity for ${c?.categoryName ?? c?.name ?? 'this category'}.`)
         return
       }
-      if (value > 0) {
+      if (id == null && value > 0) {
+        missingIdCount++
+      }
+      if (id != null && value > 0) {
         categoryIds.push(Number(id))
         quantities.push(value)
       }
@@ -151,13 +155,17 @@ export default function CollectReportDialog({
       setError('Please enter at least one collected quantity.')
       return
     }
+    if (missingIdCount > 0) {
+      setError('Some items are missing category IDs from server; please contact support.')
+      return
+    }
 
     setPendingPayload({
       images: collectedImages,
       categoryIds,
       quantities,
-      verificationRate: Number(verificationRate),
-      collectorNote: collectorNote.trim(),
+      verificationRate: vr,
+      collectorNote: String(collectorNote ?? '').trim(),
       latitude: collectedCoords.lat,
       longitude: collectedCoords.lng,
     })
@@ -299,16 +307,17 @@ export default function CollectReportDialog({
 
           <div className="space-y-3">
             <div className="text-sm font-semibold text-gray-900">Collected Quantities</div>
-            {(Array.isArray(categories) ? categories : []).map((c) => {
-              const categoryId = c?.categoryId
-              if (categoryId == null) return null
-              const id = `collected-qty-${categoryId}`
+            {(Array.isArray(categories) ? categories : []).map((c, idx) => {
+              const categoryId = c?.categoryId ?? c?.wasteTypeId ?? c?.id
+              const idBase = categoryId != null ? String(categoryId) : `__idx_${idx}`
+              const id = `collected-qty-${idBase}`
               const value = quantitiesByCategoryId?.[String(categoryId)] ?? ''
-              const unit = c?.wasteUnit ? String(c.wasteUnit).toLowerCase() : 'kg'
+              const unitRaw = c?.wasteUnit ?? c?.unit
+              const unit = unitRaw ? String(unitRaw).toLowerCase() : 'kg'
               return (
-                <div key={categoryId} className="grid gap-2">
+                <div key={idBase} className="grid gap-2">
                   <label htmlFor={id} className="text-sm font-medium text-slate-800">
-                    {c?.categoryName || `Category ${categoryId}`} ({unit})
+                    {c?.categoryName ?? c?.name ?? `Category ${categoryId}`} ({unit})
                   </label>
                   <input
                     id={id}
@@ -319,7 +328,8 @@ export default function CollectReportDialog({
                     value={value}
                     onChange={(e) => {
                       const nextValue = e.target.value
-                      setQuantitiesByCategoryId((prev) => ({ ...(prev || {}), [String(categoryId)]: nextValue }))
+                      const key = categoryId != null ? String(categoryId) : `__idx_${idx}`
+                      setQuantitiesByCategoryId((prev) => ({ ...(prev || {}), [key]: nextValue }))
                       if (error) setError('')
                     }}
                     className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-3 pr-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200"
@@ -328,37 +338,48 @@ export default function CollectReportDialog({
                 </div>
               )
             })}
+            
           </div>
 
           <div className="space-y-2">
             <div className="text-sm font-semibold text-gray-900">Verification Rate</div>
-            <div role="radiogroup" aria-label="Verification Rate" className="inline-flex rounded-2xl border border-gray-200 bg-gray-50 p-1">
-              {[0, 50, 100].map((rate) => {
-                const active = Number(verificationRate) === rate
-                const activeClass =
-                  rate === 0
-                    ? 'bg-red-600 text-white shadow-sm ring-1 ring-black/5'
-                    : rate === 50
-                      ? 'bg-yellow-500 text-white shadow-sm ring-1 ring-black/5'
-                      : 'bg-green-600 text-white shadow-sm ring-1 ring-black/5'
-                return (
-                  <button
-                    key={rate}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => {
-                      setVerificationRate(rate)
-                      if (error) setError('')
-                    }}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-2xl transition ${
-                      active ? activeClass : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {rate}
-                  </button>
-                )
-              })}
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={Number(verificationRate)}
+                onChange={(e) => {
+                  setVerificationRate(Number(e.target.value))
+                  if (error) setError('')
+                }}
+                className="w-full accent-green-600"
+                aria-label="Verification Rate"
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={String(verificationRate)}
+                onChange={(e) => {
+                  const raw = String(e.target.value || '').replace(/[^\d]/g, '')
+                  const n = raw ? Number(raw) : 0
+                  const clamped = Math.max(0, Math.min(100, Math.round(n)))
+                  setVerificationRate(clamped)
+                  if (error) setError('')
+                }}
+                className="min-w-[3.25rem] w-16 px-3 py-1 rounded-lg text-sm font-semibold text-white text-center outline-none"
+                style={{
+                  background:
+                    Number(verificationRate) < 33
+                      ? '#dc2626'
+                      : Number(verificationRate) < 67
+                        ? '#f59e0b'
+                        : '#16a34a',
+                }}
+                aria-label="Verification Rate Input"
+              />
             </div>
           </div>
 

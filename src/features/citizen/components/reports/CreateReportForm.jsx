@@ -10,6 +10,7 @@ import ImageUploader from "../../../../shared/ui/ImageUploader.jsx";
 import { PATHS } from "../../../../app/routes/paths.js";
 import { getWasteCategories } from "../../../../services/reports.service.js";
 import WasteItemsTable from "../../../../shared/ui/WasteItemsTable.jsx";
+import { formatWasteTypeUnit } from "../../../../shared/constants/wasteTypes.js";
 
 function normalizeWeightInput(value) {
   if (value == null) return "";
@@ -112,6 +113,38 @@ export default function CreateReportForm() {
   const handleWasteItemsChange = (next) => {
     setWasteItems(next);
     if (!wasteItemsTouched) setWasteItemsTouched(true);
+  };
+
+  const pointsBreakdown = useMemo(() => {
+    const types = Array.isArray(categoryOptions) ? categoryOptions : [];
+    const byId = new Map(types.map((t) => [Number(t.id), t]));
+    const list = (Array.isArray(wasteItems) ? wasteItems : []).map((item) => {
+      const id = item?.wasteTypeId === "" || item?.wasteTypeId === null || item?.wasteTypeId === undefined ? NaN : Number(item.wasteTypeId);
+      const found = Number.isFinite(id) ? byId.get(id) : null;
+      const rawQty = String(item?.estimatedWeight ?? "").trim();
+      const qty = rawQty ? Number(rawQty) : NaN;
+      const ppu = found ? Number(found.pointPerUnit) : NaN;
+      if (!found || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(ppu)) return null;
+      return {
+        id: Number(found.id),
+        name: String(found.name),
+        unit: found.unit ?? null,
+        qty,
+        points: ppu * qty,
+      };
+    });
+    return list.filter(Boolean);
+  }, [wasteItems, categoryOptions]);
+
+  const totalEstimatedPoints = useMemo(() => {
+    return (Array.isArray(pointsBreakdown) ? pointsBreakdown : []).reduce((acc, r) => acc + (Number.isFinite(r?.points) ? r.points : 0), 0);
+  }, [pointsBreakdown]);
+
+  const formatPoints = (n) => {
+    if (!Number.isFinite(n)) return "0";
+    const rounded = Math.round(n);
+    if (Math.abs(n - rounded) < 1e-9) return String(rounded);
+    return n.toFixed(2);
   };
 
   const handleDiscard = () => {
@@ -352,6 +385,41 @@ export default function CreateReportForm() {
         {categoryLoading ? <div className="mt-2 text-sm text-gray-500">Loading waste categories...</div> : null}
         {showWasteErrors && wasteItemsError ? <div className="mt-2 text-sm text-red-600">{wasteItemsError}</div> : null}
         {showWasteErrors && !wasteItemsError && weightError ? <div className="mt-3 text-sm text-red-600">{weightError}</div> : null}
+
+        {pointsBreakdown.length > 0 ? (
+          <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-5">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <span>🎁</span>
+              </div>
+              <div className="font-semibold text-emerald-800">Estimated Reward</div>
+            </div>
+            <div className="mt-4 space-y-2">
+              {pointsBreakdown.map((r) => {
+                const unitLabel = r.unit ? formatWasteTypeUnit(r.unit) : "";
+                return (
+                  <div key={r.id} className="flex items-center justify-between text-sm">
+                    <div className="text-gray-700">
+                      {r.name} ({r.qty} {unitLabel})
+                    </div>
+                    <div className="font-semibold text-emerald-700">+{formatPoints(r.points)} pts</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="my-4 border-t border-emerald-100" />
+            <div className="flex items-end justify-between">
+              <div className="text-xs font-semibold tracking-wider text-gray-500">TOTAL</div>
+              <div className="flex items-baseline gap-2">
+                <div className="text-3xl font-bold text-emerald-600">{formatPoints(totalEstimatedPoints)}</div>
+                <div className="text-emerald-700 font-semibold">pts</div>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl bg-white/80 text-emerald-800 border border-emerald-100 p-3 text-xs">
+              Points are officially credited after staff verification.
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-500 uppercase">Location</h4>
