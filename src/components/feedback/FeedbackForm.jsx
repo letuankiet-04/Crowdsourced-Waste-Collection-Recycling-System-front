@@ -1,63 +1,129 @@
 
 
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect, useMemo } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
 import { publishFeedbackSubmitted } from "../../events/feedbackEvents.js"
 import { PATHS } from "../../app/routes/paths.js"
+import { createFeedback } from "../../services/feedback.service.js"
+import { getMyReports } from "../../services/reports.service.js"
+import useNotify from "../../shared/hooks/useNotify.js"
 
 export default function FeedbackForm() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const notify = useNotify()
   const [feedback, setFeedback] = useState("")
-  const [type, setType] = useState("System") // Default type
-  const [file, setFile] = useState(null)
+  const [type, setType] = useState("System")
+  const [rating, setRating] = useState(5)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [reports, setReports] = useState([])
+  const [loadingReports, setLoadingReports] = useState(false)
+  const [selectedReportId, setSelectedReportId] = useState(null)
 
-  const handleSubmit = (e) => {
+  const reportId = location.state?.reportId;
+
+  useEffect(() => {
+    if (reportId) {
+      setType("Reward");
+      setSelectedReportId(Number(reportId));
+    } else {
+      setLoadingReports(true)
+      getMyReports()
+        .then((data) => setReports(Array.isArray(data) ? data : []))
+        .catch(() => notify.error("Failed to load your reports"))
+        .finally(() => setLoadingReports(false))
+    }
+  }, [reportId]);
+
+  const filteredReports = useMemo(() => {
+    const all = Array.isArray(reports) ? reports : []
+    if (type === "Reward") {
+      return all.filter(r => String(r.status) === "Collected")
+    }
+    return all
+  }, [reports, type])
+
+  useEffect(() => {
+    if (!reportId) {
+      const current = filteredReports.find(r => r.id === selectedReportId)
+      if (!current && filteredReports.length > 0) {
+        setSelectedReportId(filteredReports[0].id)
+      }
+    }
+  }, [filteredReports, reportId, selectedReportId])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!feedback.trim()) {
-      alert("Feedback reason is required")
+      notify.error("Feedback reason is required")
       return
     }
 
-    const formData = new FormData()
-    formData.append("feedback", feedback)
-    formData.append("type", type)
-    if (file) formData.append("evidence", file)
-
-    console.log("Submit feedback:", {
-      feedback,
-      type,
-      file,
-    })
-
-    // TODO: call API here
-    const payload = {
-      id: `FDB-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      message: feedback.trim(),
-      type,
-      fileName: file?.name ?? null,
-      createdAt: new Date().toISOString(),
+    const needsReport = type === "Reward" || type === "Collection"
+    const finalReportId = needsReport
+      ? (reportId ? Number(reportId) : Number(selectedReportId))
+      : undefined
+    if (needsReport) {
+      if (!finalReportId || Number.isNaN(finalReportId)) {
+        notify.error("Please select a report")
+        return
+      }
     }
-    publishFeedbackSubmitted(payload)
-    
-    alert("Your feedback has been successfully sent!")
-    navigate(PATHS.citizen.dashboard)
+
+    if (rating == null) {
+      notify.error("Please provide a rating (1-5)")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const payload = {
+        type: type === "System" 
+          ? "SYSTEM" 
+          : (type === "Collection" ? "COMPLAINT_COLLECTION" : "COMPLAINT_REWARD"),
+        content: feedback,
+        reportId: needsReport ? finalReportId : undefined,
+        rating: (Number(rating) || 5),
+      }
+      
+      await createFeedback(payload)
+
+      // Keep event publishing for other listeners if any
+      publishFeedbackSubmitted({
+        id: `FDB-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+        message: feedback.trim(),
+        type,
+        fileName: null,
+        createdAt: new Date().toISOString(),
+      })
+      
+      notify.success("Your feedback has been successfully sent!")
+      navigate(PATHS.citizen.dashboard)
+    } catch (error) {
+      notify.error("Failed to send feedback", error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleDiscard = () => {
     setFeedback("")
     setType("System")
-    setFile(null)
+    if (!reportId) setSelectedReportId(null)
+    setRating(5)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-3xl mx-auto">
-      {/* Feedback Type */}
+
+
+      {/* Feedback Type and Report */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <label className="block text-sm font-semibold text-gray-700 mb-3">
-          FEEDBACK TYPE
+          COMPLAINT TYPE
         </label>
-        <div className="flex gap-4">
+        <div className="flex gap-4 mb-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
               type="radio" 
@@ -65,7 +131,7 @@ export default function FeedbackForm() {
               value="System" 
               checked={type === "System"} 
               onChange={(e) => setType(e.target.value)} 
-              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
             />
             <span className="text-gray-900">System</span>
           </label>
@@ -73,14 +139,74 @@ export default function FeedbackForm() {
             <input 
               type="radio" 
               name="feedbackType" 
-              value="Service" 
-              checked={type === "Service"} 
+              value="Collection" 
+              checked={type === "Collection"} 
               onChange={(e) => setType(e.target.value)} 
-              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
             />
-            <span className="text-gray-900">Service</span>
+            <span className="text-gray-900">Collection</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="radio" 
+              name="feedbackType" 
+              value="Reward" 
+              checked={type === "Reward"} 
+              onChange={(e) => setType(e.target.value)} 
+              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
+            />
+            <span className="text-gray-900">Reward</span>
           </label>
         </div>
+        {(type === "Reward" || type === "Collection") && (
+          reportId ? (
+            <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+              <p className="text-sm font-medium text-emerald-800 mb-1">
+                Linking to Report #{reportId}
+              </p>
+              <p className="text-xs text-emerald-600">
+                 Your feedback will be attached to this report for the enterprise to review.
+              </p>
+              <button 
+                  type="button"
+                  onClick={() => navigate(PATHS.citizen.reportDetail.replace(':reportId', reportId))}
+                  className="mt-2 text-xs font-bold text-emerald-700 hover:text-emerald-800 underline"
+              >
+                  View Report Details
+              </button>
+            </div>
+          ) : (
+            <div className="mt-2">
+              <label className="block text-xs font-semibold text-gray-600 mb-2">
+                Select a report
+              </label>
+              <select
+                value={selectedReportId ?? ""}
+                onChange={(e) => setSelectedReportId(e.target.value ? Number(e.target.value) : null)}
+                disabled={loadingReports || filteredReports.length === 0}
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                <option value="" disabled>Select a report</option>
+                {filteredReports.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.reportCode ? `${r.reportCode} — ${r.status}` : `#${r.id} — ${r.status}`}
+                  </option>
+                ))}
+              </select>
+              {loadingReports && <div className="text-xs text-gray-500 mt-2">Loading your reports…</div>}
+              {!loadingReports && type === "Reward" && filteredReports.length === 0 && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+                  You can only submit reward-related complaints for collected reports.
+                </div>
+              )}
+              {!loadingReports && type === "Collection" && filteredReports.length === 0 && (
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
+                  Attach a related report to your collection complaint for evaluation.
+                </div>
+              )}
+            </div>
+          )
+        )}
       </div>
 
       {/* Feedback reason */}
@@ -98,40 +224,27 @@ export default function FeedbackForm() {
         />
       </div>
 
-      {/* Evidence upload */}
+      {/* Rating (All types) */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <label className="block text-sm font-semibold text-gray-700 mb-4">
-          EVIDENCE (OPTIONAL)
+        <label className="block text-sm font-semibold text-gray-700 mb-3">
+          RATING
         </label>
-
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center">
-          <input
-            type="file"
-            accept="image/png, image/jpeg, image/gif"
-            className="hidden"
-            id="evidence-upload"
-            onChange={(e) => setFile(e.target.files[0])}
-          />
-
-          <label
-            htmlFor="evidence-upload"
-            className="cursor-pointer inline-flex flex-col items-center gap-2"
-          >
-            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-              ⬆️
-            </div>
-            <p className="text-emerald-600 font-medium">Upload file</p>
-            <p className="text-sm text-gray-500">
-              PNG, JPG, GIF up to 10MB
-            </p>
-          </label>
-
-          {file && (
-            <p className="mt-4 text-sm text-gray-700">
-              Selected file: <strong>{file.name}</strong>
-            </p>
-          )}
+        <div className="flex gap-2">
+          {[1,2,3,4,5].map((r) => (
+            <label key={r} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="rating"
+                value={r}
+                checked={Number(rating) === r}
+                onChange={(e) => setRating(Number(e.target.value))}
+                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-gray-900">{r}</span>
+            </label>
+          ))}
         </div>
+        <div className="text-xs text-gray-500 mt-2">1 = very dissatisfied, 5 = very satisfied</div>
       </div>
 
       {/* Actions */}
@@ -147,9 +260,13 @@ export default function FeedbackForm() {
         <button
           type="submit"
           className="px-8 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition disabled:opacity-50"
-          disabled={!feedback.trim()}
+          disabled={
+            !feedback.trim() || 
+            ((type === "Reward" || type === "Collection") && (!reportId && !selectedReportId)) || 
+            loadingReports
+          }
         >
-          Send feedback →
+          Send complaint →
         </button>
       </div>
     </form>

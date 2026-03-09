@@ -44,6 +44,7 @@ export const PATHS = {
     map: '/enterprise/map',
     profile: '/enterprise/profile',
     adminPanel: '/enterprise/admin',
+    reviewFeedback: '/enterprise/review-feedback',
   },
   admin: {
     dashboard: '/admin/dashboard',

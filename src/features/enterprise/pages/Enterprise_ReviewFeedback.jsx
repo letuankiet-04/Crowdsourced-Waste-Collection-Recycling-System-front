@@ -9,17 +9,14 @@ import {
   Archive,
   MessageCircle
 } from "lucide-react";
-import AdminNavbar from "../components/navigation/AdminNavbar.jsx";
-import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
-import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
-import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
+import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import { Card, CardHeader } from "../../../shared/ui/Card.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
-import { getAdminFeedbacks } from "../../../services/feedback.service.js";
+import { getEnterpriseFeedbacks } from "../../../services/feedback.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import FeedbackDetailModal from "../../../shared/components/feedback/FeedbackDetailModal.jsx";
 
-export default function Review_Feedback() {
+export default function Enterprise_ReviewFeedback() {
   const notify = useNotify();
   // State
   const [activeTab, setActiveTab] = useState("All Submissions");
@@ -37,15 +34,14 @@ export default function Review_Feedback() {
   const fetchFeedbacks = async () => {
     setLoading(true);
     try {
-        // Request only SYSTEM feedback from API
-        const data = await getAdminFeedbacks({ type: 'SYSTEM' });
+        const data = await getEnterpriseFeedbacks();
         const items = Array.isArray(data) ? data : data.items || [];
         setFeedback(items.map((item) => ({
           ...item,
           type: (item.type || item.feedbackType || ""),
           reportId: item.collectionRequestId ?? item.reportId,
           sender: {
-            name: item.citizenName,
+            name: item.citizenName || item.senderName,
             role: "Citizen",
           },
         })));
@@ -60,21 +56,17 @@ export default function Review_Feedback() {
   const filteredFeedback = useMemo(() => {
     let result = feedback;
 
-    // Xác định khiếu nại SYSTEM:
-    // - Ưu tiên theo type trả về (nếu backend có cung cấp)
-    // - Fallback: không gắn với collectionRequestId => khiếu nại hệ thống
-    result = result.filter(item => {
+    // Exclude SYSTEM feedback (handled by Admin)
+    result = result.filter((item) => {
       const t = String(item.type || item.feedbackType || "").toUpperCase();
-      const hasSystemType = t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM");
-      const looksSystemByLinkage = item.collectionRequestId == null;
-      return hasSystemType || looksSystemByLinkage;
+      return !(t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM"));
     });
 
     // Tab Filter
     if (activeTab === "From Citizens") {
       result = result.filter(item => item.sender?.role === "Citizen");
     } else if (activeTab === "From Collectors") {
-      result = result.filter(item => item.sender?.role === "Collector" || item.sender?.role === "Enterprise");
+      result = result.filter(item => item.sender?.role === "Collector");
     }
 
     // Date Filter
@@ -92,14 +84,19 @@ export default function Review_Feedback() {
       pastDate.setHours(0, 0, 0, 0);
 
       result = result.filter(item => {
-         const d = item.date || item.createdAt;
+         const d = item.updatedAt || item.date || item.createdAt;
          if (!d) return false;
          const feedbackDate = new Date(d);
          return feedbackDate >= pastDate;
       });
     }
 
-    return result;
+    const sorted = [...result].sort((a, b) => {
+      const da = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const db = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return db - da;
+    });
+    return sorted;
   }, [activeTab, dateFilter, feedback]);
 
   // Pagination Logic
@@ -111,8 +108,7 @@ export default function Review_Feedback() {
 
   // Helper for Status Badge
   const getStatusBadge = (status) => {
-    const s = String(status || "").toUpperCase();
-    switch (s) {
+    switch (status) {
       case "PENDING":
         return <StatusPill variant="yellow">PENDING</StatusPill>;
       case "RESOLVED":
@@ -120,7 +116,7 @@ export default function Review_Feedback() {
       case "REJECTED":
         return <StatusPill variant="red">REJECTED</StatusPill>;
       default:
-        return <StatusPill variant="gray">{s || "UNKNOWN"}</StatusPill>;
+        return <StatusPill variant="gray">{status}</StatusPill>;
     }
   };
 
@@ -132,22 +128,14 @@ export default function Review_Feedback() {
   };
 
   return (
-    <RoleLayout
-      sidebar={<AdminSidebar />}
-      navbar={<AdminNavbar />}
-      footer={
-        <div className="animate-fade-in-up">
-          <CD_Footer />
-        </div>
-      }
-    >
+    <EnterpriseLayout>
       <div className="max-w-screen-xl mx-auto space-y-8 p-4">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in-up">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Review Feedback</h1>
-            <p className="text-gray-500 mt-1">Manage and respond to user feedback submissions.</p>
+            <p className="text-gray-500 mt-1">Manage and respond to service complaints and feedback.</p>
           </div>
         </div>
 
@@ -267,7 +255,7 @@ export default function Review_Feedback() {
                         <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center">
                           <Search className="w-6 h-6 text-gray-300" />
                         </div>
-                        <p className="font-medium">No feedback found matching your filters.</p>
+                        <p className="font-medium">No service feedback found matching your filters.</p>
                       </div>
                     </td>
                   </tr>
@@ -318,11 +306,11 @@ export default function Review_Feedback() {
       <FeedbackDetailModal 
         open={!!selectedFeedback}
         feedback={selectedFeedback}
-        mode="admin"
+        mode="enterprise"
         onClose={() => setSelectedFeedback(null)}
         onUpdate={fetchFeedbacks}
-        onViewReport={(id) => window.open(`/admin/reports/${id}`, '_blank')}
+        onViewReport={(id) => window.open(`/enterprise/reports/${id}`, '_blank')}
       />
-    </RoleLayout>
+    </EnterpriseLayout>
   );
 }
