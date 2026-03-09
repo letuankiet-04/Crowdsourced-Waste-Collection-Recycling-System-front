@@ -237,6 +237,7 @@ export default function CitizenReportDetail() {
           backLabel="Back to reports"
           showWasteTypes={false}
           wasteItemsLabel="Waste item"
+          showSubmittedBy={false}
           reportInfoExtra={reportInfoExtra}
           aside={
             <>

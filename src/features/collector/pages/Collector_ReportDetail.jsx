@@ -190,6 +190,7 @@ export default function CollectorReportDetail() {
           showWaste
           showWasteTypes={false}
           wasteItemsLabel="Waste item"
+          showSubmittedBy={false}
         />
 
         <Card className="overflow-hidden bg-gradient-to-br from-blue-50/70 via-white to-white">

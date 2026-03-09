@@ -28,6 +28,13 @@ export default function EnterpriseLayout({ children }) {
             <SidebarNavItem key="reports" to={PATHS.enterprise.reports} icon={<FileText className="h-5 w-5" />}>
               Reports
             </SidebarNavItem>,
+            <SidebarNavItem
+              key="reportsAnalytics"
+              to={PATHS.enterprise.analytics}
+              icon={<BarChart3 className="h-5 w-5" />}
+            >
+              Reports Analytics
+            </SidebarNavItem>,
             <SidebarNavItem key="collectorReports" to={PATHS.enterprise.collectorReports} icon={<ClipboardList className="h-5 w-5" />}>
               Collector Reports
             </SidebarNavItem>,

@@ -10,11 +10,85 @@ function normalizeVitePath(p) {
   return String(p || '').replace(/^\/src\//, 'src/')
 }
 
+function posixDirname(p) {
+  const parts = String(p || '').split('/')
+  parts.pop()
+  return parts.join('/')
+}
+
+function normalizePosixPath(p) {
+  const raw = String(p || '')
+  const hasLeadingSlash = raw.startsWith('/')
+  const parts = raw.split('/').filter((x) => x !== '')
+  const out = []
+  for (const part of parts) {
+    if (part === '.') continue
+    if (part === '..') {
+      out.pop()
+      continue
+    }
+    out.push(part)
+  }
+  return `${hasLeadingSlash ? '/' : ''}${out.join('/')}`
+}
+
+function toViteSrcKey(p) {
+  const raw = String(p || '')
+  if (!raw) return ''
+  if (raw.startsWith('/src/')) return raw
+  if (raw.startsWith('src/')) return `/${raw}`
+  return raw.startsWith('/') ? raw : `/${raw}`
+}
+
+function resolveImportToSrcPath(entryFile, importSource) {
+  const src = String(importSource || '')
+  if (!src) return null
+  if (src.startsWith('.')) {
+    const base = posixDirname(entryFile)
+    return normalizePosixPath(`${base}/${src}`)
+  }
+  if (src.startsWith('/src/')) return normalizeVitePath(src)
+  if (src.startsWith('src/')) return src
+  if (src.includes('/src/')) return normalizeVitePath(src)
+  return null
+}
+
+function resolveToExistingSrcFile(srcIndex, srcPath) {
+  const raw = String(srcPath || '')
+  if (!raw) return null
+  const hasExt = /\.(jsx|tsx|js|ts)$/i.test(raw)
+  const candidates = hasExt
+    ? [raw]
+    : [
+        `${raw}.jsx`,
+        `${raw}.tsx`,
+        `${raw}.js`,
+        `${raw}.ts`,
+        `${raw}/index.jsx`,
+        `${raw}/index.tsx`,
+        `${raw}/index.js`,
+        `${raw}/index.ts`,
+      ]
+
+  for (const c of candidates) {
+    const key = toViteSrcKey(c)
+    if (srcIndex?.[key]) return normalizeVitePath(key)
+  }
+  return null
+}
+
 function sliceLines(raw, from, to) {
   const lines = String(raw ?? '').replace(/\r\n/g, '\n').split('\n')
   const start = Math.max(1, Number(from) || 1)
   const end = Math.max(start, Number(to) || start)
   return lines.slice(start - 1, end).join('\n').trimEnd()
+}
+
+function matchesQuery(entry, q) {
+  const query = String(q || '').trim().toLowerCase()
+  if (!query) return true
+  const hay = `${entry.title} ${entry.file} ${String(entry.raw ?? '')}`.toLowerCase()
+  return hay.includes(query)
 }
 
 function findReturnLine(raw) {
@@ -61,6 +135,37 @@ function extractImportedComponentNames(imports) {
     if (defaultCandidate) names.add(defaultCandidate)
   }
   return Array.from(names).filter((n) => /^[A-Z]/.test(n))
+}
+
+function extractComponentImports(imports) {
+  const out = new Map()
+  for (const it of imports) {
+    const spec = it.spec
+    const source = it.source
+
+    const ns = spec.match(/^\*\s+as\s+([A-Za-z0-9_$]+)/)
+    if (ns?.[1] && /^[A-Z]/.test(ns[1])) out.set(`${ns[1]}@@${source}`, { name: ns[1], source })
+
+    const named = spec.match(/\{([^}]+)\}/)
+    if (named?.[1]) {
+      for (const part of named[1].split(',')) {
+        const token = part.trim()
+        if (!token) continue
+        const name = token.split(/\s+as\s+/)[0]?.trim()
+        if (name && /^[A-Z]/.test(name)) out.set(`${name}@@${source}`, { name, source })
+      }
+    }
+
+    const defaultCandidate = spec
+      .replace(/\{[^}]*\}/g, '')
+      .replace(/\*\s+as\s+[A-Za-z0-9_$]+/g, '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)[0]
+    if (defaultCandidate && /^[A-Z]/.test(defaultCandidate))
+      out.set(`${defaultCandidate}@@${source}`, { name: defaultCandidate, source })
+  }
+  return Array.from(out.values())
 }
 
 function extractHooks(raw) {
@@ -137,11 +242,45 @@ function explainImportedComponent(name, importSource) {
   return 'Component con: tách nhỏ UI để dễ đọc, dễ reuse. Mở file import để xem props và trách nhiệm.'
 }
 
-function FeatureEntry({ entry }) {
+function formatFeatureLabel(featureId) {
+  const known = FEATURE_LABEL[featureId]
+  if (known) return known
+  const id = String(featureId || '').trim()
+  if (!id) return 'Unknown'
+  return id
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function resolveComponentsFromRaw({ entryFile, raw, srcIndex }) {
+  const imports = parseImports(raw)
+  const componentImports = extractComponentImports(imports)
+  return componentImports
+    .map((it) => {
+      const resolvedSrc = resolveImportToSrcPath(entryFile, it.source)
+      const resolvedFile = resolveToExistingSrcFile(srcIndex, resolvedSrc)
+      return {
+        name: it.name,
+        source: it.source,
+        resolvedFile,
+        target: resolvedFile || it.source,
+      }
+    })
+    .filter((it) => it.resolvedFile || it.source.startsWith('.') || it.source.startsWith('/src/') || it.source.startsWith('src/'))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function FeatureEntry({ entry, srcIndex }) {
   const imports = useMemo(() => parseImports(entry.raw), [entry.raw])
   const importedComponents = useMemo(() => extractImportedComponentNames(imports), [imports])
   const hooks = useMemo(() => extractHooks(entry.raw), [entry.raw])
   const returnLine = useMemo(() => findReturnLine(entry.raw), [entry.raw])
+
+  const screenComponents = useMemo(() => {
+    if (entry.kind !== 'screen') return []
+    return resolveComponentsFromRaw({ entryFile: entry.file, raw: entry.raw, srcIndex })
+  }, [entry.file, entry.kind, entry.raw, srcIndex])
 
   return (
     <details className="rounded-3xl border border-slate-200 bg-white p-5">
@@ -152,8 +291,11 @@ function FeatureEntry({ entry }) {
             <div className="mt-1 text-sm text-slate-600">{entry.file}</div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {entry.area ? (
+              <div className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800">{entry.area}</div>
+            ) : null}
             <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-              {FEATURE_LABEL[entry.feature] ?? entry.feature}
+              {formatFeatureLabel(entry.feature)}
             </div>
             <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{entry.kind}</div>
           </div>
@@ -216,6 +358,24 @@ function FeatureEntry({ entry }) {
           </div>
         ) : null}
 
+        {screenComponents.length ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="text-sm font-semibold text-slate-900">Component mà screen đang dùng (theo import)</div>
+            <div className="mt-1 text-xs text-slate-600">
+              Gợi ý: mở các file này trước để hiểu screen được compose từ đâu.
+            </div>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+              {screenComponents.map((it) => (
+                <li key={`${it.name}:${it.source}`}>
+                  <span className="font-semibold">{it.name}</span>{' '}
+                  <span className="text-slate-500">→</span>{' '}
+                  <span className="font-mono text-slate-800">{it.resolvedFile || it.source}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="grid gap-3">
           <CodeSection
             title="Xem đoạn import + phần đầu file"
@@ -245,13 +405,26 @@ export default function FeatureKnowledge() {
   const [feature, setFeature] = useState('all')
   const [kind, setKind] = useState('all')
 
+  const srcIndex = useMemo(() => {
+    return import.meta.glob('/src/**/*.{js,jsx,ts,tsx}')
+  }, [])
+
   const rawFeatureFiles = useMemo(() => {
-    const pages = import.meta.glob('/src/features/**/pages/**/*.jsx', {
+    const pages = import.meta.glob('/src/features/**/pages/**/*.{js,jsx,ts,tsx}', {
       eager: true,
       query: '?raw',
       import: 'default',
     })
     return pages
+  }, [])
+
+  const rawComponentFolderFiles = useMemo(() => {
+    const files = import.meta.glob('/src/features/**/components/**/*.{js,jsx,ts,tsx}', {
+      eager: true,
+      query: '?raw',
+      import: 'default',
+    })
+    return files
   }, [])
 
   const entries = useMemo(() => {
@@ -263,51 +436,149 @@ export default function FeatureKnowledge() {
         const afterPages = afterFeatures.split('/pages/')[1] ?? ''
         const entryKind = afterPages.includes('/') ? 'component' : 'screen'
         const baseName = afterPages.split('/').slice(-1)[0] || file.split('/').slice(-1)[0]
-        const title = baseName.replace(/\.jsx$/i, '')
+        const title = baseName.replace(/\.(jsx|tsx|js|ts)$/i, '')
         return {
           id: file,
           title,
           file,
           feature: featureName,
           kind: entryKind,
+          area: 'pages',
           raw,
         }
       })
       .sort((a, b) => a.file.localeCompare(b.file))
   }, [rawFeatureFiles])
 
+  const componentFolderEntries = useMemo(() => {
+    return Object.entries(rawComponentFolderFiles)
+      .map(([vitePath, raw]) => {
+        const file = normalizeVitePath(vitePath)
+        const afterFeatures = file.split('src/features/')[1] ?? ''
+        const featureName = afterFeatures.split('/')[0] || 'unknown'
+        const afterComponents = afterFeatures.split('/components/')[1] ?? ''
+        const baseName = afterComponents.split('/').slice(-1)[0] || file.split('/').slice(-1)[0]
+        const title = baseName.replace(/\.(jsx|tsx|js|ts)$/i, '')
+        return {
+          id: file,
+          title,
+          file,
+          feature: featureName,
+          kind: 'component',
+          area: 'components',
+          raw,
+        }
+      })
+      .sort((a, b) => a.file.localeCompare(b.file))
+  }, [rawComponentFolderFiles])
+
   const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase()
     return entries.filter((e) => {
       if (feature !== 'all' && e.feature !== feature) return false
       if (kind !== 'all' && e.kind !== kind) return false
-      if (!query) return true
-      const hay = `${e.title} ${e.file} ${String(e.raw ?? '')}`.toLowerCase()
-      return hay.includes(query)
+      return matchesQuery(e, q)
     })
   }, [entries, feature, kind, q])
 
-  const featureOptions = useMemo(
-    () => [
-      { id: 'all', label: 'Tất cả' },
-      { id: 'auth', label: 'Auth' },
-      { id: 'home', label: 'Home' },
-      { id: 'citizen', label: 'Citizen' },
-      { id: 'collector', label: 'Collector' },
-      { id: 'enterprise', label: 'Enterprise' },
-      { id: 'admin', label: 'Admin' },
-    ],
-    []
-  )
+  const breakdownByFeature = useMemo(() => {
+    const map = new Map()
+    const add = (featureId, key, entry) => {
+      const id = featureId || 'unknown'
+      if (!map.has(id)) map.set(id, { pages: [], components: [] })
+      map.get(id)[key].push(entry)
+    }
+    for (const e of entries) add(e.feature, 'pages', e)
+    for (const e of componentFolderEntries) add(e.feature, 'components', e)
 
-  const kindOptions = useMemo(
-    () => [
+    const out = []
+    for (const [featureId, group] of map.entries()) {
+      out.push({
+        featureId,
+        pages: group.pages,
+        components: group.components,
+      })
+    }
+    out.sort((a, b) => a.featureId.localeCompare(b.featureId))
+    return out
+  }, [componentFolderEntries, entries])
+
+  const componentsByFeature = useMemo(() => {
+    const map = new Map()
+    for (const e of entries) {
+      if (e.kind !== 'screen') continue
+      const featureId = e.feature || 'unknown'
+      if (!map.has(featureId)) map.set(featureId, new Map())
+      const featureMap = map.get(featureId)
+
+      const comps = resolveComponentsFromRaw({ entryFile: e.file, raw: e.raw, srcIndex })
+      for (const c of comps) {
+        const key = c.resolvedFile || c.source
+        if (!featureMap.has(key)) {
+          featureMap.set(key, { name: c.name, target: c.target })
+        }
+      }
+    }
+
+    const out = {}
+    for (const [featureId, featureMap] of map.entries()) {
+      out[featureId] = Array.from(featureMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    }
+    return out
+  }, [entries, srcIndex])
+
+  const filteredComponentsByFeature = useMemo(() => {
+    const query = q.trim().toLowerCase()
+    if (!query) return componentsByFeature
+    const out = {}
+    for (const [featureId, list] of Object.entries(componentsByFeature)) {
+      out[featureId] = list.filter((it) => `${it.name} ${it.target}`.toLowerCase().includes(query))
+    }
+    return out
+  }, [componentsByFeature, q])
+
+  const componentFeatureIds = useMemo(() => {
+    return Object.keys(componentsByFeature).sort((a, b) => a.localeCompare(b))
+  }, [componentsByFeature])
+
+  const componentCountByFeature = useMemo(() => {
+    const out = {}
+    for (const [featureId, list] of Object.entries(componentsByFeature)) {
+      out[featureId] = list.length
+    }
+    return out
+  }, [componentsByFeature])
+
+  const countsByFeature = useMemo(() => {
+    return entries.reduce((acc, e) => {
+      const key = e.feature || 'unknown'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+  }, [entries])
+
+  const featureOptions = useMemo(() => {
+    const ids = Array.from(new Set(entries.map((e) => e.feature).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+    return [{ id: 'all', label: 'Tất cả' }, ...ids.map((id) => ({ id, label: formatFeatureLabel(id) }))]
+  }, [entries])
+
+  const countsByKind = useMemo(() => {
+    return entries.reduce(
+      (acc, e) => {
+        const key = e.kind || 'unknown'
+        acc[key] = (acc[key] || 0) + 1
+        return acc
+      },
+      { all: entries.length }
+    )
+  }, [entries])
+
+  const kindOptions = useMemo(() => {
+    return [
       { id: 'all', label: 'Tất cả' },
       { id: 'screen', label: 'Screen' },
       { id: 'component', label: 'Component' },
-    ],
-    []
-  )
+    ]
+  }, [])
 
   const foundations = useMemo(
     () => [
@@ -381,6 +652,126 @@ export default function FeatureKnowledge() {
         </ul>
       </div>
 
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="text-base font-semibold text-slate-900">Giải thích code theo feature (pages + components)</div>
+        <div className="mt-1 text-sm text-slate-600">
+          Ví dụ với <span className="font-mono">admin</span>: xem lần lượt folder <span className="font-mono">pages</span> và{' '}
+          <span className="font-mono">components</span>. Các feature khác làm tương tự.
+        </div>
+        <div className="mt-4 grid gap-3">
+          {breakdownByFeature
+            .filter((g) => feature === 'all' || g.featureId === feature)
+            .map((g) => {
+              const pagesFiltered = g.pages.filter((e) => matchesQuery(e, q))
+              const componentsFiltered = g.components.filter((e) => matchesQuery(e, q))
+              return (
+                <details key={g.featureId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer select-none text-sm font-semibold text-slate-900">
+                    {formatFeatureLabel(g.featureId)} · pages {pagesFiltered.length}/{g.pages.length} · components{' '}
+                    {componentsFiltered.length}/{g.components.length}
+                  </summary>
+
+                  <div className="mt-4 grid gap-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="text-sm font-semibold text-slate-900">Cách đọc feature này</div>
+                      <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+                        <li>Vào folder pages: đọc các screen trước (file nằm trực tiếp trong pages).</li>
+                        <li>Mỗi screen sẽ import các component/layout/ui/service: xem phần “Imports”.</li>
+                        <li>Nếu feature có folder components: đọc các component đó để hiểu UI con/tái sử dụng.</li>
+                        <li>Từ screen: xem nhanh đoạn return(...) để nắm bố cục UI.</li>
+                      </ol>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">Folder pages</div>
+                      <div className="mt-3 grid gap-3">
+                        {(pagesFiltered.length ? pagesFiltered : g.pages).map((e) => (
+                          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} />
+                        ))}
+                        {!g.pages.length ? <div className="mt-2 text-sm text-slate-600">Không có file pages.</div> : null}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">Folder components</div>
+                      <div className="mt-3 grid gap-3">
+                        {(componentsFiltered.length ? componentsFiltered : g.components).map((e) => (
+                          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} />
+                        ))}
+                        {!g.components.length ? (
+                          <div className="mt-2 text-sm text-slate-600">Feature này chưa có folder components.</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              )
+            })}
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="text-base font-semibold text-slate-900">Components theo feature</div>
+        <div className="mt-1 text-sm text-slate-600">
+          Tổng hợp từ các import trong screen (không phải scan toàn bộ codebase).
+        </div>
+        {feature === 'all' ? (
+          <div className="mt-4 grid gap-3">
+            {componentFeatureIds.map((fid) => {
+              const list = filteredComponentsByFeature[fid] || []
+              const total = componentCountByFeature[fid] || 0
+              return (
+                <details key={fid} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer select-none text-sm font-semibold text-slate-900">
+                    {formatFeatureLabel(fid)} ({list.length}/{total})
+                  </summary>
+                  {list.length ? (
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                      {list.map((it) => (
+                        <li key={`${it.name}:${it.target}`}>
+                          <span className="font-semibold">{it.name}</span>{' '}
+                          <span className="text-slate-500">→</span>{' '}
+                          <span className="font-mono text-slate-800">{it.target}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-3 text-sm text-slate-600">Không có component khớp filter/search hiện tại.</div>
+                  )}
+                </details>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="mt-4">
+            {(() => {
+              const list = filteredComponentsByFeature[feature] || []
+              const total = componentCountByFeature[feature] || 0
+              return (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {formatFeatureLabel(feature)} ({list.length}/{total})
+                  </div>
+                  {list.length ? (
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                      {list.map((it) => (
+                        <li key={`${it.name}:${it.target}`}>
+                          <span className="font-semibold">{it.name}</span>{' '}
+                          <span className="text-slate-500">→</span>{' '}
+                          <span className="font-mono text-slate-800">{it.target}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-2 text-sm text-slate-600">Không có component khớp filter/search hiện tại.</div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
+        )}
+      </div>
+
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="text-base font-semibold text-slate-900">Danh sách file trong features</div>
@@ -400,6 +791,7 @@ export default function FeatureKnowledge() {
         <div className="mr-2 text-sm font-semibold text-slate-700">Filter feature:</div>
         {featureOptions.map((opt) => {
           const active = feature === opt.id
+          const count = opt.id === 'all' ? entries.length : countsByFeature[opt.id] || 0
           return (
             <button
               key={opt.id}
@@ -411,7 +803,7 @@ export default function FeatureKnowledge() {
                   : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200'
               }
             >
-              {opt.label}
+              {opt.label} ({count})
             </button>
           )
         })}
@@ -421,6 +813,7 @@ export default function FeatureKnowledge() {
         <div className="mr-2 text-sm font-semibold text-slate-700">Filter loại:</div>
         {kindOptions.map((opt) => {
           const active = kind === opt.id
+          const count = countsByKind[opt.id] || 0
           return (
             <button
               key={opt.id}
@@ -432,7 +825,7 @@ export default function FeatureKnowledge() {
                   : 'rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200'
               }
             >
-              {opt.label}
+              {opt.label} ({count})
             </button>
           )
         })}
@@ -440,7 +833,7 @@ export default function FeatureKnowledge() {
 
       <div className="mt-6 grid gap-4">
         {filtered.map((e) => (
-          <FeatureEntry key={e.id} entry={e} />
+          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} />
         ))}
       </div>
     </div>

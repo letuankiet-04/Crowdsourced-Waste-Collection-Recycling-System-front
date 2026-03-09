@@ -18,7 +18,10 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import {
   acceptWasteReport,
   assignCollectorByReportCode,
+  assignCollectorToRequest,
+  getEligibleCollectorsForRequest,
   getEnterpriseCollectors,
+  getEnterpriseRequestReportDetail,
   getEnterpriseWasteReportById,
   rejectWasteReport,
 } from "../../../services/enterprise.service.js";
@@ -168,6 +171,12 @@ export default function EnterpriseReportDetail() {
             ? Number(requestIdRaw)
             : requestIdRaw;
 
+    const submitBy =
+      (typeof base?.submitBy === "string" && base.submitBy.trim()) ||
+      (typeof base?.submit_by === "string" && base.submit_by.trim()) ||
+      (typeof base?.createdByName === "string" && base.createdByName.trim()) ||
+      null;
+
     const notes =
       (typeof base?.notes === "string" && base.notes.trim()) ||
       (typeof base?.description === "string" && base.description.trim()) ||
@@ -220,15 +229,67 @@ export default function EnterpriseReportDetail() {
       images,
       types,
       wasteItems,
+      submitBy,
     };
   }, [reportOverride, reportData, stateReport, id]);
-  const status = normalizeReportStatus(report?.status);
+  const [requestDetail, setRequestDetail] = useState(null);
+  const [requestDetailLoading, setRequestDetailLoading] = useState(false);
+  const reportRequestIdRaw = report?.collectionRequestId ?? report?.requestId ?? report?.collection_request_id ?? null;
+
+  useEffect(() => {
+    const requestId =
+      reportRequestIdRaw === null || reportRequestIdRaw === undefined || reportRequestIdRaw === ""
+        ? null
+        : typeof reportRequestIdRaw === "number"
+          ? reportRequestIdRaw
+          : Number.isFinite(Number(reportRequestIdRaw))
+            ? Number(reportRequestIdRaw)
+            : reportRequestIdRaw;
+    if (requestId == null) {
+      setRequestDetail(null);
+      setRequestDetailLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRequestDetailLoading(true);
+    getEnterpriseRequestReportDetail(requestId)
+      .then((row) => {
+        if (cancelled) return;
+        setRequestDetail(row ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRequestDetail(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setRequestDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reportRequestIdRaw]);
+
+  const status = normalizeReportStatus(requestDetail?.requestStatus ?? report?.status);
   const canDecide = status === "Pending";
-  const canGoAssign = status === "Accepted" || status === "Assigned";
+  const canGoAssign = status === "Accepted" || status === "Reassign";
+  const isReassign = status === "Reassign";
+  const assignActionLabel = isReassign ? "Reassign collector" : "Assign collector";
+  const assignDialogTitle = isReassign ? "Reassign Collector" : "Assign Collector";
+  const assignConfirmTitle = isReassign
+    ? "Are you sure you want to reassign this report?"
+    : "Are you sure you want to assign this report?";
+  const assignConfirmDescription = isReassign
+    ? "If you continue, the report will be reassigned to the selected collector."
+    : "If you continue, the report will be assigned to the selected collector.";
+  const assignConfirmText = isReassign ? "Reassign" : "Assign";
 
   const [collectorSource, setCollectorSource] = useState([]);
   const [collectorsLoading, setCollectorsLoading] = useState(false);
   const [collectorsError, setCollectorsError] = useState("");
+  const [eligibleCollectorSource, setEligibleCollectorSource] = useState([]);
+  const [eligibleCollectorsLoading, setEligibleCollectorsLoading] = useState(false);
+  const [eligibleCollectorsError, setEligibleCollectorsError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -300,6 +361,34 @@ export default function EnterpriseReportDetail() {
   }, [rejectedEmails]);
   const rejectedCollectorIdSet = useMemo(() => new Set(rejectedCollectorIds.map(String)), [rejectedCollectorIds]);
 
+  const eligibleCollectorById = useMemo(() => {
+    const list = Array.isArray(eligibleCollectorSource) ? eligibleCollectorSource : [];
+    const map = new Map();
+    list.forEach((c) => {
+      const id = c?.id ?? c?.collectorId ?? null;
+      if (id == null) return;
+      map.set(String(id), {
+        activeTaskCount: c?.activeTaskCount,
+        online: c?.online,
+        status: c?.status,
+        distanceKm: c?.distanceKm,
+        fullName: c?.fullName,
+      });
+    });
+    return map;
+  }, [eligibleCollectorSource]);
+
+  const eligibleCollectorIdSet = useMemo(() => {
+    const list = Array.isArray(eligibleCollectorSource) ? eligibleCollectorSource : [];
+    const set = new Set();
+    list.forEach((c) => {
+      const id = c?.id ?? c?.collectorId ?? null;
+      if (id == null) return;
+      set.add(String(id));
+    });
+    return set;
+  }, [eligibleCollectorSource]);
+
   const collectors = useMemo(() => {
     const list = Array.isArray(collectorSource) ? collectorSource : [];
     return list
@@ -308,17 +397,26 @@ export default function EnterpriseReportDetail() {
         const name = c?.name ?? c?.username ?? c?.displayName ?? c?.fullName ?? c?.email ?? `Collector ${idx + 1}`;
         const email = c?.email ?? c?.mail ?? null;
         const statusRaw = String(c?.status ?? c?.availability ?? (c?.online ? "online" : "offline")).toLowerCase();
-        const isOnline = c?.online === true || ["online", "active", "available"].includes(statusRaw);
-        return { id, name, email, isOnline };
+        const eligible = eligibleCollectorById.get(String(id)) ?? null;
+        const eligibleStatusRaw = String(eligible?.status ?? "").toLowerCase();
+        const isOnline =
+          eligible?.online === true ||
+          ["online", "active", "available"].includes(statusRaw) ||
+          ["active", "available"].includes(eligibleStatusRaw);
+        const activeTaskCountRaw = eligible?.activeTaskCount;
+        const currentTasks = Number.isFinite(Number(activeTaskCountRaw)) ? Number(activeTaskCountRaw) : null;
+        return { id, name, email, isOnline, currentTasks };
       })
       .filter((c) => {
         if (!c.email) return false;
+        if (!c.isOnline) return false;
+        if (isReassign && eligibleCollectorIdSet.size && !eligibleCollectorIdSet.has(String(c.id))) return false;
         const emailKey = String(c.email).trim().toLowerCase();
         if (rejectedEmailSet.has(emailKey)) return false;
         if (rejectedCollectorIdSet.has(String(c.id))) return false;
         return true;
       });
-  }, [collectorSource, rejectedCollectorIdSet, rejectedEmailSet]);
+  }, [collectorSource, rejectedCollectorIdSet, rejectedEmailSet, eligibleCollectorById, eligibleCollectorIdSet, isReassign]);
 
   const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
   const assignedLabel = useMemo(() => {
@@ -338,6 +436,43 @@ export default function EnterpriseReportDetail() {
   const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
   const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!assignOpen) return;
+    if (requestDetailLoading) return;
+    const statusRaw = String(requestDetail?.requestStatus ?? "").toLowerCase();
+    if (statusRaw && !["accepted_enterprise", "reassign"].includes(statusRaw)) return;
+    const requestId =
+      reportRequestIdRaw === null || reportRequestIdRaw === undefined || reportRequestIdRaw === ""
+        ? null
+        : typeof reportRequestIdRaw === "number"
+          ? reportRequestIdRaw
+          : Number.isFinite(Number(reportRequestIdRaw))
+            ? Number(reportRequestIdRaw)
+            : reportRequestIdRaw;
+    if (requestId == null) return;
+    let cancelled = false;
+    setEligibleCollectorsLoading(true);
+    setEligibleCollectorsError("");
+    getEligibleCollectorsForRequest(requestId)
+      .then((rows) => {
+        if (cancelled) return;
+        setEligibleCollectorSource(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message = err?.message || "Unable to load collector tasks.";
+        if (String(message).includes("Chỉ hỗ trợ tìm collector khi request ở trạng thái")) return;
+        setEligibleCollectorsError(message);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setEligibleCollectorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [assignOpen, reportRequestIdRaw, requestDetailLoading, requestDetail?.requestStatus]);
 
   function openRejectDialog() {
     setRejectReason("");
@@ -432,30 +567,36 @@ export default function EnterpriseReportDetail() {
     setAssignConfirmOpen(false);
     const primaryCollector = collectors.find((c) => c.email === selectedCollectorEmail);
     if (!primaryCollector) return;
-    const reportCode = getReportCodeFromReport(report);
-    if (!reportCode) {
+    const requestId = getRequestIdFromReport(report);
+    const reportCode = requestId == null ? getReportCodeFromReport(report) : null;
+    if (requestId == null && !reportCode) {
       notify.error("Missing report code", "Unable to identify report code for this report.");
       return;
     }
 
     try {
       setAssignSubmitting(true);
-      const assignedResponse = await notify.promise(assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id }), {
-        loadingTitle: "Assigning collector...",
-        loadingMessage: "Sending assignment to the server.",
-        successTitle: "Collector assigned",
-        successMessage: "Assignment saved successfully.",
-        errorTitle: "Assign failed",
-        errorMessage: (err) => err?.message || "Unable to assign collector.",
-      });
+      const assignedResponse = await notify.promise(
+        requestId == null
+          ? assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id })
+          : assignCollectorToRequest({ requestId, collectorId: primaryCollector.id }),
+        {
+          loadingTitle: "Assigning collector...",
+          loadingMessage: "Sending assignment to the server.",
+          successTitle: "Collector assigned",
+          successMessage: "Assignment saved successfully.",
+          errorTitle: "Assign failed",
+          errorMessage: (err) => err?.message || "Unable to assign collector.",
+        }
+      );
 
       const next = {
         ...report,
         status: assignedResponse?.status ?? report?.status,
-        collectionRequestId: assignedResponse?.collectionRequestId ?? getRequestIdFromReport(report),
+        collectionRequestId: assignedResponse?.collectionRequestId ?? requestId ?? getRequestIdFromReport(report),
         assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
         assignedCollectors: [{ id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email }],
-        updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
+        updatedAt: assignedResponse?.assignedAt ?? assignedResponse?.actionAt ?? new Date().toISOString(),
       };
       setReportOverride(next);
       setReportData(next);
@@ -565,7 +706,7 @@ export default function EnterpriseReportDetail() {
                 <div>This report is already {status}. Accept/Reject is available only while status is pending.</div>
                 {canGoAssign ? (
                   <Button variant="outline" size="sm" className="rounded-full" onClick={() => openAssignDialog()}>
-                    Assign collector
+                    {assignActionLabel}
                   </Button>
                 ) : null}
               </div>
@@ -712,7 +853,7 @@ export default function EnterpriseReportDetail() {
             <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
               <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
                 <div className="min-w-0">
-                  <div className="text-lg font-semibold text-gray-900">Assign Collector</div>
+                  <div className="text-lg font-semibold text-gray-900">{assignDialogTitle}</div>
                   <div className="mt-1 text-sm text-gray-600">Select a collector for {report?.id ?? "-"}. </div>
                 </div>
                 <button
@@ -742,6 +883,7 @@ export default function EnterpriseReportDetail() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-gray-900">Collectors</div>
+                    <div className="text-xs font-semibold text-gray-500">Current tasks</div>
                   </div>
                   {collectorsError ? <div className="text-sm text-red-600">{collectorsError}</div> : null}
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
@@ -762,19 +904,24 @@ export default function EnterpriseReportDetail() {
                               </div>
                               <div className="truncate text-xs text-gray-600">{c.email}</div>
                             </div>
-                            <input
-                              type="radio"
-                              name="collector"
-                              className="h-4 w-4"
-                              checked={checked}
-                              disabled={!report || !canGoAssign || assignSubmitting}
-                              onChange={() => setSelectedCollectorEmail(c.email)}
-                            />
+                            <div className="flex items-center gap-3">
+                              <div className="text-xs font-semibold text-gray-700 tabular-nums">
+                                {eligibleCollectorsLoading ? "..." : c.currentTasks ?? "-"}
+                              </div>
+                              <input
+                                type="radio"
+                                name="collector"
+                                className="h-4 w-4"
+                                checked={checked}
+                                disabled={!report || !canGoAssign || assignSubmitting}
+                                onChange={() => setSelectedCollectorEmail(c.email)}
+                              />
+                            </div>
                           </label>
                         );
                       })
                     ) : (
-                      <div className="px-4 py-5 text-sm text-gray-600">No collectors available.</div>
+                      <div className="px-4 py-5 text-sm text-gray-600">No online collectors available.</div>
                     )}
                   </div>
                 </div>
@@ -794,7 +941,7 @@ export default function EnterpriseReportDetail() {
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
-                  Assign
+                  {assignConfirmText}
                 </Button>
               </div>
             </div>
@@ -814,9 +961,9 @@ export default function EnterpriseReportDetail() {
 
         <ConfirmDialog
           open={assignConfirmOpen}
-          title="Are you sure you want to assign this report?"
-          description="If you continue, the report will be assigned to the selected collector."
-          confirmText="Assign"
+          title={assignConfirmTitle}
+          description={assignConfirmDescription}
+          confirmText={assignConfirmText}
           cancelText="Cancel"
           confirmDisabled={assignSubmitting}
           onClose={() => setAssignConfirmOpen(false)}

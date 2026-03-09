@@ -2,6 +2,7 @@
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../../services/auth.service.js";
+import { updateCollectorPresence } from "../../../services/collector.service.js";
 import useStoredUser from "../../hooks/useStoredUser.js";
 import { PATHS } from "../../../app/routes/paths.js";
 
@@ -19,7 +20,7 @@ export default function SidebarLogoutButton({
   iconClassName = "",
 }) {
   const navigate = useNavigate();
-  const { clearAuth } = useStoredUser();
+  const { user, clearAuth } = useStoredUser();
 
   return (
     <button
@@ -27,6 +28,13 @@ export default function SidebarLogoutButton({
       type="button"
       onClick={() => {
         void (async () => {
+          try {
+            if (String(user?.role || "").toUpperCase() === "COLLECTOR") {
+              await updateCollectorPresence({ status: "OFFLINE" });
+            }
+          } catch (err) {
+            void err;
+          }
           try {
             await logout();
           } catch (err) {
