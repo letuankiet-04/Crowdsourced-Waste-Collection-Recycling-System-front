@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../shared/ui/Card.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
@@ -7,78 +7,67 @@ import Sidebar from "../components/navigation/Sidebar.jsx";
 import Navbar from "../components/navigation/CD_Navbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import { MessageSquare, ChevronRight, Clock, CheckCircle, AlertCircle, Filter } from "lucide-react";
-
-// Mock data for feedback history
-const MOCK_FEEDBACK = [
-  {
-    id: "FDB-X7K9P2",
-    subject: "Bin overflow on 5th Avenue",
-    type: "Service",
-    date: "2023-10-24T10:30:00",
-    status: "NEW",
-    content: "The bin has been overflowing for 2 days. Please collect it soon.",
-  },
-  {
-    id: "FDB-M2J5L8",
-    subject: "App crashing on login",
-    type: "System",
-    date: "2023-10-22T09:00:00",
-    status: "RESOLVED",
-    content: "I cannot log in to my account using Google Auth.",
-  },
-  {
-    id: "FDB-R4H1N6",
-    subject: "Late pickup complaint",
-    type: "Service",
-    date: "2023-10-20T11:20:00",
-    status: "IN PROGRESS",
-    content: "My trash was not picked up last Tuesday as scheduled.",
-  },
-  {
-    id: "FDB-T9Q3V4",
-    subject: "Feature request: Dark mode",
-    type: "System",
-    date: "2023-10-19T13:10:00",
-    status: "IN PROGRESS",
-    content: "It would be great to have a dark mode for better night viewing.",
-  },
-  {
-    id: "FDB-A1B2C3",
-    subject: "Missed recycling pickup",
-    type: "Service",
-    date: "2023-10-17T09:30:00",
-    status: "RESOLVED",
-    content: "Recycling bin was skipped today even though it was out by 6am.",
-  }
-];
+import { getCitizenFeedbacks } from "../../../services/feedback.service.js";
+import useNotify from "../../../shared/hooks/useNotify.js";
 
 export default function MyFeedback() {
   const navigate = useNavigate();
+  const notify = useNotify();
   const [filterType, setFilterType] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const normalizeType = (item) => {
+    const v = String(item?.type || "").toUpperCase();
+    const noReport = item?.reportId == null;
+    if (v === "COMPLAINT_SYSTEM" || v === "SYSTEM") return "SYSTEM";
+    if (v === "COMPLAINT_REWARD" || v === "REWARD") return "REWARD";
+    if (v === "COMPLAINT_COLLECTION" || v === "COLLECTION" || v === "SERVICE") {
+      return noReport ? "SYSTEM" : "COLLECTION";
+    }
+    return v || "UNKNOWN";
+  };
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, []);
+
+  const fetchFeedbacks = async () => {
+    setLoading(true);
+    try {
+        const data = await getCitizenFeedbacks();
+        setFeedbacks(Array.isArray(data) ? data : data.items || []);
+    } catch (err) {
+        notify.error("Failed to load feedbacks");
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const filteredFeedback = useMemo(() => {
-    return MOCK_FEEDBACK.filter(item => {
-      const typeMatch = filterType === "All" || item.type === filterType;
+    return feedbacks.filter(item => {
+      const normType = normalizeType(item);
+      const typeMatch = filterType === "All" || normType === filterType;
       const statusMatch = filterStatus === "All" || item.status === filterStatus;
       return typeMatch && statusMatch;
     });
-  }, [filterType, filterStatus]);
+  }, [filterType, filterStatus, feedbacks]);
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "NEW": return "bg-blue-100 text-blue-700 border-blue-200";
-      case "IN PROGRESS": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "PENDING": return "bg-yellow-100 text-yellow-700 border-yellow-200";
       case "RESOLVED": return "bg-green-100 text-green-700 border-green-200";
+      case "REJECTED": return "bg-red-100 text-red-700 border-red-200";
       default: return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "NEW": return <AlertCircle className="w-4 h-4" />;
-      case "IN PROGRESS": return <Clock className="w-4 h-4" />;
+      case "PENDING": return <Clock className="w-4 h-4" />;
       case "RESOLVED": return <CheckCircle className="w-4 h-4" />;
+      case "REJECTED": return <AlertCircle className="w-4 h-4" />;
       default: return <AlertCircle className="w-4 h-4" />;
     }
   };
@@ -87,9 +76,14 @@ export default function MyFeedback() {
     <RoleLayout
       sidebar={<Sidebar />}
       navbar={<Navbar />}
-      footer={<CD_Footer />}
+      footer={
+        <div className="animate-fade-in-up" style={{ animationDelay: "240ms" }}>
+          <CD_Footer />
+        </div>
+      }
+      showBackgroundEffects
     >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="animate-fade-in-up max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -125,8 +119,9 @@ export default function MyFeedback() {
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-gray-700 cursor-pointer"
                 >
                   <option value="All">All Types</option>
-                  <option value="Service">Service</option>
-                  <option value="System">System</option>
+                  <option value="SYSTEM">System</option>
+                  <option value="COLLECTION">Collection</option>
+                  <option value="REWARD">Reward</option>
                 </select>
               </div>
 
@@ -138,9 +133,9 @@ export default function MyFeedback() {
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-gray-700 cursor-pointer"
                 >
                   <option value="All">All Statuses</option>
-                  <option value="NEW">New</option>
-                  <option value="IN PROGRESS">In Progress</option>
+                  <option value="PENDING">Pending</option>
                   <option value="RESOLVED">Resolved</option>
+                  <option value="REJECTED">Rejected</option>
                 </select>
               </div>
             </div>
@@ -149,7 +144,9 @@ export default function MyFeedback() {
 
         {/* Feedback List */}
         <div className="space-y-4">
-          {filteredFeedback.length > 0 ? (
+          {loading ? (
+             <div className="text-center py-16">Loading...</div>
+          ) : filteredFeedback.length > 0 ? (
             filteredFeedback.map((item) => (
               <div 
                 key={item.id}
@@ -162,19 +159,21 @@ export default function MyFeedback() {
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-3 mb-1">
                       <span className={`px-2.5 py-0.5 text-xs font-bold uppercase rounded-md border ${
-                        item.type === 'Service' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+                        normalizeType(item) === 'SYSTEM' ? 'bg-purple-50 text-purple-700 border-purple-100'
+                        : normalizeType(item) === 'COLLECTION' ? 'bg-blue-50 text-blue-700 border-blue-100'
+                        : 'bg-orange-50 text-orange-700 border-orange-100'
                       }`}>
-                        {item.type}
+                        {normalizeType(item)}
                       </span>
                       <span className="text-xs text-gray-400 font-medium flex items-center gap-1">
-                        {new Date(item.date).toLocaleDateString()} • {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        {new Date(item.date || item.createdAt).toLocaleDateString()} • {new Date(item.date || item.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                      {item.subject}
+                      {item.subject || item.title || `Complaint #${item.id}`}
                     </h3>
                     <p className="text-gray-600 text-sm line-clamp-1">
-                      {item.content}
+                      {item.content || item.description || "-"}
                     </p>
                   </div>
 

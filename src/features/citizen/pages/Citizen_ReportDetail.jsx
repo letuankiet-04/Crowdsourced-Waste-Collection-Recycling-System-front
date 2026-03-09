@@ -315,6 +315,24 @@ export default function CitizenReportDetail() {
                   <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Manage Report</CardTitle>
                 </CardHeader>
                 <CardBody className="px-8 pb-8 pt-0 space-y-3">
+                  {status === "Collected" && (
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-xl border-orange-500 text-orange-600 hover:bg-orange-50"
+                      onClick={() => navigate(PATHS.citizen.feedback, { state: { reportId: report.id } })}
+                    >
+                      Report Issue / Complaint
+                    </Button>
+                  )}
+                  {status === "Accepted" && (
+                     <Button
+                      variant="outline"
+                      className="w-full rounded-xl border-orange-500 text-orange-600 hover:bg-orange-50"
+                      onClick={() => navigate(PATHS.citizen.feedback, { state: { reportId: report.id } })}
+                    >
+                      Report Issue / Complaint
+                    </Button>
+                  )}
                   <Button
                     className="w-full rounded-xl"
                     disabled={!report || !canManage}

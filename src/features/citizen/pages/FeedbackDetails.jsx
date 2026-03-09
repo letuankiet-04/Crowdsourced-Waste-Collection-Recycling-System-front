@@ -4,71 +4,89 @@ import Sidebar from "../components/navigation/Sidebar.jsx";
 import Navbar from "../components/navigation/CD_Navbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import { Card } from "../../../shared/ui/Card.jsx";
-import { ChevronLeft, Calendar, Clock, User, CheckCircle, AlertCircle } from "lucide-react";
-
-// Mock data (same as MyFeedback for consistency)
-const MOCK_FEEDBACK = [
-  {
-    id: "FDB-X7K9P2",
-    subject: "Bin overflow on 5th Avenue",
-    type: "Service",
-    date: "2023-10-24T10:30:00",
-    status: "NEW",
-    content: "The bin has been overflowing for 2 days. Please collect it soon. It's attracting pests and smells bad.",
-    response: null
-  },
-  {
-    id: "FDB-M2J5L8",
-    subject: "App crashing on login",
-    type: "System",
-    date: "2023-10-22T09:00:00",
-    status: "RESOLVED",
-    content: "I cannot log in to my account using Google Auth. It just spins and then crashes.",
-    response: {
-      date: "2023-10-23T14:00:00",
-      message: "This issue has been fixed in the latest update (v1.2.4). Please update your app."
-    }
-  },
-  {
-    id: "FDB-R4H1N6",
-    subject: "Late pickup complaint",
-    type: "Service",
-    date: "2023-10-20T11:20:00",
-    status: "IN PROGRESS",
-    content: "My trash was not picked up last Tuesday as scheduled. This is the second time this month.",
-    response: {
-      date: "2023-10-21T09:30:00",
-      message: "We apologize for the delay. The truck had a mechanical failure. We will collect it tomorrow."
-    }
-  },
-  {
-    id: "FDB-T9Q3V4",
-    subject: "Feature request: Dark mode",
-    type: "System",
-    date: "2023-10-19T13:10:00",
-    status: "IN PROGRESS",
-    content: "It would be great to have a dark mode for better night viewing. The white background is too bright.",
-    response: null
-  },
-  {
-    id: "FDB-A1B2C3",
-    subject: "Missed recycling pickup",
-    type: "Service",
-    date: "2023-10-17T09:30:00",
-    status: "RESOLVED",
-    content: "Recycling bin was skipped today even though it was out by 6am.",
-    response: {
-      date: "2023-10-18T10:00:00",
-      message: "The driver reported the bin was blocked by a parked car. We have rescheduled for Friday."
-    }
-  }
-];
+import { ChevronLeft, Calendar, Clock, User, CheckCircle, AlertCircle, MapPin, Image as ImageIcon, FileText } from "lucide-react";
+import { getCitizenFeedbackById } from "../../../services/feedback.service.js";
+import { getMyReportById } from "../../../services/reports.service.js";
+import useNotify from "../../../shared/hooks/useNotify.js";
+import { useEffect, useState } from "react";
 
 export default function FeedbackDetails() {
   const { feedbackId } = useParams();
   const navigate = useNavigate();
+  const notify = useNotify();
+  const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [linkedReport, setLinkedReport] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
-  const feedback = MOCK_FEEDBACK.find(item => item.id === feedbackId);
+  const normalizeType = (itemOrType) => {
+    const t = typeof itemOrType === "string" ? itemOrType : itemOrType?.type;
+    const v = String(t || "").toUpperCase();
+    const noReport = typeof itemOrType === "object" ? itemOrType?.reportId == null : false;
+    if (v === "COMPLAINT_SYSTEM" || v === "SYSTEM") return "SYSTEM";
+    if (v === "COMPLAINT_REWARD" || v === "REWARD") return "REWARD";
+    if (v === "COMPLAINT_COLLECTION" || v === "COLLECTION" || v === "SERVICE") {
+      return noReport ? "SYSTEM" : "COLLECTION";
+    }
+    return v || "UNKNOWN";
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!feedbackId) return;
+      setLoading(true);
+      try {
+        const data = await getCitizenFeedbackById(feedbackId);
+        if (!cancelled) setFeedback(data);
+      } catch (err) {
+        if (!cancelled) notify.error("Failed to load feedback");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+
+    const onFocus = () => {
+      // Re-fetch to ensure latest resolution/status is shown
+      load();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) load();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [feedbackId]);
+
+  useEffect(() => {
+    const isReward = String(feedback?.type || "").toUpperCase().includes("REWARD");
+    if (feedback && isReward && feedback.reportId) {
+      setLoadingReport(true);
+      getMyReportById(feedback.reportId)
+        .then(data => setLinkedReport(data))
+        .catch(() => {
+          notify.error("Không tải được chi tiết báo cáo liên kết");
+        })
+        .finally(() => setLoadingReport(false));
+    } else {
+      setLinkedReport(null);
+    }
+  }, [feedback]);
+
+  if (loading) {
+    return (
+      <RoleLayout sidebar={<Sidebar />} navbar={<Navbar />} footer={<CD_Footer />}>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <p className="text-gray-500">Loading feedback details...</p>
+        </div>
+      </RoleLayout>
+    );
+  }
 
   if (!feedback) {
     return (
@@ -89,15 +107,15 @@ export default function FeedbackDetails() {
 
   const getStatusBadge = (status) => {
     const styles = {
-      "NEW": "bg-blue-100 text-blue-700 border-blue-200",
-      "IN PROGRESS": "bg-yellow-100 text-yellow-700 border-yellow-200",
-      "RESOLVED": "bg-green-100 text-green-700 border-green-200"
+      "PENDING": "bg-yellow-100 text-yellow-700 border-yellow-200",
+      "RESOLVED": "bg-green-100 text-green-700 border-green-200",
+      "REJECTED": "bg-red-100 text-red-700 border-red-200"
     };
     
     const icons = {
-      "NEW": <AlertCircle className="w-4 h-4" />,
-      "IN PROGRESS": <Clock className="w-4 h-4" />,
-      "RESOLVED": <CheckCircle className="w-4 h-4" />
+      "PENDING": <Clock className="w-4 h-4" />,
+      "RESOLVED": <CheckCircle className="w-4 h-4" />,
+      "REJECTED": <AlertCircle className="w-4 h-4" />
     };
 
     return (
@@ -130,7 +148,7 @@ export default function FeedbackDetails() {
             <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-gray-900">{feedback.subject}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">{feedback.subject || feedback.title || `Complaint #${feedback.id}`}</h1>
                   {getStatusBadge(feedback.status)}
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-gray-500">
@@ -140,20 +158,22 @@ export default function FeedbackDetails() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-4 h-4" />
-                    {new Date(feedback.date).toLocaleDateString()}
+                    {new Date(feedback.date || feedback.createdAt).toLocaleDateString()}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Clock className="w-4 h-4" />
-                    {new Date(feedback.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {new Date(feedback.date || feedback.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </span>
                 </div>
               </div>
               
               <div className="flex flex-col items-end justify-center">
                 <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg border ${
-                  feedback.type === 'Service' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+                  normalizeType(feedback) === 'SYSTEM' ? 'bg-purple-50 text-purple-700 border-purple-100'
+                  : normalizeType(feedback) === 'COLLECTION' ? 'bg-blue-50 text-blue-700 border-blue-100'
+                  : 'bg-orange-50 text-orange-700 border-orange-100'
                 }`}>
-                  {feedback.type}
+                  {normalizeType(feedback)}
                 </span>
               </div>
             </div>
@@ -161,38 +181,163 @@ export default function FeedbackDetails() {
             <div className="pt-6 border-t border-gray-100">
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Description</h3>
               <p className="text-gray-700 leading-relaxed text-lg">
-                {feedback.content}
+                {feedback.content || feedback.description}
               </p>
             </div>
           </Card>
 
-          {/* Admin Response Section */}
-          {feedback.response ? (
-            <Card className="p-8 bg-emerald-50/50 border border-emerald-100 shadow-sm">
-              <div className="flex gap-4">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center border-2 border-white shadow-sm">
-                    <User className="w-5 h-5 text-emerald-600" />
+          {String(feedback.type || "").toUpperCase().includes("REWARD") && feedback.reportId && (
+            <Card className="p-8 bg-white border border-gray-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-emerald-600" />
                   </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Linked Report</h3>
+                    <div className="mt-1 text-sm text-gray-700">
+                      <span className="text-gray-500">Report Code: </span>
+                      <span className="font-mono font-semibold text-gray-900">{linkedReport?.reportCode || `#${linkedReport?.id}`}</span>
+                    </div>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 text-gray-700">
+                  {linkedReport?.status}
+                </span>
+              </div>
+              {loadingReport ? (
+                <div className="text-gray-500">Loading linked report...</div>
+              ) : linkedReport ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-4">
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4" />
+                        {new Date(linkedReport.createdAt).toLocaleDateString()} • {new Date(linkedReport.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4" />
+                        {linkedReport.address || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="text-gray-700">
+                      <span className="font-medium">Waste type:</span> {linkedReport.wasteType || 'RECYCLABLE'}
+                    </div>
+                    {Array.isArray(linkedReport.categories) && linkedReport.categories.length > 0 && (
+                      <div>
+                        <div className="text-gray-700 font-medium mb-2">Items List</div>
+                        <ul className="grid sm:grid-cols-2 gap-2">
+                          {linkedReport.categories.slice(0, 6).map((c, idx) => (
+                            <li key={idx} className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                              <span className="font-semibold text-gray-900">{c.name}</span>
+                              {c.quantity != null && <span className="text-gray-500"> — {String(c.quantity)}{c.unit ? ` ${c.unit}` : ''}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-2 text-gray-700">
+                      <ImageIcon className="w-4 h-4" />
+                      <span className="font-medium">Photos</span>
+                    </div>
+                    {Array.isArray(linkedReport.images) && linkedReport.images.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {linkedReport.images.slice(0, 4).map((url, idx) => (
+                          <a key={idx} href={url} target="_blank" rel="noreferrer" className="block">
+                            <img
+                              src={url}
+                              alt={`Report photo ${idx + 1}`}
+                              className="w-full h-28 object-cover rounded-xl border border-gray-200 hover:opacity-90"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-28 rounded-xl border border-dashed border-gray-300 flex items-center justify-center text-sm text-gray-400">
+                        No photos
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-500">No linked report found.</div>
+              )}
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => linkedReport && navigate(`/citizen/reports/${linkedReport.id}`)}
+                  disabled={!linkedReport}
+                  className="px-4 py-2 text-sm rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                >
+                  View Report
+                </button>
+              </div>
+            </Card>
+          )}
+
+          {/* Admin/Enterprise Response Section */}
+          {feedback.resolution ? (
+            <Card className="p-8 bg-white border border-gray-200 shadow-sm">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                  <User className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div className="flex-1 space-y-2">
                   <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-gray-900">Admin Response</h3>
-                    <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      {new Date(feedback.response.date).toLocaleDateString()}
-                    </span>
+                    <h3 className="font-bold text-gray-900">
+                      {['REWARD','COLLECTION'].includes(normalizeType(feedback)) ? 'Enterprise Response' : 'Admin Response'}
+                    </h3>
+                    {(function() {
+                      const ts = feedback.updatedAt || feedback.date || feedback.createdAt;
+                      const dt = ts ? new Date(ts) : null;
+                      if (!dt || isNaN(dt.getTime())) return null;
+                      const datePart = dt.toLocaleDateString();
+                      const timePart = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      return (
+                        <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                          {`${datePart} • ${timePart}`}
+                        </span>
+                      );
+                    })()}
                   </div>
-                  <p className="text-gray-700 bg-white p-4 rounded-xl border border-emerald-100 shadow-sm">
-                    {feedback.response.message}
+                  <p className="text-gray-700 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    {feedback.resolution}
                   </p>
                 </div>
               </div>
             </Card>
           ) : (
-            <div className="p-8 rounded-2xl bg-gray-50 border border-dashed border-gray-300 text-center">
-              <p className="text-gray-500 font-medium">No response from admin yet.</p>
-              <p className="text-xs text-gray-400 mt-1">We typically respond within 24-48 hours.</p>
-            </div>
+            <Card className="p-8 bg-white border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+                  <User className="w-5 h-5 text-gray-500" />
+                </div>
+                <h3 className="font-bold text-gray-900">
+                  {String(feedback.type || '').toUpperCase().includes('REWARD') ? 'Enterprise Response' 
+                    : String(feedback.type || '').toUpperCase().includes('SYSTEM') ? 'Admin Response' 
+                    : 'Admin Response'}
+                </h3>
+              </div>
+              <div className="p-6 rounded-xl bg-gray-50 border border-dashed border-gray-300 text-center">
+                {['RESOLVED','REJECTED'].includes(String(feedback.status || '').toUpperCase()) ? (
+                  <p className="text-gray-600 italic">
+                    This feedback has been {String(feedback.status).toLowerCase()} but no specific response was provided.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-gray-600 font-medium">
+                      {String(feedback.type || '').toUpperCase().includes('REWARD') 
+                        ? 'No response from enterprise yet.' 
+                        : 'No response from admin yet.'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">We typically respond within 24-48 hours.</p>
+                  </>
+                )}
+              </div>
+            </Card>
           )}
         </div>
 
