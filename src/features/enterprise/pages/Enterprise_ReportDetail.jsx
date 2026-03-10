@@ -289,7 +289,6 @@ export default function EnterpriseReportDetail() {
   const [collectorsError, setCollectorsError] = useState("");
   const [eligibleCollectorSource, setEligibleCollectorSource] = useState([]);
   const [eligibleCollectorsLoading, setEligibleCollectorsLoading] = useState(false);
-  const [eligibleCollectorsError, setEligibleCollectorsError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -453,7 +452,6 @@ export default function EnterpriseReportDetail() {
     if (requestId == null) return;
     let cancelled = false;
     setEligibleCollectorsLoading(true);
-    setEligibleCollectorsError("");
     getEligibleCollectorsForRequest(requestId)
       .then((rows) => {
         if (cancelled) return;
@@ -463,7 +461,6 @@ export default function EnterpriseReportDetail() {
         if (cancelled) return;
         const message = err?.message || "Unable to load collector tasks.";
         if (String(message).includes("Chỉ hỗ trợ tìm collector khi request ở trạng thái")) return;
-        setEligibleCollectorsError(message);
       })
       .finally(() => {
         if (cancelled) return;

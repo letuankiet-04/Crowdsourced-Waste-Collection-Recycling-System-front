@@ -11,14 +11,13 @@ import { getIconForCategory } from "../../../shared/lib/wasteIcons.js";
 
 export default function Citizen_Terms() {
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
  
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     getWasteCategories()
       .then((rows) => {
         if (cancelled) return;

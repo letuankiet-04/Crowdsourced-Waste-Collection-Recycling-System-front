@@ -72,6 +72,47 @@ function sliceLines(raw, from, to) {
   return lines.slice(start - 1, end).join('\n').trimEnd()
 }
 
+function extractServiceEndpoints(raw) {
+  const text = String(raw ?? '')
+  const endpoints = []
+
+  const callRe = /\bapi\.(get|post|put|patch|delete)\(\s*(["'`])([^"'`]+)\2/gi
+  let m
+  while ((m = callRe.exec(text))) {
+    const method = String(m[1] || '').toUpperCase()
+    const url = String(m[3] || '').trim()
+    if (!url) continue
+    if (m[2] === '`' && url.includes('${')) continue
+    endpoints.push({ method, url })
+  }
+
+  const requestRe = /\bapi\.request\(\s*\{([\s\S]*?)\}\s*\)/gi
+  while ((m = requestRe.exec(text))) {
+    const body = String(m[1] || '')
+    const methodMatch = body.match(/\bmethod\s*:\s*(["'`])([a-z]+)\1/i)
+    const urlMatch = body.match(/\burl\s*:\s*(["'`])([^"'`]+)\1/i)
+    const method = String(methodMatch?.[2] || '').toUpperCase()
+    const url = String(urlMatch?.[2] || '').trim()
+    if (method && url) endpoints.push({ method, url })
+  }
+
+  const fetchRe = /\bfetch\(\s*(["'`])(https?:\/\/[^"'`]+)\1/gi
+  while ((m = fetchRe.exec(text))) {
+    endpoints.push({ method: 'FETCH', url: String(m[2] || '').trim() })
+  }
+
+  const seen = new Set()
+  const out = []
+  for (const e of endpoints) {
+    const key = `${e.method} ${e.url}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(e)
+  }
+  out.sort((a, b) => (a.method + a.url).localeCompare(b.method + b.url))
+  return out
+}
+
 function CodeBlock({ code }) {
   return (
     <pre className="mt-3 overflow-auto rounded-2xl border border-slate-200 bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
@@ -146,6 +187,25 @@ export default function ApiKnowledge() {
   const [q, setQ] = useState('')
   const [actor, setActor] = useState('all')
 
+  const rawServiceFiles = useMemo(() => {
+    const files = import.meta.glob('/src/services/**/*.{js,ts}', {
+      eager: true,
+      query: '?raw',
+      import: 'default',
+    })
+    return files
+  }, [])
+
+  const apiIndex = useMemo(() => {
+    return Object.entries(rawServiceFiles)
+      .map(([vitePath, raw]) => {
+        const file = String(vitePath || '').replace(/^\/src\//, 'src/')
+        return { file, endpoints: extractServiceEndpoints(raw) }
+      })
+      .filter((x) => x.endpoints.length)
+      .sort((a, b) => a.file.localeCompare(b.file))
+  }, [rawServiceFiles])
+
   const actorOptions = useMemo(
     () => [
       { id: 'all', label: 'Tất cả' },
@@ -203,7 +263,7 @@ export default function ApiKnowledge() {
           },
           {
             label: 'Citizen create report: lấy File[] từ ImageUploader',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 304,
             to: 313,
@@ -211,7 +271,7 @@ export default function ApiKnowledge() {
           },
           {
             label: 'Citizen create report: đưa images vào payload submit',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 225,
             to: 255,
@@ -316,7 +376,7 @@ export default function ApiKnowledge() {
         calls: [
           {
             label: 'Citizen create report: MapPicker + reverse geocode',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 356,
             to: 427,
@@ -373,7 +433,7 @@ export default function ApiKnowledge() {
           },
           {
             label: 'Citizen create report: tạo payload categoryIds/quantities',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 225,
             to: 255,
@@ -421,7 +481,7 @@ export default function ApiKnowledge() {
         calls: [
           {
             label: 'Widget PointWallet fetch totalPoints',
-            file: 'src/features/citizen/pages/dashboard_comp/PointWallet.jsx',
+            file: 'src/features/citizen/components/dashboard/PointWallet.jsx',
             raw: pointWalletRaw,
             from: 1,
             to: 26,
@@ -551,7 +611,7 @@ export default function ApiKnowledge() {
           },
           {
             label: 'CollectorNavbar',
-            file: 'src/features/collector/pages/navbar/CollectorNavbar.jsx',
+            file: 'src/features/collector/components/navigation/CollectorNavbar.jsx',
             raw: collectorNavbarRaw,
             from: 26,
             to: 44,
@@ -559,7 +619,7 @@ export default function ApiKnowledge() {
           },
           {
             label: 'EnterpriseNavbar',
-            file: 'src/features/enterprise/pages/navbar/EnterpriseNavbar.jsx',
+            file: 'src/features/enterprise/components/navigation/EnterpriseNavbar.jsx',
             raw: enterpriseNavbarRaw,
             from: 19,
             to: 36,
@@ -624,7 +684,7 @@ export default function ApiKnowledge() {
         calls: [
           {
             label: 'PointWallet.useEffect',
-            file: 'src/features/citizen/pages/dashboard_comp/PointWallet.jsx',
+            file: 'src/features/citizen/components/dashboard/PointWallet.jsx',
             raw: pointWalletRaw,
             from: 12,
             to: 25,
@@ -686,7 +746,7 @@ export default function ApiKnowledge() {
         calls: [
           {
             label: 'CreateReportForm.useEffect load categories',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 73,
             to: 97,
@@ -731,7 +791,7 @@ export default function ApiKnowledge() {
           },
           {
             label: 'RecentReports widget',
-            file: 'src/features/citizen/pages/dashboard_comp/RecentReports.jsx',
+            file: 'src/features/citizen/components/dashboard/RecentReports.jsx',
             raw: recentReportsRaw,
             from: 29,
             to: 46,
@@ -811,7 +871,7 @@ export default function ApiKnowledge() {
         calls: [
           {
             label: 'CreateReportForm.handleSubmit',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 196,
             to: 270,
@@ -837,7 +897,7 @@ export default function ApiKnowledge() {
         calls: [
           {
             label: 'CreateReportForm.handleSubmit (edit mode)',
-            file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+            file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
             raw: createReportFormRaw,
             from: 196,
             to: 270,
@@ -1428,7 +1488,7 @@ export default function ApiKnowledge() {
         actors: ['external', 'citizen', 'collector'],
         logic: ['UI gọi fetch trực tiếp (không qua services) để convert address → lat/lng.'],
         service: {
-          file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+          file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
           raw: createReportFormRaw,
           from: 272,
           to: 298,
@@ -1453,7 +1513,7 @@ export default function ApiKnowledge() {
         actors: ['external', 'citizen', 'collector'],
         logic: ['UI gọi fetch reverse geocode khi có toạ độ từ map/GPS.'],
         service: {
-          file: 'src/features/citizen/pages/create_report/CreateReportForm.jsx',
+          file: 'src/features/citizen/components/reports/CreateReportForm.jsx',
           raw: createReportFormRaw,
           from: 368,
           to: 394,
@@ -1496,6 +1556,15 @@ export default function ApiKnowledge() {
       return query ? hay.includes(query) : true
     })
   }, [actor, entries, q])
+
+  const filteredApiIndex = useMemo(() => {
+    const query = q.trim().toLowerCase()
+    if (!query) return apiIndex
+    return apiIndex.filter((s) => {
+      const hay = [s.file, ...s.endpoints.map((e) => `${e.method} ${e.url}`)].join(' ').toLowerCase()
+      return hay.includes(query)
+    })
+  }, [apiIndex, q])
 
   const introFlow = useMemo(
     () => [
@@ -1552,6 +1621,36 @@ export default function ApiKnowledge() {
           {introFlow.map((b) => (
             <CodeSection key={b.title} title={b.title} meta={b.meta} explanation={b.explanation} code={b.code} />
           ))}
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="text-base font-semibold text-slate-900">API Index (tự quét từ src/services)</div>
+        <div className="mt-1 text-sm text-slate-600">
+          Dùng ô tìm kiếm để gõ endpoint (/api/...) hoặc tên service. List này phản ánh đúng code đang gọi.
+        </div>
+        <div className="mt-4 grid gap-2">
+          {filteredApiIndex.map((s) => (
+            <details key={s.file} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <summary className="cursor-pointer select-none text-sm font-semibold text-slate-900">
+                <span className="font-mono">{s.file}</span>{' '}
+                <span className="text-slate-500">·</span>{' '}
+                <span className="text-slate-600">{s.endpoints.length} endpoint</span>
+              </summary>
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                {s.endpoints.map((e) => (
+                  <li key={`${e.method}:${e.url}`}>
+                    <span className="font-semibold">{e.method}</span> <span className="font-mono">{e.url}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ))}
+          {!filteredApiIndex.length ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              Không trích được endpoint từ services (hoặc không khớp filter hiện tại).
+            </div>
+          ) : null}
         </div>
       </div>
 

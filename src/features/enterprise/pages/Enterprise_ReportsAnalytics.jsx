@@ -315,8 +315,10 @@ export default function EnterpriseReportsAnalytics() {
   }, [citizenRows]);
 
   const load = useCallback(() => {
-    setLoading(true);
-    setError("");
+    Promise.resolve().then(() => {
+      setLoading(true);
+      setError("");
+    });
 
     Promise.allSettled([
       getEnterpriseReportsWasteVolume({ year }),

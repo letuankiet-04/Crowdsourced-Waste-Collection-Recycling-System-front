@@ -344,6 +344,34 @@ export default function UserProfile({ user: propUser, className }) {
     }
   }, [user]);
 
+  const role = useMemo(() => (user?.role || user?.roleCode || "User").toUpperCase(), [user?.role, user?.roleCode]);
+  const enterpriseId = useMemo(() => user?.enterpriseId ?? user?.enterprise_id ?? null, [user?.enterpriseId, user?.enterprise_id]);
+  const enterpriseName = useMemo(() => user?.enterpriseName ?? user?.enterprise_name ?? null, [user?.enterpriseName, user?.enterprise_name]);
+  const location = useMemo(() => {
+    if (formData.address) return formData.city ? `${formData.address}, ${formData.city}` : formData.address;
+    if (formData.city) return formData.city;
+    if (formData.ward) return `${formData.ward}`;
+    return "Location not set";
+  }, [formData.address, formData.city, formData.ward]);
+  const status = useMemo(() => {
+    if (!user?.status) return "Active";
+    return user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase();
+  }, [user?.status]);
+  const isVerified = useMemo(() => status.toLowerCase() === 'active', [status]);
+  const createdAt = useMemo(() => formatDate(user?.createdAt), [user?.createdAt]);
+  const lastLogin = useMemo(() => formatDateTime(user?.lastLogin), [user?.lastLogin]);
+  const membership = useMemo(() => {
+    const totalPoints = user?.totalPoints;
+    if (totalPoints) {
+      if (totalPoints > 5000) return "Platinum Guardian";
+      if (totalPoints > 1000) return "Gold Tier Guardian";
+      return "Silver Collector";
+    }
+    if (role.includes("ADMIN")) return "System Administrator";
+    if (role.includes("ENTERPRISE")) return "Enterprise Partner";
+    return "Standard Member";
+  }, [user?.totalPoints, role]);
+
   if (!user) {
       return (
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center text-gray-500 italic">
@@ -390,33 +418,6 @@ export default function UserProfile({ user: propUser, className }) {
       });
       setIsEditing(false);
   };
-
-  const role = useMemo(() => (user.role || user.roleCode || "User").toUpperCase(), [user.role, user.roleCode]);
-  const enterpriseId = useMemo(() => user.enterpriseId ?? user.enterprise_id ?? null, [user.enterpriseId, user.enterprise_id]);
-  const enterpriseName = useMemo(() => user.enterpriseName ?? user.enterprise_name ?? null, [user.enterpriseName, user.enterprise_name]);
-  const location = useMemo(() => {
-    if (formData.address) return formData.city ? `${formData.address}, ${formData.city}` : formData.address;
-    if (formData.city) return formData.city;
-    if (formData.ward) return `${formData.ward}`;
-    return "Location not set";
-  }, [formData.address, formData.city, formData.ward]);
-  const status = useMemo(() => {
-    if (!user.status) return "Active";
-    return user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase();
-  }, [user.status]);
-  const isVerified = useMemo(() => status.toLowerCase() === 'active', [status]);
-  const createdAt = useMemo(() => formatDate(user.createdAt), [user.createdAt]);
-  const lastLogin = useMemo(() => formatDateTime(user.lastLogin), [user.lastLogin]);
-  const membership = useMemo(() => {
-    if (user.totalPoints) {
-      if (user.totalPoints > 5000) return "Platinum Guardian";
-      if (user.totalPoints > 1000) return "Gold Tier Guardian";
-      return "Silver Collector";
-    }
-    if (role.includes("ADMIN")) return "System Administrator";
-    if (role.includes("ENTERPRISE")) return "Enterprise Partner";
-    return "Standard Member";
-  }, [user.totalPoints, role]);
 
   return (
     <div className={cn("space-y-6", className)}>
