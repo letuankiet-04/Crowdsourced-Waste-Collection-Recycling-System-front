@@ -1,11 +1,14 @@
 import Container from '../../../shared/ui/Container.jsx'
 import { Recycle, Share2, Globe, MessageSquare, Mail, MapPin, Info, Asterisk } from 'lucide-react'
+import { useState } from 'react'
+import PolicyTermsDialog from '../../../shared/ui/PolicyTermsDialog.jsx'
 
 export default function HomeFooter() {
+  const [open, setOpen] = useState(false)
   return (
     <footer className="border-t border-slate-200 bg-white text-slate-600">
       <Container className="py-16">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           <div>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600">
@@ -30,37 +33,28 @@ export default function HomeFooter() {
             </div>
           </div>
 
-          <div>
-            <h3 className="font-semibold text-slate-900">Quick Navigation</h3>
-            <ul className="mt-4 space-y-3">
-              {['Dashboard', 'Interactive Map', 'Recycling Centers', 'Impact Reports', 'Collection Schedule'].map(
-                (label) => (
-                  <li key={label}>
-                    <a href="#" className="text-slate-600 transition-colors hover:text-slate-900">
-                      {label}
-                    </a>
-                  </li>
-                )
-              )}
-            </ul>
-          </div>
+          
 
           <div>
             <h3 className="font-semibold text-slate-900">Contact & Support</h3>
             <ul className="mt-4 space-y-3">
               <li className="flex items-start gap-3">
                 <Mail className="mt-0.5 h-5 w-5 text-emerald-500" />
-                <span>support@ecostream.io</span>
+                <span>supportecostream@gmail.com</span>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-5 w-5 text-emerald-500" />
-                <span>123 Eco Avenue, Green City, Sustainability District</span>
+                <span>7 D1 Street, Long Thanh My Ward, Thu Duc District, Ho Chi Minh City, Vietnam</span>
               </li>
               <li className="flex items-start gap-3">
                 <Info className="mt-0.5 h-5 w-5 text-emerald-500" />
-                <a href="#" className="text-slate-600 transition-colors hover:text-slate-900">
+                <button
+                  type="button"
+                  className="text-left text-slate-600 transition-colors hover:text-slate-900"
+                  onClick={() => setOpen(true)}
+                >
                   Privacy Policy &amp; Terms
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -80,7 +74,7 @@ export default function HomeFooter() {
           </div>
         </div>
       </Container>
+      <PolicyTermsDialog open={open} onClose={() => setOpen(false)} />
     </footer>
   )
 }
-
