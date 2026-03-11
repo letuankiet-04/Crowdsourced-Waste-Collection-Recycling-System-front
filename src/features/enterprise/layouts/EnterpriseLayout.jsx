@@ -1,4 +1,4 @@
-import { ClipboardList, FileText, LayoutDashboard, User, Users, MessageSquare } from "lucide-react";
+import { BarChart3, ClipboardList, FileText, LayoutDashboard, MessageSquare, User, Users } from "lucide-react";
 import RoleSidebar from "../../../shared/layout/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../shared/layout/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../shared/layout/sidebar/SidebarLogoutButton.jsx";

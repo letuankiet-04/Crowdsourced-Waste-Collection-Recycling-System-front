@@ -47,7 +47,7 @@ export default function FeedbackDetailModal({
               reportEntityId: data?.reportId ?? feedback?.reportEntityId ?? null,
               collectionRequestId: data?.collectionRequestId ?? feedback?.collectionRequestId ?? null,
             });
-          } catch (e) {
+          } catch {
             // Không chặn UI nếu lỗi, dùng dữ liệu từ props
             setDetail(feedback || null);
           } finally {
@@ -70,7 +70,7 @@ export default function FeedbackDetailModal({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [open]);
+  }, [open, feedback, mode]);
 
   // Load report info when applicable (enterprise + reportId)
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function FeedbackDetailModal({
       notify.success("Feedback updated successfully");
       onUpdate?.();
       onClose();
-    } catch (error) {
+    } catch {
       notify.error("Failed to update feedback");
     } finally {
       setSubmitting(false);
@@ -155,7 +155,7 @@ export default function FeedbackDetailModal({
       notify.success("Feedback resolved");
       onUpdate?.();
       onClose();
-    } catch (error) {
+    } catch {
       notify.error("Failed to resolve feedback");
     } finally {
       setSubmitting(false);

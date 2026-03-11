@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../shared/ui/Card.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
@@ -29,21 +29,21 @@ export default function MyFeedback() {
     return v || "UNKNOWN";
   };
 
-  useEffect(() => {
-    fetchFeedbacks();
-  }, []);
-
-  const fetchFeedbacks = async () => {
+  const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
     try {
         const data = await getCitizenFeedbacks();
         setFeedbacks(Array.isArray(data) ? data : data.items || []);
-    } catch (err) {
+    } catch {
         notify.error("Failed to load feedbacks");
     } finally {
         setLoading(false);
     }
-  };
+  }, [notify]);
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, [fetchFeedbacks]);
 
   const filteredFeedback = useMemo(() => {
     return feedbacks.filter(item => {

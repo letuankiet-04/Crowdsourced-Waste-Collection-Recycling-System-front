@@ -39,7 +39,7 @@ export default function FeedbackDetails() {
       try {
         const data = await getCitizenFeedbackById(feedbackId);
         if (!cancelled) setFeedback(data);
-      } catch (err) {
+      } catch {
         if (!cancelled) notify.error("Failed to load feedback");
       } finally {
         if (!cancelled) setLoading(false);
@@ -61,7 +61,7 @@ export default function FeedbackDetails() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [feedbackId]);
+  }, [feedbackId, notify]);
 
   useEffect(() => {
     const isReward = String(feedback?.type || "").toUpperCase().includes("REWARD");
@@ -76,7 +76,7 @@ export default function FeedbackDetails() {
     } else {
       setLinkedReport(null);
     }
-  }, [feedback]);
+  }, [feedback, notify]);
 
   if (loading) {
     return (
