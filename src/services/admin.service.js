@@ -20,3 +20,8 @@ export async function getAdminCollectedWeightDailyChart(year, month) {
   const { data } = await api.get('/api/admin/analytics/collected-weight/daily', { params: { year, month } })
   return unwrapApiResponse(data)
 }
+
+export async function getAdminCollectedWasteByUnit() {
+  const { data } = await api.get('/api/admin/analytics/collected-waste-by-unit')
+  return unwrapApiResponse(data)
+}

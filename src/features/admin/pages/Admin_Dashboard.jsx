@@ -6,6 +6,7 @@ import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import SummaryCards from "../components/dashboard/SummaryCards.jsx";
 import WasteActivityChart from "../components/dashboard/WasteActivityChart.jsx";
 import RoleDistributionChart from "../components/dashboard/RoleDistributionChart.jsx";
+import CollectByUnitChart from "../components/dashboard/CollectByUnitChart.jsx";
 import ImpactLeaderboard from "../components/dashboard/ImpactLeaderboard.jsx";
 import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import { useEffect, useState } from "react";
@@ -57,11 +58,14 @@ export default function AdminDashboard() {
         {/* CHARTS SECTION */}
         <div className="animate-fade-in-up">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <WasteActivityChart />
             </div>
             <div>
               <RoleDistributionChart />
+            </div>
+            <div className="lg:col-span-2">
+              <CollectByUnitChart />
             </div>
           </div>
         </div>
