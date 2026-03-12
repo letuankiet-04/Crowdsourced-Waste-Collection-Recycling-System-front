@@ -7,7 +7,6 @@ import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import WaitApiPlaceholder from "../../../shared/ui/WaitApiPlaceholder.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
-import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import { ClipboardList, Medal, Scale, Users } from "lucide-react";
 import {

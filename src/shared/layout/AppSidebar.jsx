@@ -49,7 +49,14 @@ export default function AppSidebar({
           if (!item) return null;
 
           return (
-            <SidebarNavItem key={item.key ?? item.name ?? idx} to={item.to} end={item.end} icon={item.icon} collapsed={collapsed}>
+            <SidebarNavItem
+              key={item.key ?? item.name ?? idx}
+              to={item.to}
+              end={item.end}
+              icon={item.icon}
+              collapsed={collapsed}
+              className={item.className}
+            >
               {item.name}
             </SidebarNavItem>
           );

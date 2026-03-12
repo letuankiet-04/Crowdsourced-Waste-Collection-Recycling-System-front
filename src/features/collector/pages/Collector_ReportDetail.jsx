@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import CollectorLayout from "../layouts/CollectorLayout.jsx";
@@ -12,12 +12,12 @@ import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Truck, X, XCircle } from "lucide-react";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import CollectReportDialog from "../../../components/collector/CollectReportDialog.jsx";
+import useCollectorReportDetail from "../hooks/useCollectorReportDetail.js";
+import { buildCollectorReport } from "./collectorReportDetail.utils.js";
 import {
   acceptCollectorTask,
   completeCollectorTask,
-  getCollectorCreateReport,
   getCollectorTasks,
-  getCollectorWorkHistory,
   markCollectorCollected,
   rejectCollectorTask,
   startCollectorTask,
@@ -28,94 +28,13 @@ export default function CollectorReportDetail() {
   const navigate = useNavigate();
   const notify = useNotify();
   const id = reportId ? String(reportId) : "";
-  const [task, setTask] = useState(null);
-  const [createReport, setCreateReport] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      if (!id) return;
-      const requestId = Number(id);
-      if (!Number.isFinite(requestId)) return;
-      setLoading(true);
-      try {
-        const [createData, tasksData, historyData] = await Promise.all([
-          getCollectorCreateReport(requestId).catch(() => null),
-          getCollectorTasks({ all: true }).catch(() => []),
-          getCollectorWorkHistory().catch(() => []),
-        ]);
-
-        if (!active) return;
-
-        const tasks = Array.isArray(tasksData) ? tasksData : [];
-        const foundTask = tasks.find((t) => Number(t?.id) === requestId) ?? null;
-
-        const history = Array.isArray(historyData) ? historyData : [];
-        const foundHistory =
-          history.find((h) => Number(h?.collectionRequestId) === requestId) ??
-          history.find((h) => Number(h?.id) === requestId) ??
-          null;
-
-        const syntheticTask = foundTask
-          ? foundTask
-          : foundHistory
-            ? {
-                id: foundHistory.collectionRequestId ?? requestId,
-                requestCode: foundHistory.requestCode ?? null,
-                status: foundHistory.status ?? null,
-                createdAt: foundHistory.updatedAt ?? foundHistory.startedAt ?? null,
-                updatedAt: foundHistory.updatedAt ?? null,
-              }
-            : null;
-
-        setTask(syntheticTask);
-        setCreateReport(createData);
-      } catch (e) {
-        if (!active) return;
-        setTask(null);
-        setCreateReport(null);
-        notify.error("Unable to load task", e?.message || "Request failed");
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      active = false;
-    };
-  }, [id, notify]);
+  const { task, createReport, loading } = useCollectorReportDetail({ id, notify });
+  const [taskOverride, setTaskOverride] = useState(null);
+  const effectiveTask = taskOverride ?? task;
 
   const report = useMemo(() => {
-    if (!id) return null;
-    const coords =
-      createReport?.latitude != null && createReport?.longitude != null
-        ? { lat: Number(createReport.latitude), lng: Number(createReport.longitude) }
-        : null;
-    const items = Array.isArray(createReport?.items) ? createReport.items : [];
-    const wasteItems = items
-      .map((it) => {
-        const name = it?.categoryName ? String(it.categoryName) : null;
-        const estimatedWeight = it?.suggestedQuantity != null ? Number(it.suggestedQuantity) : NaN;
-        if (!name || !Number.isFinite(estimatedWeight)) return null;
-        return { name, unit: it?.wasteUnit ? String(it.wasteUnit).toLowerCase() : "kg", estimatedWeight };
-      })
-      .filter(Boolean);
-
-    return {
-      id,
-      reportCode: createReport?.wasteReportCode ?? task?.requestCode ?? null,
-      status: task?.status ?? null,
-      createdAt: task?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
-      updatedAt: task?.updatedAt ?? null,
-      address: createReport?.address ?? null,
-      coords,
-      images: Array.isArray(createReport?.imageUrls) ? createReport.imageUrls : [],
-      types: createReport?.wasteType ? [String(createReport.wasteType)] : [],
-      wasteItems,
-    };
-  }, [createReport, id, task]);
+    return buildCollectorReport({ id, task: effectiveTask, createReport });
+  }, [createReport, id, effectiveTask]);
 
   const rawStatus = String(task?.status || "").trim().toLowerCase();
   const statusLabel = normalizeReportStatus(task?.status);
@@ -145,7 +64,7 @@ export default function CollectorReportDetail() {
       await markCollectorCollected(requestId);
       const data = await getCollectorTasks({ all: true });
       const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-      if (next) setTask(next);
+      if (next) setTaskOverride(next);
       notify.success("Collected", "Task marked as collected.");
     } catch (e) {
       notify.error("Unable to mark collected", e?.message || "Request failed");
@@ -167,7 +86,10 @@ export default function CollectorReportDetail() {
     if (!Number.isFinite(requestId)) return false;
     try {
       await completeCollectorTask(requestId, payload || {});
-      setTask((prev) => (prev ? { ...prev, status: "completed" } : prev));
+      setTaskOverride((prev) => {
+        const base = prev ?? effectiveTask;
+        return base ? { ...base, status: "completed" } : base;
+      });
       notify.success("Completed", "Collection report submitted.");
       setCollectOpen(false);
       navigate(PATHS.collector.history, { replace: true });
@@ -202,7 +124,7 @@ export default function CollectorReportDetail() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-               <StatusPill variant={reportStatusToPillVariant(task?.status)}>{statusLabel}</StatusPill>
+               <StatusPill variant={reportStatusToPillVariant(effectiveTask?.status)}>{statusLabel}</StatusPill>
             </div>
           </CardHeader>
           <CardBody className="p-8">
@@ -244,7 +166,7 @@ export default function CollectorReportDetail() {
                               const next = Array.isArray(data)
                                 ? data.find((t) => Number(t?.id) === requestId) ?? null
                                 : null;
-                              setTask(next);
+                              setTaskOverride(next);
                               notify.success("Accepted", "Task accepted successfully.");
                             } catch (e) {
                               notify.error("Unable to accept task", e?.message || "Request failed");
@@ -276,7 +198,7 @@ export default function CollectorReportDetail() {
                             await startCollectorTask(requestId);
                             const data = await getCollectorTasks({ all: true });
                             const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-                            setTask(next);
+                            setTaskOverride(next);
                             notify.success("Started", "Task started successfully.");
                           } catch (e) {
                             notify.error("Unable to start task", e?.message || "Request failed");
@@ -427,7 +349,7 @@ export default function CollectorReportDetail() {
                           await rejectCollectorTask(requestId, reason);
                           const data = await getCollectorTasks({ all: true });
                           const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-                          if (next) setTask(next);
+                          if (next) setTaskOverride(next);
                           else navigate(PATHS.collector.dashboard, { replace: true });
                           setRejectOpen(false);
                           notify.success("Rejected", "Task rejected. The enterprise can reassign it.");

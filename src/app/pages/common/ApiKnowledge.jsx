@@ -10,6 +10,10 @@ import authServiceRaw from '../../../services/auth.service.js?raw'
 import animatedAuthRaw from '../../../features/auth/pages/AnimatedAuth.jsx?raw'
 import apiTestRaw from './ApiTest.jsx?raw'
 import sidebarLogoutButtonRaw from '../../../shared/layout/sidebar/SidebarLogoutButton.jsx?raw'
+import protectedRouteRaw from '../../auth/ProtectedRoute.jsx?raw'
+import useStoredUserRaw from '../../../shared/hooks/useStoredUser.js?raw'
+import notifyProviderRaw from '../../../shared/ui/NotifyProvider.jsx?raw'
+import useNotifyRaw from '../../../shared/hooks/useNotify.js?raw'
 import collectorNavbarRaw from '../../../features/collector/components/navigation/CollectorNavbar.jsx?raw'
 import enterpriseNavbarRaw from '../../../features/enterprise/components/navigation/EnterpriseNavbar.jsx?raw'
 import userProfileRaw from '../../../shared/components/user/UserProfile.jsx?raw'
@@ -1576,6 +1580,20 @@ export default function ApiKnowledge() {
         code: sliceLines(clientRaw, 4, 52),
       },
       {
+        title: 'Auth state: sessionStorage + useStoredUser',
+        meta: 'src/shared/hooks/useStoredUser.js',
+        explanation:
+          'Project lưu token/user trong sessionStorage. useStoredUser() là “điểm đọc chung” cho user hiện tại và cung cấp clearAuth() để xoá token/user khi logout.',
+        code: sliceLines(useStoredUserRaw, 1, 65),
+      },
+      {
+        title: 'Guard route: ProtectedRoute (token/role)',
+        meta: 'src/app/auth/ProtectedRoute.jsx',
+        explanation:
+          'ProtectedRoute kiểm tra token + user trong sessionStorage và role (nếu route yêu cầu). Thiếu auth → redirect login; sai role → unauthorized.',
+        code: sliceLines(protectedRouteRaw, 1, 60),
+      },
+      {
         title: 'Chuẩn hoá error (ApiError)',
         meta: 'src/services/http/ApiError.js',
         explanation:
@@ -1588,6 +1606,13 @@ export default function ApiKnowledge() {
         explanation:
           'Backend đôi khi trả payload dưới dạng { result: ... }. Helper này lấy data.result nếu có, còn không thì trả data. Nhờ vậy UI/service không cần biết response có wrap hay không.',
         code: sliceLines(unwrapApiResponseRaw, 1, 4),
+      },
+      {
+        title: 'Thông báo khi gọi API: NotifyProvider + useNotify',
+        meta: 'src/shared/ui/NotifyProvider.jsx + src/shared/hooks/useNotify.js',
+        explanation:
+          'Khi submit form/call API, UI nên hiển thị toast theo vòng đời promise: notify.promise(promise, { loadingTitle, successTitle, errorTitle }).',
+        code: `${sliceLines(notifyProviderRaw, 90, 148)}\n\n${sliceLines(useNotifyRaw, 1, 12)}`,
       },
     ],
     []
@@ -1616,7 +1641,9 @@ export default function ApiKnowledge() {
 
       <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
         <div className="text-base font-semibold text-slate-900">Luồng gọi API trong project</div>
-        <div className="mt-1 text-sm text-slate-600">UI → services/* → axios client → backend (Vite proxy trong DEV)</div>
+        <div className="mt-1 text-sm text-slate-600">
+          UI → services/* → axios client → backend (Vite proxy trong DEV) · auth token từ sessionStorage · toast qua useNotify
+        </div>
         <div className="mt-4 grid gap-3">
           {introFlow.map((b) => (
             <CodeSection key={b.title} title={b.title} meta={b.meta} explanation={b.explanation} code={b.code} />

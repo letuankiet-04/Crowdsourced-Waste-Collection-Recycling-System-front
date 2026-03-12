@@ -1,13 +1,12 @@
 import { Bell } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { logout } from "../../../../services/auth.service.js";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 import { PATHS } from "../../../../app/routes/paths.js";
 import UserMenu from "../../../../shared/ui/UserMenu.jsx";
 import useNotify from "../../../../shared/hooks/useNotify.js";
 import { cn } from "../../../../shared/lib/cn.js";
 import { getCollectorDashboard, updateCollectorPresence } from "../../../../services/collector.service.js";
+import useLogout from "../../../../shared/hooks/useLogout.js";
 
 function coerceCollectorOnline(payload, fallback = false) {
   const candidate =
@@ -53,8 +52,8 @@ function writeStoredPresence(nextOnline) {
 
 export default function CollectorNavbar() {
   const notify = useNotify();
-  const { user, displayName, roleLabel, clearAuth } = useStoredUser();
-  const navigate = useNavigate();
+  const { user, displayName, roleLabel } = useStoredUser();
+  const logoutAndRedirect = useLogout();
   const initialOnline = useMemo(() => coerceCollectorOnline(user, false), [user]);
   const [online, setOnline] = useState(initialOnline);
   const [presencePending, setPresencePending] = useState(false);
@@ -153,21 +152,9 @@ export default function CollectorNavbar() {
                 { to: PATHS.collector.history, label: "Work History" },
               ]}
               onLogout={() => {
-                void (async () => {
-                  try {
-                      await updateCollectorPresence({ status: "OFFLINE" });
-                      writeStoredPresence(false);
-                    } catch (err) {
-                      void err;
-                    }
-                    try {
-                    await logout();
-                  } catch (err) {
-                    void err;
-                  }
-                  clearAuth();
-                  navigate(PATHS.auth.login, { replace: true });
-                })();
+                void logoutAndRedirect({
+                  onLoggedOut: () => writeStoredPresence(false),
+                });
               }}
             />
           </div>

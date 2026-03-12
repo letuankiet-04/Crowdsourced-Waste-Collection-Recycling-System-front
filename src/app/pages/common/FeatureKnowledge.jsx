@@ -11,6 +11,13 @@ import unwrapApiResponseRaw from '../../../services/http/unwrapApiResponse.js?ra
 import notifyProviderRaw from '../../../shared/ui/NotifyProvider.jsx?raw'
 import notifyCoreRaw from '../../../notifications/notifyCore.js?raw'
 import useNotifyRaw from '../../../shared/hooks/useNotify.js?raw'
+import useStoredUserRaw from '../../../shared/hooks/useStoredUser.js?raw'
+import useLogoutRaw from '../../../shared/hooks/useLogout.js?raw'
+import sidebarLogoutButtonRaw from '../../../shared/layout/sidebar/SidebarLogoutButton.jsx?raw'
+import roleSidebarRaw from '../../../shared/layout/sidebar/RoleSidebar.jsx?raw'
+import appSidebarRaw from '../../../shared/layout/AppSidebar.jsx?raw'
+import adminNavItemsRaw from '../../../features/admin/components/navigation/AdminNavItems.jsx?raw'
+import citizenNavItemsRaw from '../../../features/citizen/components/navigation/CitizenNavItems.jsx?raw'
 
 function normalizeVitePath(p) {
   return String(p || '').replace(/^\/src\//, 'src/')
@@ -705,11 +712,32 @@ export default function FeatureKnowledge() {
         code: sliceLines(protectedRouteRaw, 1, 60),
       },
       {
+        title: 'Auth state (sessionStorage): useStoredUser',
+        meta: 'src/shared/hooks/useStoredUser.js',
+        explanation:
+          'Hook đọc sessionStorage.user (JSON) để có user hiện tại, đồng thời cung cấp clearAuth() để xoá token/user khi logout hoặc khi token hết hạn.',
+        code: sliceLines(useStoredUserRaw, 1, 65),
+      },
+      {
         title: 'Layout theo role: RoleLayout.jsx',
         meta: 'src/shared/layout/RoleLayout.jsx',
         explanation:
           'RoleLayout nhận sidebar/navbar/footer qua props và render children ở giữa. Đây là ví dụ quan trọng về "composition" trong React.',
         code: sliceLines(roleLayoutRaw, 1, 80),
+      },
+      {
+        title: 'Sidebar theo role: RoleSidebar + AppSidebar',
+        meta: 'src/shared/layout/sidebar/RoleSidebar.jsx + src/shared/layout/AppSidebar.jsx',
+        explanation:
+          'Sidebar được cấu hình qua navItems theo từng role. AppSidebar render brand + list navItems (có thể là object hoặc JSX element), giúp mỗi role tuỳ biến menu mà vẫn dùng chung layout.',
+        code: `${sliceLines(roleSidebarRaw, 1, 23)}\n\n${sliceLines(appSidebarRaw, 1, 73)}`,
+      },
+      {
+        title: 'navItems theo role: ví dụ Admin vs Citizen',
+        meta: 'src/features/admin/components/navigation/AdminNavItems.jsx + src/features/citizen/components/navigation/CitizenNavItems.jsx',
+        explanation:
+          'Admin dùng navItems dạng object (dễ cấu hình key/to/icon/name). Citizen dùng navItems dạng JSX <SidebarNavItem /> (dễ custom layout cho từng item). Cả hai đều được sidebar nhận và render.',
+        code: `${sliceLines(adminNavItemsRaw, 1, 41)}\n\n${sliceLines(citizenNavItemsRaw, 1, 55)}`,
       },
       {
         title: 'HTTP client: axios + interceptor',
@@ -731,6 +759,13 @@ export default function FeatureKnowledge() {
         explanation:
           'Backend đôi khi wrap payload dưới key result. Helper này lấy data.result nếu có, còn không thì trả data để service/UI không cần quan tâm format response.',
         code: sliceLines(unwrapApiResponseRaw, 1, 4),
+      },
+      {
+        title: 'Logout dùng chung: useLogout + SidebarLogoutButton',
+        meta: 'src/shared/hooks/useLogout.js + src/shared/layout/sidebar/SidebarLogoutButton.jsx',
+        explanation:
+          'Hook gom toàn bộ logic logout: (tuỳ chọn) cập nhật presence collector → gọi API logout → clearAuth() → điều hướng về login. SidebarLogoutButton chỉ là UI wrapper gọi hook.',
+        code: `${sliceLines(useLogoutRaw, 1, 39)}\n\n${sliceLines(sidebarLogoutButtonRaw, 1, 35)}`,
       },
       {
         title: 'Toast/notify: Provider + hook',
@@ -775,7 +810,7 @@ export default function FeatureKnowledge() {
       <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
         <div className="text-base font-semibold text-slate-900">Kiến thức nền (bắt buộc hiểu trước)</div>
         <div className="mt-1 text-sm text-slate-600">
-          Nếu bạn hiểu 3 khối này, bạn sẽ lần ra được hầu hết cách các page trong features hoạt động.
+          Nếu bạn hiểu các khối này, bạn sẽ lần ra được hầu hết cách các page trong features hoạt động.
         </div>
         <div className="mt-4 grid gap-3">
           {foundations.map((b) => (

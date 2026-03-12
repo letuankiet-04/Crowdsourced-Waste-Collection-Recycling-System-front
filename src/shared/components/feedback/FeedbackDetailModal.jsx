@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import { createPortal } from 'react-dom';
 import { X, Clock, FileText } from 'lucide-react';
 import Button from '../../ui/Button.jsx';
 import StatusPill from '../../ui/StatusPill.jsx';
-import { resolveAdminFeedback, resolveEnterpriseFeedback, getEnterpriseFeedbackById, getAdminFeedbackById } from '../../../services/feedback.service.js';
-import { getEnterpriseWasteReportById } from '../../../services/enterprise.service.js';
+import { resolveAdminFeedback, resolveEnterpriseFeedback } from '../../../services/feedback.service.js';
 import { normalizeReportStatus, reportStatusToPillVariant } from '../../lib/reportStatus.js';
 import useNotify from '../../hooks/useNotify.js';
+import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
+import useLatestFeedbackDetail from "./useLatestFeedbackDetail.js";
+import useFeedbackReportInfo from "./useFeedbackReportInfo.js";
 
 export default function FeedbackDetailModal({
   open,
@@ -17,99 +19,20 @@ export default function FeedbackDetailModal({
   mode = "enterprise"
 }) {
   const notify = useNotify();
+  useBodyScrollLock(open);
   const [response, setResponse] = useState("");
   const [decision, setDecision] = useState("RESOLVED");
   const [submitting, setSubmitting] = useState(false);
-  const [detail, setDetail] = useState(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-  const [reportInfo, setReportInfo] = useState(null);
-  const [loadingReport, setLoadingReport] = useState(false);
+  const { detail, loadingDetail } = useLatestFeedbackDetail({ open, feedback, mode });
+  const { reportInfo, loadingReport } = useFeedbackReportInfo({ open, mode, detail, fallback: feedback });
 
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-      // Load chi tiết mới nhất từ server khi mở modal
-      if (feedback?.id) {
-        setLoadingDetail(true);
-        const load = async () => {
-          try {
-            const data = mode === "admin"
-              ? await getAdminFeedbackById(feedback.id)
-              : await getEnterpriseFeedbackById(feedback.id);
-            // Chuẩn hoá một số field để component dùng thống nhất
-            setDetail({
-              ...feedback,
-              ...data,
-              sender: feedback?.sender || undefined,
-              // Ưu tiên reportId nếu có, sau đó mới tới collectionRequestId
-              reportId: data?.reportId ?? data?.collectionRequestId ?? feedback?.reportId,
-              // Lưu cả các biến thể để thử fetch chi tiết
-              reportEntityId: data?.reportId ?? feedback?.reportEntityId ?? null,
-              collectionRequestId: data?.collectionRequestId ?? feedback?.collectionRequestId ?? null,
-            });
-          } catch {
-            // Không chặn UI nếu lỗi, dùng dữ liệu từ props
-            setDetail(feedback || null);
-          } finally {
-            setLoadingDetail(false);
-          }
-        };
-        load();
-      } else {
-        setDetail(feedback || null);
-      }
-    } else {
-      document.body.style.overflow = '';
+    if (!open) {
       setResponse("");
       setDecision("RESOLVED");
-      setDetail(null);
-      setLoadingDetail(false);
-      setReportInfo(null);
-      setLoadingReport(false);
+      setSubmitting(false);
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [open, feedback, mode]);
-
-  // Load report info when applicable (enterprise + reportId)
-  useEffect(() => {
-    // Thử nhiều ứng viên ID vì backend có thể dùng các khoá khác nhau
-    const primary = detail?.reportEntityId ?? feedback?.reportEntityId;
-    const secondary = detail?.reportId ?? feedback?.reportId;
-    const tertiary = detail?.collectionRequestId ?? feedback?.collectionRequestId;
-    const candidates = [primary, secondary, tertiary].filter((v) => v != null && v !== "");
-    if (!open || mode === "admin" || candidates.length === 0) {
-      setReportInfo(null);
-      setLoadingReport(false);
-      return;
-    }
-    let cancelled = false;
-    setLoadingReport(true);
-    (async () => {
-      let found = null;
-      for (const c of candidates) {
-        if (cancelled) break;
-        try {
-          // thử lần lượt cho tới khi thành công
-          const data = await getEnterpriseWasteReportById(c);
-          if (data) {
-            found = data;
-            break;
-          }
-        } catch {
-          // thử ứng viên tiếp theo
-        }
-      }
-      if (!cancelled) {
-        setReportInfo(found || null);
-        setLoadingReport(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, mode, detail?.reportId, detail?.reportEntityId, detail?.collectionRequestId, detail?.type, feedback?.reportId, feedback?.reportEntityId, feedback?.collectionRequestId, feedback?.type]);
 
   if (!open || !feedback) return null;
 
