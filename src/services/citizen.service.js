@@ -10,7 +10,7 @@ export async function getCitizenDashboard() {
 }
 
 export async function getCitizenLeaderboard(params) {
-  const { data } = await api.get(`${CITIZEN_BASE}/leaderboard`, { params })
+  const { data } = await api.get(`${CITIZEN_BASE}/leaderboard`, { params: { ...params, limit: params?.limit || 50 } })
   return unwrapApiResponse(data) || []
 }
 

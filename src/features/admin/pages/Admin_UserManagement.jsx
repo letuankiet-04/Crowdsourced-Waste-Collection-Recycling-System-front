@@ -36,16 +36,23 @@ export default function AdminUserManagement() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAdminAccounts();
+      // Prepare params, omitting null/empty values and normalizing status
+      const params = {};
+      if (filter.status) params.status = filter.status.toLowerCase();
+      if (filter.role) params.role = filter.role.toUpperCase();
+
+      const data = await getAdminAccounts(params);
+      
       if (Array.isArray(data)) {
-        // Client-side filtering if backend returns all users
+        // Local filtering for search (since backend might not support it)
         let filteredData = data;
         
         if (filter.search) {
           const searchLower = filter.search.toLowerCase();
           filteredData = filteredData.filter(u => 
             u.fullName?.toLowerCase().includes(searchLower) || 
-            u.email?.toLowerCase().includes(searchLower)
+            u.email?.toLowerCase().includes(searchLower) ||
+            String(u.id).includes(searchLower)
           );
         }
 
@@ -55,21 +62,23 @@ export default function AdminUserManagement() {
           newRequests: 0,
         });
 
-        // Calculate pagination locally since backend returns list
-        setTotalPages(Math.ceil(filteredData.length / itemsPerPage));
+        // Pagination
+        setTotalPages(Math.max(1, Math.ceil(filteredData.length / itemsPerPage)));
         
         const startIndex = (currentPage - 1) * itemsPerPage;
         setUsers(filteredData.slice(startIndex, startIndex + itemsPerPage));
       } else {
         setUsers([]);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
-      notify.error("Error", "Failed to load users. Please try again.");
+      notify.error("Error", "Failed to load users. Please check your permissions.");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filter, itemsPerPage, notify]);
+  }, [currentPage, filter.role, filter.status, filter.search, itemsPerPage, notify]);
 
   // Fetch Data
   useEffect(() => {
@@ -289,7 +298,7 @@ export default function AdminUserManagement() {
                            <td className="py-4 px-6">
                               <div className="flex items-center gap-4">
                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
-                                    {(user.avatar || (user.fullName ? user.fullName.charAt(0).toUpperCase() : "?"))}
+                                    {(user.avatar || (user.fullName && user.fullName.length > 0 ? user.fullName.charAt(0).toUpperCase() : "?"))}
                                   </div>
                                   <div>
                                      <div className="font-bold text-gray-900">{user.fullName || "N/A"}</div>
@@ -433,7 +442,7 @@ export default function AdminUserManagement() {
               <div className="p-6 space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-2xl font-bold border-4 border-white shadow-sm">
-                    {(selectedUser.avatar || (selectedUser.fullName ? selectedUser.fullName.charAt(0).toUpperCase() : "?"))}
+                    {(selectedUser.avatar || (selectedUser.fullName && selectedUser.fullName.length > 0 ? selectedUser.fullName.charAt(0).toUpperCase() : "?"))}
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">{selectedUser.fullName || "N/A"}</h2>

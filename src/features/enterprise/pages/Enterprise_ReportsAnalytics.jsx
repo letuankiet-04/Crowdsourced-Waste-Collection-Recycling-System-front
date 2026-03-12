@@ -345,7 +345,10 @@ export default function EnterpriseReportsAnalytics() {
   }, [notify, year]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(() => {
+      load();
+    }, 0);
+    return () => clearTimeout(t);
   }, [load]);
 
   return (

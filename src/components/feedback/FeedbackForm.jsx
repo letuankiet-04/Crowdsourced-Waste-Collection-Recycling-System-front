@@ -263,10 +263,11 @@ export default function FeedbackForm() {
           disabled={
             !feedback.trim() || 
             ((type === "Reward" || type === "Collection") && (!reportId && !selectedReportId)) || 
-            loadingReports
+            loadingReports ||
+            isSubmitting
           }
         >
-          Send complaint →
+          {isSubmitting ? "Sending…" : "Send complaint →"}
         </button>
       </div>
     </form>

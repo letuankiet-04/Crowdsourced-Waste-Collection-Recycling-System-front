@@ -38,7 +38,7 @@ export default function MyFeedback() {
     try {
         const data = await getCitizenFeedbacks();
         setFeedbacks(Array.isArray(data) ? data : data.items || []);
-    } catch (err) {
+    } catch {
         notify.error("Failed to load feedbacks");
     } finally {
         setLoading(false);

@@ -39,7 +39,7 @@ export default function FeedbackDetails() {
       try {
         const data = await getCitizenFeedbackById(feedbackId);
         if (!cancelled) setFeedback(data);
-      } catch (err) {
+      } catch {
         if (!cancelled) notify.error("Failed to load feedback");
       } finally {
         if (!cancelled) setLoading(false);

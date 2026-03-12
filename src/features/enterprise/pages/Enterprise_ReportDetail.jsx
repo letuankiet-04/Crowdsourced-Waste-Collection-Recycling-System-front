@@ -886,6 +886,7 @@ export default function EnterpriseReportDetail() {
                     <div className="text-xs font-semibold text-gray-500">Current tasks</div>
                   </div>
                   {collectorsError ? <div className="text-sm text-red-600">{collectorsError}</div> : null}
+                  {eligibleCollectorsError ? <div className="text-sm text-red-600">{eligibleCollectorsError}</div> : null}
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
                     {collectorsLoading ? (
                       <div className="px-4 py-5 text-sm text-gray-600">Loading collectors...</div>
