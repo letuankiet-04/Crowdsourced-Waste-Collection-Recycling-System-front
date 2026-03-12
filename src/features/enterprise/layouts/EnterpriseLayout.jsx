@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, FileText, LayoutDashboard, MessageSquare, User, Users } from "lucide-react";
+import { BarChart3, ClipboardList, FileText, Gift, LayoutDashboard, MessageSquare, User, Users } from "lucide-react";
 import RoleSidebar from "../../../shared/layout/sidebar/RoleSidebar.jsx";
 import SidebarNavItem from "../../../shared/layout/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../shared/layout/sidebar/SidebarLogoutButton.jsx";
@@ -37,6 +37,9 @@ export default function EnterpriseLayout({ children }) {
             </SidebarNavItem>,
             <SidebarNavItem key="collectorReports" to={PATHS.enterprise.collectorReports} icon={<ClipboardList className="h-5 w-5" />}>
               Collector Reports
+            </SidebarNavItem>,
+            <SidebarNavItem key="rewards" to={PATHS.enterprise.rewards} icon={<Gift className="h-5 w-5" />}>
+              Rewards
             </SidebarNavItem>,
             <SidebarNavItem key="feedback" to={PATHS.enterprise.reviewFeedback} icon={<MessageSquare className="h-5 w-5" />}>
               Review Feedback
