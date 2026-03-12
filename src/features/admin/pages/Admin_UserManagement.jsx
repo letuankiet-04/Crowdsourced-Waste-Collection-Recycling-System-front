@@ -26,7 +26,6 @@ export default function AdminUserManagement() {
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
-
   useEffect(() => {
     let active = true;
     setLoading(true);

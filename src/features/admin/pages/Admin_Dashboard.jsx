@@ -3,14 +3,34 @@ import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import CD_Header from "../../../shared/layout/CD_Header.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 
-import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
-
 import SummaryCards from "../components/dashboard/SummaryCards.jsx";
+import WasteActivityChart from "../components/dashboard/WasteActivityChart.jsx";
+import RoleDistributionChart from "../components/dashboard/RoleDistributionChart.jsx";
+import CollectByUnitChart from "../components/dashboard/CollectByUnitChart.jsx";
 import ImpactLeaderboard from "../components/dashboard/ImpactLeaderboard.jsx";
 import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
-import { Server, Database, Globe } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getAdminSystemAnalytics } from "../../../services/admin.service.js";
 
 export default function AdminDashboard() {
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAnalytics() {
+      try {
+        setLoading(true);
+        const data = await getAdminSystemAnalytics();
+        setAnalytics(data);
+      } catch (error) {
+        console.error("Failed to fetch system analytics:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAnalytics();
+  }, []);
+
   return (
     <RoleLayout
       sidebar={<AdminSidebar />}
@@ -32,76 +52,28 @@ export default function AdminDashboard() {
 
         {/* SUMMARY CARDS */}
         <div className="animate-fade-in-up">
-          <SummaryCards />
+          <SummaryCards analytics={analytics} loading={loading} />
+        </div>
+
+        {/* CHARTS SECTION */}
+        <div className="animate-fade-in-up">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+            <div className="lg:col-span-3">
+              <WasteActivityChart />
+            </div>
+            <div>
+              <RoleDistributionChart />
+            </div>
+            <div className="lg:col-span-2">
+              <CollectByUnitChart />
+            </div>
+          </div>
         </div>
 
         {/* IMPACT LEADERBOARD */}
         <div className="animate-fade-in-up">
           <ImpactLeaderboard />
         </div>
-
-        {/* SYSTEM + STATS */}
-        <div className="animate-fade-in-up">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-
-            {/* SYSTEM HEALTH */}
-            <Card>
-              <CardHeader className="py-6 px-8 flex items-center justify-between">
-                <CardTitle className="text-2xl">
-                  System Health Status
-                </CardTitle>
-                <span className="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold uppercase tracking-wider">
-                  STABLE
-                </span>
-              </CardHeader>
-              <CardBody className="p-8">
-                <div className="space-y-6">
-                  {[
-                    { label: "API Response Time", icon: <Globe className="w-5 h-5 text-blue-500" />, color: "bg-blue-500" },
-                    { label: "Database Load", icon: <Database className="w-5 h-5 text-purple-500" />, color: "bg-purple-500" },
-                    { label: "Server CPU", icon: <Server className="w-5 h-5 text-orange-500" />, color: "bg-orange-500" },
-                  ].map((item, idx) => (
-                     <div key={idx}>
-                        <div className="flex justify-between items-center mb-2">
-                           <div className="flex items-center gap-2">
-                              {item.icon}
-                              <span className="text-sm font-medium text-gray-700">{item.label}</span>
-                           </div>
-                           <span className="text-xs font-bold text-gray-400 uppercase">Wait API</span>
-                        </div>
-                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                           <div className={`h-full ${item.color} w-1/2 opacity-30 animate-pulse rounded-full`}></div>
-                        </div>
-                     </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* QUICK STATS */}
-            <Card>
-              <CardHeader className="py-6 px-8">
-                <CardTitle className="text-2xl">
-                  Quick Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardBody className="p-8">
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    "New Tickets", "Resolved Issues", "Active Regions", "Feedback Score"
-                  ].map((stat, idx) => (
-                    <div key={idx} className="p-4 rounded-xl bg-gray-50 border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:bg-white hover:shadow-md hover:border-transparent">
-                       <span className="text-2xl font-bold text-gray-900 mb-1">Wait API</span>
-                       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardBody>
-            </Card>
-
-          </div>
-        </div>
-
       </div>
     </RoleLayout>
   );

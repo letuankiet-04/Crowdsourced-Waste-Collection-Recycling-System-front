@@ -195,6 +195,9 @@ export default function Review_Feedback() {
 
           {/* Table Section */}
           <div className="overflow-x-auto">
+            {loading ? (
+              <div className="px-8 py-4 text-sm text-gray-500">Loading…</div>
+            ) : null}
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50/50 text-gray-500 text-xs uppercase tracking-wider font-semibold border-b border-gray-100">

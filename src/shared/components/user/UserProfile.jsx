@@ -103,7 +103,6 @@ export default function UserProfile({ user: propUser, className }) {
       });
       setIsEditing(false);
   };
-
   return (
     <div className={cn("space-y-6", className)}>
       <UserProfileHeader
