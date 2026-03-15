@@ -1,28 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { createPortal } from "react-dom";
 import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { createNotification } from "../../../services/notifications.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
-import { lockBodyScroll, unlockBodyScroll } from "../../../shared/lib/lockBodyScroll.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";
-import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Users, X, XCircle } from "lucide-react";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
-import { getRejectedCollectorsFromReport, resolveEnterpriseReport } from "./enterpriseReportDetail.utils.js";
+import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
+import { lockBodyScroll, unlockBodyScroll } from "../../../shared/lib/lockBodyScroll.js";
 import {
   acceptWasteReport,
   assignCollectorByReportCode,
   assignCollectorToRequest,
-  getEligibleCollectorsForRequest,
   getEnterpriseCollectors,
-  getEnterpriseRequestReportDetail,
   getEnterpriseWasteReportById,
   rejectWasteReport,
 } from "../../../services/enterprise.service.js";
@@ -42,65 +39,106 @@ export default function EnterpriseReportDetail() {
   const [reportError, setReportError] = useState("");
 
   const report = useMemo(() => {
-    return resolveEnterpriseReport({ id, reportOverride, reportData, stateReport });
-  }, [reportOverride, reportData, stateReport, id]);
-  const [requestDetail, setRequestDetail] = useState(null);
-  const [requestDetailLoading, setRequestDetailLoading] = useState(false);
-  const reportRequestIdRaw = report?.collectionRequestId ?? report?.requestId ?? report?.collection_request_id ?? null;
+    const base = reportOverride ?? reportData ?? (stateReport?.id && String(stateReport.id) === id ? stateReport : null);
+    if (!base) return null;
 
-  useEffect(() => {
-    const requestId =
-      reportRequestIdRaw === null || reportRequestIdRaw === undefined || reportRequestIdRaw === ""
+    const address =
+      (typeof base?.address === "string" && base.address.trim()) ||
+      (typeof base?.reportedAddress === "string" && base.reportedAddress.trim()) ||
+      (typeof base?.location?.address === "string" && base.location.address.trim()) ||
+      "";
+
+    const lat =
+      base?.latitude ??
+      base?.lat ??
+      base?.coords?.lat ??
+      base?.location?.lat ??
+      base?.reportedLatitude ??
+      null;
+    const lng =
+      base?.longitude ??
+      base?.lng ??
+      base?.coords?.lng ??
+      base?.location?.lng ??
+      base?.reportedLongitude ??
+      null;
+    const coords =
+      lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+        ? { lat: Number(lat), lng: Number(lng) }
+        : null;
+
+    const reportCode = String(base?.reportCode ?? base?.code ?? "").trim() || null;
+    const requestIdRaw = base?.collectionRequestId ?? base?.requestId ?? base?.collection_request_id ?? null;
+    const collectionRequestId =
+      requestIdRaw === null || requestIdRaw === undefined || requestIdRaw === ""
         ? null
-        : typeof reportRequestIdRaw === "number"
-          ? reportRequestIdRaw
-          : Number.isFinite(Number(reportRequestIdRaw))
-            ? Number(reportRequestIdRaw)
-            : reportRequestIdRaw;
-    if (requestId == null) {
-      setRequestDetail(null);
-      setRequestDetailLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setRequestDetailLoading(true);
-    getEnterpriseRequestReportDetail(requestId)
-      .then((row) => {
-        if (cancelled) return;
-        setRequestDetail(row ?? null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setRequestDetail(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setRequestDetailLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reportRequestIdRaw]);
+        : typeof requestIdRaw === "number"
+          ? requestIdRaw
+          : Number.isFinite(Number(requestIdRaw))
+            ? Number(requestIdRaw)
+            : requestIdRaw;
 
-  const status = normalizeReportStatus(requestDetail?.requestStatus ?? report?.status);
+    const notes =
+      (typeof base?.notes === "string" && base.notes.trim()) ||
+      (typeof base?.description === "string" && base.description.trim()) ||
+      "";
+
+    const imagesRaw = base?.images ?? null;
+    const images =
+      Array.isArray(imagesRaw)
+        ? imagesRaw.filter(Boolean).map(String)
+        : Array.isArray(base?.imageUrls)
+          ? base.imageUrls.filter(Boolean).map(String)
+          : typeof imagesRaw === "string" && imagesRaw.trim()
+            ? imagesRaw
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [];
+
+    const typesRaw = Array.isArray(base?.types) ? base.types.filter(Boolean).map(String) : [];
+    const categoriesRaw = Array.isArray(base?.categories) ? base.categories : [];
+    const categoriesTypes = categoriesRaw
+      .map((c) => (c?.name ? String(c.name).trim() : ""))
+      .filter(Boolean);
+    const wasteType = typeof base?.wasteType === "string" ? base.wasteType.trim() : "";
+    const types = typesRaw.length ? typesRaw : categoriesTypes.length ? categoriesTypes : wasteType ? [wasteType] : [];
+
+    const wasteItemsRaw = Array.isArray(base?.wasteItems) ? base.wasteItems : [];
+    const wasteItems =
+      wasteItemsRaw.length
+        ? wasteItemsRaw
+        : categoriesRaw
+            .map((c) => {
+              const name = c?.name ? String(c.name).trim() : "";
+              const q = c?.quantity;
+              const num = typeof q === "number" ? q : Number(q);
+              const unit = c?.unit ? String(c.unit).trim() : "";
+              if (!name || !Number.isFinite(num)) return null;
+              return { name, estimatedWeight: num, unit };
+            })
+            .filter(Boolean);
+
+    return {
+      ...base,
+      id: base?.id ?? id,
+      address,
+      coords,
+      reportCode,
+      collectionRequestId,
+      notes,
+      images,
+      types,
+      wasteItems,
+    };
+  }, [reportOverride, reportData, stateReport, id]);
+  const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
-  const canGoAssign = status === "Accepted" || status === "Reassign";
-  const isReassign = status === "Reassign";
-  const assignActionLabel = isReassign ? "Reassign collector" : "Assign collector";
-  const assignDialogTitle = isReassign ? "Reassign Collector" : "Assign Collector";
-  const assignConfirmTitle = isReassign
-    ? "Are you sure you want to reassign this report?"
-    : "Are you sure you want to assign this report?";
-  const assignConfirmDescription = isReassign
-    ? "If you continue, the report will be reassigned to the selected collector."
-    : "If you continue, the report will be assigned to the selected collector.";
-  const assignConfirmText = isReassign ? "Reassign" : "Assign";
+  const canGoAssign = status === "Accepted";
 
   const [collectorSource, setCollectorSource] = useState([]);
   const [collectorsLoading, setCollectorsLoading] = useState(false);
   const [collectorsError, setCollectorsError] = useState("");
-  const [eligibleCollectorSource, setEligibleCollectorSource] = useState([]);
-  const [eligibleCollectorsLoading, setEligibleCollectorsLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -159,47 +197,6 @@ export default function EnterpriseReportDetail() {
     return singleEmail ? [singleEmail] : [];
   }
 
-  const rejected = useMemo(() => getRejectedCollectorsFromReport(report), [report]);
-  const rejectedEmails = rejected.emails;
-  const rejectedCollectorIds = rejected.ids;
-  const rejectedEmailSet = useMemo(() => {
-    const set = new Set();
-    rejectedEmails.forEach((email) => {
-      if (!email) return;
-      set.add(String(email).trim().toLowerCase());
-    });
-    return set;
-  }, [rejectedEmails]);
-  const rejectedCollectorIdSet = useMemo(() => new Set(rejectedCollectorIds.map(String)), [rejectedCollectorIds]);
-
-  const eligibleCollectorById = useMemo(() => {
-    const list = Array.isArray(eligibleCollectorSource) ? eligibleCollectorSource : [];
-    const map = new Map();
-    list.forEach((c) => {
-      const id = c?.id ?? c?.collectorId ?? null;
-      if (id == null) return;
-      map.set(String(id), {
-        activeTaskCount: c?.activeTaskCount,
-        online: c?.online,
-        status: c?.status,
-        distanceKm: c?.distanceKm,
-        fullName: c?.fullName,
-      });
-    });
-    return map;
-  }, [eligibleCollectorSource]);
-
-  const eligibleCollectorIdSet = useMemo(() => {
-    const list = Array.isArray(eligibleCollectorSource) ? eligibleCollectorSource : [];
-    const set = new Set();
-    list.forEach((c) => {
-      const id = c?.id ?? c?.collectorId ?? null;
-      if (id == null) return;
-      set.add(String(id));
-    });
-    return set;
-  }, [eligibleCollectorSource]);
-
   const collectors = useMemo(() => {
     const list = Array.isArray(collectorSource) ? collectorSource : [];
     return list
@@ -208,26 +205,11 @@ export default function EnterpriseReportDetail() {
         const name = c?.name ?? c?.username ?? c?.displayName ?? c?.fullName ?? c?.email ?? `Collector ${idx + 1}`;
         const email = c?.email ?? c?.mail ?? null;
         const statusRaw = String(c?.status ?? c?.availability ?? (c?.online ? "online" : "offline")).toLowerCase();
-        const eligible = eligibleCollectorById.get(String(id)) ?? null;
-        const eligibleStatusRaw = String(eligible?.status ?? "").toLowerCase();
-        const isOnline =
-          eligible?.online === true ||
-          ["online", "active", "available"].includes(statusRaw) ||
-          ["active", "available"].includes(eligibleStatusRaw);
-        const activeTaskCountRaw = eligible?.activeTaskCount;
-        const currentTasks = Number.isFinite(Number(activeTaskCountRaw)) ? Number(activeTaskCountRaw) : null;
-        return { id, name, email, isOnline, currentTasks };
+        const isOnline = c?.online === true || ["online", "active", "available"].includes(statusRaw);
+        return { id, name, email, isOnline };
       })
-      .filter((c) => {
-        if (!c.email) return false;
-        if (!c.isOnline) return false;
-        if (isReassign && eligibleCollectorIdSet.size && !eligibleCollectorIdSet.has(String(c.id))) return false;
-        const emailKey = String(c.email).trim().toLowerCase();
-        if (rejectedEmailSet.has(emailKey)) return false;
-        if (rejectedCollectorIdSet.has(String(c.id))) return false;
-        return true;
-      });
-  }, [collectorSource, rejectedCollectorIdSet, rejectedEmailSet, eligibleCollectorById, eligibleCollectorIdSet, isReassign]);
+      .filter((c) => Boolean(c.email));
+  }, [collectorSource]);
 
   const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
   const assignedLabel = useMemo(() => {
@@ -238,80 +220,27 @@ export default function EnterpriseReportDetail() {
     });
     return labels.join(", ");
   }, [assignedEmails, collectors]);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedCollectorEmails, setSelectedCollectorEmails] = useState([]);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
+  const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [rejectReasonError, setRejectReasonError] = useState("");
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [selectedCollectorEmail, setSelectedCollectorEmail] = useState("");
-  const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
-  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
-  const [assignSubmitting, setAssignSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!assignOpen) return;
-    if (requestDetailLoading) return;
-    const statusRaw = String(requestDetail?.requestStatus ?? "").toLowerCase();
-    if (statusRaw && !["accepted_enterprise", "reassign"].includes(statusRaw)) return;
-    const requestId =
-      reportRequestIdRaw === null || reportRequestIdRaw === undefined || reportRequestIdRaw === ""
-        ? null
-        : typeof reportRequestIdRaw === "number"
-          ? reportRequestIdRaw
-          : Number.isFinite(Number(reportRequestIdRaw))
-            ? Number(reportRequestIdRaw)
-            : reportRequestIdRaw;
-    if (requestId == null) return;
-    let cancelled = false;
-    setEligibleCollectorsLoading(true);
-    getEligibleCollectorsForRequest(requestId)
-      .then((rows) => {
-        if (cancelled) return;
-        setEligibleCollectorSource(Array.isArray(rows) ? rows : []);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        const message = err?.message || "Unable to load collector tasks.";
-        if (String(message).includes("Chỉ hỗ trợ tìm collector khi request ở trạng thái")) return;
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setEligibleCollectorsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [assignOpen, reportRequestIdRaw, requestDetailLoading, requestDetail?.requestStatus]);
-
-  function openRejectDialog() {
-    setRejectReason("");
-    setRejectReasonError("");
-    setRejectSubmitting(false);
-    setRejectOpen(true);
-  }
-
-  function openAssignDialog(nextReport) {
-    const r = nextReport ?? report;
-    const assigned = getAssignedEmailsFromReport(r);
-    const rejected = getRejectedCollectorsFromReport(r);
-    const rejectedSet = new Set((rejected?.emails ?? []).map((e) => String(e).trim().toLowerCase()).filter(Boolean));
-    const candidates = assigned.filter((email) => !rejectedSet.has(String(email).trim().toLowerCase()));
-    const first = candidates.find((email) => collectors.some((c) => c.email === email)) ?? "";
-    setSelectedCollectorEmail(first);
-    setAssignOpen(true);
-  }
-
-  useEffect(() => {
-    if (!assignOpen) return;
-    lockBodyScroll();
-    return () => unlockBodyScroll();
-  }, [assignOpen]);
+  const [rejectDialogError, setRejectDialogError] = useState("");
 
   useEffect(() => {
     if (!rejectOpen) return;
     lockBodyScroll();
     return () => unlockBodyScroll();
   }, [rejectOpen]);
+
+  function openAssignDialog(nextReport) {
+    const r = nextReport ?? report;
+    setSelectedCollectorEmails(getAssignedEmailsFromReport(r));
+    setAssignOpen(true);
+  }
 
   function getReportCodeFromReport(r) {
     return String(r?.reportCode ?? r?.code ?? r?.id ?? "").trim();
@@ -361,51 +290,109 @@ export default function EnterpriseReportDetail() {
           type: "REPORT_ACCEPTED",
           message: "Your report has been accepted.",
         });
-      } catch {
-        throw new Error("Report accepted, but failed to send notification to the reporter.");
+      } catch (e) {
+        notify.error("Notify failed", e?.message || "Report accepted, but failed to send notification.");
       }
 
       openAssignDialog(next);
-    } catch {
-      throw new Error("Failed to accept the report. Please try again.");
+    } catch (e) {
+      notify.error("Accept failed", e?.message || "Failed to accept the report. Please try again.");
     }
   }
 
-  async function handleAssignCollectors() {
-    if (!report || !canGoAssign || assignSubmitting) return;
-    setAssignConfirmOpen(false);
-    const primaryCollector = collectors.find((c) => c.email === selectedCollectorEmail);
-    if (!primaryCollector) return;
-    const requestId = getRequestIdFromReport(report);
-    const reportCode = requestId == null ? getReportCodeFromReport(report) : null;
-    if (requestId == null && !reportCode) {
+  async function handleRejectReport() {
+    if (!report || !canDecide || rejectSubmitting) return;
+    const reason = String(rejectReason || "").trim();
+    if (!reason) {
+      setRejectDialogError("Rejection reason is required.");
+      return;
+    }
+    const reportCode = getReportCodeFromReport(report);
+    if (!reportCode) {
       notify.error("Missing report code", "Unable to identify report code for this report.");
       return;
     }
 
+    setRejectSubmitting(true);
     try {
-      setAssignSubmitting(true);
-      const assignedResponse = await notify.promise(
-        requestId == null
-          ? assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id })
-          : assignCollectorToRequest({ requestId, collectorId: primaryCollector.id }),
-        {
-          loadingTitle: "Assigning collector...",
-          loadingMessage: "Sending assignment to the server.",
-          successTitle: "Collector assigned",
-          successMessage: "Assignment saved successfully.",
-          errorTitle: "Assign failed",
-          errorMessage: (err) => err?.message || "Unable to assign collector.",
-        }
-      );
+      const updated = await notify.promise(rejectWasteReport({ reportCode, reason }), {
+        loadingTitle: "Rejecting report...",
+        loadingMessage: "Sending rejection to the server.",
+        successTitle: "Report rejected",
+        successMessage: "The report has been rejected.",
+        errorTitle: "Reject failed",
+        errorMessage: (err) => err?.message || "Unable to reject this report.",
+      });
+      const next = {
+        ...report,
+        status: updated?.status ?? report?.status ?? "rejected",
+        updatedAt: updated?.actionAt ?? new Date().toISOString(),
+        rejectionReason: reason,
+        collectionRequestId: updated?.collectionRequestId ?? getRequestIdFromReport(report),
+      };
+      setReportOverride(next);
+      setReportData(next);
+      setReportError("");
+
+      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
+      try {
+        await createNotification({
+          receiverId: report.createdBy,
+          senderId,
+          reportId: report.id,
+          type: "REPORT_REJECTED",
+          message: "Your report has been rejected.",
+          reason,
+        });
+      } catch (e) {
+        notify.error("Notify failed", e?.message || "Report rejected, but failed to send notification.");
+      }
+
+      setRejectOpen(false);
+      navigate(PATHS.enterprise.dashboard, { replace: true });
+    } catch (e) {
+      notify.error("Reject failed", e?.message || "Failed to reject the report. Please try again.");
+    } finally {
+      setRejectSubmitting(false);
+    }
+  }
+
+  async function handleAssignSelectedCollectors() {
+    if (!report || !canGoAssign || assignSubmitting) return;
+    const selectedCollectors = collectors.filter((c) => selectedCollectorEmails.includes(c.email));
+    if (!selectedCollectors.length) return;
+    setAssignConfirmOpen(false);
+    setAssignSubmitting(true);
+    try {
+      const primaryCollector = selectedCollectors[0];
+      const reportCode = getReportCodeFromReport(report);
+      if (!reportCode) {
+        notify.error("Missing report code", "Unable to identify report code for this report.");
+        return;
+      }
+
+      const requestId = getRequestIdFromReport(report);
+      const assignPromise =
+        requestId != null
+          ? assignCollectorToRequest({ requestId, collectorId: primaryCollector.id })
+          : assignCollectorByReportCode({ reportCode, collectorId: primaryCollector.id });
+
+      const assignedResponse = await notify.promise(assignPromise, {
+        loadingTitle: "Assigning collector...",
+        loadingMessage: "Sending assignment to the server.",
+        successTitle: "Collector assigned",
+        successMessage: "Assignment saved successfully.",
+        errorTitle: "Assign failed",
+        errorMessage: (err) => err?.message || "Unable to assign collector.",
+      });
 
       const next = {
         ...report,
         status: assignedResponse?.status ?? report?.status,
-        collectionRequestId: assignedResponse?.collectionRequestId ?? requestId ?? getRequestIdFromReport(report),
+        collectionRequestId: assignedResponse?.collectionRequestId ?? getRequestIdFromReport(report),
         assignedCollector: { id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email },
-        assignedCollectors: [{ id: primaryCollector.id, name: primaryCollector.name, email: primaryCollector.email }],
-        updatedAt: assignedResponse?.assignedAt ?? assignedResponse?.actionAt ?? new Date().toISOString(),
+        assignedCollectors: selectedCollectors.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+        updatedAt: assignedResponse?.assignedAt ?? new Date().toISOString(),
       };
       setReportOverride(next);
       setReportData(next);
@@ -489,7 +476,9 @@ export default function EnterpriseReportDetail() {
                   disabled={!report || !canDecide}
                   onClick={() => {
                     if (!report || !canDecide) return;
-                    openRejectDialog();
+                    setRejectDialogError("");
+                    setRejectReason("");
+                    setRejectOpen(true);
                   }}
                 >
                   <XCircle className="h-5 w-5" aria-hidden="true" />
@@ -515,7 +504,7 @@ export default function EnterpriseReportDetail() {
                 <div>This report is already {status}. Accept/Reject is available only while status is pending.</div>
                 {canGoAssign ? (
                   <Button variant="outline" size="sm" className="rounded-full" onClick={() => openAssignDialog()}>
-                    {assignActionLabel}
+                    Assign collector
                   </Button>
                 ) : null}
               </div>
@@ -523,136 +512,9 @@ export default function EnterpriseReportDetail() {
           </CardBody>
         </Card>
 
-        {rejectOpen ? createPortal(
+        {assignOpen ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            role="dialog"
-            aria-modal="true"
-            onMouseDown={(e) => {
-              if (rejectSubmitting) return;
-              if (e.target === e.currentTarget) setRejectOpen(false);
-            }}
-          >
-            <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
-              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
-                <div className="min-w-0">
-                  <div className="text-lg font-semibold text-gray-900">Reject report</div>
-                  <div className="mt-1 text-sm text-gray-600">Provide a reason so the citizen can understand what to fix.</div>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                  onClick={() => setRejectOpen(false)}
-                  aria-label="Close"
-                  disabled={rejectSubmitting}
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-
-              <div className="px-6 py-6 space-y-4">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">Reason</div>
-                  <div className="mt-2 space-y-2">
-                    <textarea
-                      value={rejectReason}
-                      onChange={(e) => {
-                        setRejectReason(e.target.value);
-                        if (rejectReasonError) setRejectReasonError("");
-                      }}
-                      maxLength={500}
-                      className="w-full min-h-[120px] px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-200 resize-y transition"
-                      placeholder="Enter rejection reason..."
-                      disabled={rejectSubmitting}
-                    />
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm text-red-600">{rejectReasonError}</div>
-                      <div className="text-sm text-gray-500">{rejectReason.length} / 500</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 py-5 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/60">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full"
-                  disabled={rejectSubmitting}
-                  onClick={() => setRejectOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-full bg-red-600 hover:bg-red-700"
-                  disabled={rejectSubmitting}
-                  onClick={async () => {
-                    if (!report || !canDecide) return;
-                    const reason = rejectReason.trim();
-                    if (!reason) {
-                      setRejectReasonError("Rejection reason is required.");
-                      return;
-                    }
-                    const reportCode = getReportCodeFromReport(report);
-                    if (!reportCode) {
-                      notify.error("Missing report code", "Unable to identify report code for this report.");
-                      return;
-                    }
-
-                    try {
-                      setRejectSubmitting(true);
-                      const updated = await notify.promise(rejectWasteReport({ reportCode, reason }), {
-                        loadingTitle: "Rejecting report...",
-                        loadingMessage: "Sending rejection to the server.",
-                        successTitle: "Report rejected",
-                        successMessage: "The report has been rejected.",
-                        errorTitle: "Reject failed",
-                        errorMessage: (err) => err?.message || "Unable to reject this report.",
-                      });
-                      const next = {
-                        ...report,
-                        status: updated?.status ?? report?.status ?? "rejected",
-                        updatedAt: updated?.actionAt ?? new Date().toISOString(),
-                        rejectionReason: reason,
-                        collectionRequestId: updated?.collectionRequestId ?? getRequestIdFromReport(report),
-                      };
-                      setReportOverride(next);
-                      setReportData(next);
-                      setReportError("");
-
-                      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
-                      try {
-                        await createNotification({
-                          receiverId: report.createdBy,
-                          senderId,
-                          reportId: report.id,
-                          type: "REPORT_REJECTED",
-                          message: "Your report has been rejected.",
-                          reason,
-                        });
-                      } catch {
-                        throw new Error("Report rejected, but failed to send notification to the reporter.");
-                      }
-                      setRejectOpen(false);
-                      navigate(PATHS.enterprise.dashboard, { replace: true });
-                    } catch (err) {
-                      setRejectSubmitting(false);
-                      setRejectReasonError(err?.message || "Failed to reject the report. Please try again.");
-                    }
-                  }}
-                >
-                  Reject
-                </Button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        ) : null}
-
-        {assignOpen ? createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
             role="dialog"
             aria-modal="true"
             onMouseDown={(e) => {
@@ -662,7 +524,7 @@ export default function EnterpriseReportDetail() {
             <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5">
               <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
                 <div className="min-w-0">
-                  <div className="text-lg font-semibold text-gray-900">{assignDialogTitle}</div>
+                  <div className="text-lg font-semibold text-gray-900">Assign Collector</div>
                   <div className="mt-1 text-sm text-gray-600">Select a collector for {report?.id ?? "-"}. </div>
                 </div>
                 <button
@@ -692,46 +554,48 @@ export default function EnterpriseReportDetail() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold text-gray-900">Collectors</div>
-                    <div className="text-xs font-semibold text-gray-500">Current tasks</div>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-indigo-700 hover:underline disabled:opacity-60"
+                      disabled={!report || !canGoAssign || collectorsLoading || !collectors.length}
+                      onClick={() => setSelectedCollectorEmails(collectors.map((c) => c.email))}
+                    >
+                      Select all
+                    </button>
                   </div>
                   {collectorsError ? <div className="text-sm text-red-600">{collectorsError}</div> : null}
-                  {eligibleCollectorsError ? <div className="text-sm text-red-600">{eligibleCollectorsError}</div> : null}
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
                     {collectorsLoading ? (
                       <div className="px-4 py-5 text-sm text-gray-600">Loading collectors...</div>
                     ) : collectors.length ? (
                       collectors.map((c) => {
-                        const checked = selectedCollectorEmail === c.email;
+                        const checked = selectedCollectorEmails.includes(c.email);
                         return (
                           <label
                             key={c.email}
                             className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50"
                           >
                             <div className="min-w-0">
-                              <div className="truncate font-semibold">
-                                {c.name}
-                                {c.isOnline ? <span className="ml-2 text-xs font-semibold text-emerald-700">Online</span> : null}
-                              </div>
+                              <div className="truncate font-semibold">{c.name}</div>
                               <div className="truncate text-xs text-gray-600">{c.email}</div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-xs font-semibold text-gray-700 tabular-nums">
-                                {eligibleCollectorsLoading ? "..." : c.currentTasks ?? "-"}
-                              </div>
-                              <input
-                                type="radio"
-                                name="collector"
-                                className="h-4 w-4"
-                                checked={checked}
-                                disabled={!report || !canGoAssign || assignSubmitting}
-                                onChange={() => setSelectedCollectorEmail(c.email)}
-                              />
-                            </div>
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={checked}
+                              disabled={!report || !canGoAssign}
+                              onChange={() => {
+                                setSelectedCollectorEmails((prev) => {
+                                  if (prev.includes(c.email)) return prev.filter((e) => e !== c.email);
+                                  return [...prev, c.email];
+                                });
+                              }}
+                            />
                           </label>
                         );
                       })
                     ) : (
-                      <div className="px-4 py-5 text-sm text-gray-600">No online collectors available.</div>
+                      <div className="px-4 py-5 text-sm text-gray-600">No collectors available.</div>
                     )}
                   </div>
                 </div>
@@ -744,19 +608,18 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorEmail || assignSubmitting}
+                  disabled={!report || !canGoAssign || !selectedCollectorEmails.length || assignSubmitting}
                   onClick={() => {
-                    if (!report || !canGoAssign || !selectedCollectorEmail || assignSubmitting) return;
+                    if (!report || !canGoAssign || !selectedCollectorEmails.length || assignSubmitting) return;
                     setAssignConfirmOpen(true);
                   }}
                 >
                   <Users className="h-5 w-5" aria-hidden="true" />
-                  {assignConfirmText}
+                  Assign
                 </Button>
               </div>
             </div>
-          </div>,
-          document.body
+          </div>  
         ) : null}
 
         <ConfirmDialog
@@ -771,14 +634,90 @@ export default function EnterpriseReportDetail() {
 
         <ConfirmDialog
           open={assignConfirmOpen}
-          title={assignConfirmTitle}
-          description={assignConfirmDescription}
-          confirmText={assignConfirmText}
+          title="Are you sure you want to assign this report?"
+          description="If you continue, the report will be assigned to the selected collectors."
+          confirmText="Assign"
           cancelText="Cancel"
           confirmDisabled={assignSubmitting}
           onClose={() => setAssignConfirmOpen(false)}
-          onConfirm={handleAssignCollectors}
-        />
+          onConfirm={handleAssignSelectedCollectors}
+        />  
+
+        {rejectOpen
+          ? createPortal(
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                role="dialog"
+                aria-modal="true"
+                onMouseDown={(e) => {
+                  if (rejectSubmitting) return;
+                  if (e.target === e.currentTarget) setRejectOpen(false);
+                }}
+              >
+                <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 max-h-[calc(100vh-4rem)] flex flex-col">
+                  <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
+                    <div className="min-w-0">
+                      <div className="text-lg font-semibold text-gray-900">Reject Report</div>
+                      <div className="mt-1 text-sm text-gray-600">Are you sure you want to reject this report?</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                      onClick={() => {
+                        if (rejectSubmitting) return;
+                        setRejectOpen(false);
+                      }}
+                      aria-label="Close"
+                      disabled={rejectSubmitting}
+                    >
+                      <X className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div className="px-6 py-6 space-y-4 overflow-auto">
+                    {rejectDialogError ? <div className="text-sm text-red-600">{rejectDialogError}</div> : null}
+                    <div className="grid gap-2">
+                      <label className="text-sm font-semibold text-gray-900" htmlFor="reject_reason">
+                        Rejection reason
+                      </label>
+                      <textarea
+                        id="reject_reason"
+                        value={rejectReason}
+                        onChange={(e) => {
+                          setRejectReason(e.target.value);
+                          if (rejectDialogError) setRejectDialogError("");
+                        }}
+                        className="min-h-28 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-rose-600 focus:ring-2 focus:ring-rose-200"
+                        placeholder="Explain why you are rejecting this report..."
+                        disabled={rejectSubmitting}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-3 px-6 py-5 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      disabled={rejectSubmitting}
+                      onClick={() => setRejectOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-full bg-rose-600 hover:bg-rose-700"
+                      disabled={rejectSubmitting}
+                      onClick={handleRejectReport}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
       </div>
     </EnterpriseLayout>
   );
