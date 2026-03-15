@@ -142,7 +142,6 @@ export default function EnterpriseActiveCollector() {
                   <tr className="text-xs uppercase tracking-wider text-gray-500">
                     <th className="px-8 py-4 font-bold">Name</th>
                     <th className="px-8 py-4 font-bold">Email</th>
-                    <th className="px-8 py-4 font-bold">Last seen</th>
                     <th className="px-8 py-4 font-bold text-right">Status</th>
                   </tr>
                 </thead>
@@ -158,7 +157,6 @@ export default function EnterpriseActiveCollector() {
                       <tr key={r.id} className="bg-white hover:bg-emerald-50/20 transition">
                         <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.name}</td>
                         <td className="px-8 py-5 text-sm text-gray-700">{r.email}</td>
-                        <td className="px-8 py-5 text-sm text-gray-700">{r.lastSeen}</td>
                         <td className="px-8 py-5 text-right">
                           <StatusPill variant={r.isOnline ? "green" : "gray"}>{r.statusLabel}</StatusPill>
                         </td>

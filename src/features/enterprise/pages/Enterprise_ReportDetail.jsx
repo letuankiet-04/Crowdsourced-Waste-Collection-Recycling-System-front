@@ -25,6 +25,56 @@ import {
   rejectWasteReport,
 } from "../../../services/enterprise.service.js";
 
+function normalizeRequestId(raw) {
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (raw === 0 || raw === "0") return null;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(n) ? n : raw;
+}
+
+function getRequestIdFromReport(r) {
+  const raw = r?.collectionRequestId ?? r?.requestId ?? r?.collection_request_id ?? null;
+  return normalizeRequestId(raw);
+}
+
+function extractCollectorRows(value, depth = 0) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  const directCandidates = [
+    value.collectors,
+    value.eligibleCollectors,
+    value.eligible_collectors,
+    value.items,
+    value.data,
+    value.rows,
+    value.list,
+  ];
+  for (const candidate of directCandidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+  const shallowArrays = Object.values(value).filter(Array.isArray);
+  for (const arr of shallowArrays) {
+    if (
+      arr.some(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          ("email" in item || "collectorId" in item || "id" in item || "_id" in item)
+      )
+    ) {
+      return arr;
+    }
+  }
+  if (depth >= 2) return [];
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      const found = extractCollectorRows(nested, depth + 1);
+      if (found.length) return found;
+    }
+  }
+  return [];
+}
+
 export default function EnterpriseReportDetail() {
   const { reportId } = useParams();
   const location = useLocation();
@@ -70,55 +120,73 @@ export default function EnterpriseReportDetail() {
 
     const reportCode = String(base?.reportCode ?? base?.code ?? "").trim() || null;
     const requestIdRaw = base?.collectionRequestId ?? base?.requestId ?? base?.collection_request_id ?? null;
-    const collectionRequestId =
-      requestIdRaw === null || requestIdRaw === undefined || requestIdRaw === ""
-        ? null
-        : typeof requestIdRaw === "number"
-          ? requestIdRaw
-          : Number.isFinite(Number(requestIdRaw))
-            ? Number(requestIdRaw)
-            : requestIdRaw;
+    const collectionRequestId = normalizeRequestId(requestIdRaw);
 
     const notes =
       (typeof base?.notes === "string" && base.notes.trim()) ||
       (typeof base?.description === "string" && base.description.trim()) ||
       "";
 
-    const imagesRaw = base?.images ?? null;
+    const imagesRaw =
+      base?.images ??
+      base?.imageUrls ??
+      base?.image_urls ??
+      base?.photos ??
+      base?.photoUrls ??
+      base?.photo_urls ??
+      null;
+    const normalizeImage = (value) => {
+      if (typeof value === "string") return value.trim();
+      if (!value || typeof value !== "object") return "";
+      const url =
+        value.url ??
+        value.imageUrl ??
+        value.image_url ??
+        value.photoUrl ??
+        value.photo_url ??
+        value.path ??
+        value.src ??
+        value.location ??
+        "";
+      return typeof url === "string" ? url.trim() : "";
+    };
     const images =
       Array.isArray(imagesRaw)
-        ? imagesRaw.filter(Boolean).map(String)
-        : Array.isArray(base?.imageUrls)
-          ? base.imageUrls.filter(Boolean).map(String)
-          : typeof imagesRaw === "string" && imagesRaw.trim()
-            ? imagesRaw
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-            : [];
+        ? imagesRaw.map(normalizeImage).filter(Boolean)
+        : typeof imagesRaw === "string" && imagesRaw.trim()
+          ? imagesRaw
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [];
 
     const typesRaw = Array.isArray(base?.types) ? base.types.filter(Boolean).map(String) : [];
     const categoriesRaw = Array.isArray(base?.categories) ? base.categories : [];
     const categoriesTypes = categoriesRaw
-      .map((c) => (c?.name ? String(c.name).trim() : ""))
+      .map((c) => (c?.name ?? c?.categoryName ? String(c?.name ?? c?.categoryName).trim() : ""))
       .filter(Boolean);
     const wasteType = typeof base?.wasteType === "string" ? base.wasteType.trim() : "";
     const types = typesRaw.length ? typesRaw : categoriesTypes.length ? categoriesTypes : wasteType ? [wasteType] : [];
 
     const wasteItemsRaw = Array.isArray(base?.wasteItems) ? base.wasteItems : [];
-    const wasteItems =
-      wasteItemsRaw.length
-        ? wasteItemsRaw
-        : categoriesRaw
-            .map((c) => {
-              const name = c?.name ? String(c.name).trim() : "";
-              const q = c?.quantity;
-              const num = typeof q === "number" ? q : Number(q);
-              const unit = c?.unit ? String(c.unit).trim() : "";
-              if (!name || !Number.isFinite(num)) return null;
-              return { name, estimatedWeight: num, unit };
-            })
-            .filter(Boolean);
+    const itemsRaw = Array.isArray(base?.items) ? base.items : [];
+    const wasteItemsFromRaw = (list) =>
+      (Array.isArray(list) ? list : [])
+        .map((it) => {
+          const name = it?.categoryName ?? it?.name ?? "";
+          const n = typeof name === "string" ? name.trim() : String(name || "").trim();
+          const q = it?.quantity ?? it?.suggestedQuantity ?? it?.estimatedWeight ?? it?.weight ?? null;
+          const num = typeof q === "number" ? q : Number(q);
+          const unit = it?.unit ?? it?.wasteUnit ?? "kg";
+          if (!n || !Number.isFinite(num)) return null;
+          return { name: n, estimatedWeight: num, unit: unit ? String(unit).trim() : "" };
+        })
+        .filter(Boolean);
+    const wasteItems = wasteItemsRaw.length
+      ? wasteItemsFromRaw(wasteItemsRaw)
+      : itemsRaw.length
+        ? wasteItemsFromRaw(itemsRaw)
+        : wasteItemsFromRaw(categoriesRaw);
 
     return {
       ...base,
@@ -173,7 +241,7 @@ export default function EnterpriseReportDetail() {
     getEnterpriseCollectors()
       .then((rows) => {
         if (cancelled) return;
-        setCollectorSource(Array.isArray(rows) ? rows : []);
+        setCollectorSource(extractCollectorRows(rows));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -199,7 +267,7 @@ export default function EnterpriseReportDetail() {
     getEligibleCollectorsForRequest(requestId)
       .then((rows) => {
         if (cancelled) return;
-        setCollectorSource(Array.isArray(rows) ? rows : []);
+        setCollectorSource(extractCollectorRows(rows));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -238,20 +306,42 @@ export default function EnterpriseReportDetail() {
     };
     return list
       .map((c, idx) => {
-        const id = c?.id ?? c?._id ?? c?.collectorId ?? idx;
-        const name = c?.name ?? c?.username ?? c?.displayName ?? c?.fullName ?? c?.email ?? `Collector ${idx + 1}`;
-        const email = c?.email ?? c?.mail ?? null;
-        const statusRaw = String(c?.status ?? c?.availability ?? c?.state ?? (c?.online ? "online" : "offline")).toLowerCase();
-        const isOnline = c?.online === true || ["online", "active", "available"].includes(statusRaw);
+        const base = c?.collector ?? c?.collectorInfo ?? c?.user ?? c?.account ?? c;
+        const id = base?.id ?? base?._id ?? c?.collectorId ?? c?.id ?? idx;
+        const email =
+          base?.email ??
+          base?.mail ??
+          base?.userEmail ??
+          base?.accountEmail ??
+          c?.email ??
+          c?.mail ??
+          null;
+        const name =
+          base?.name ??
+          base?.username ??
+          base?.displayName ??
+          base?.fullName ??
+          email ??
+          `Collector ${idx + 1}`;
+        const onlineFlag = base?.online ?? base?.active ?? base?.isActive ?? c?.online ?? c?.active ?? c?.isActive ?? false;
+        const statusValue = base?.status ?? base?.availability ?? base?.state ?? c?.status ?? c?.availability ?? c?.state ?? null;
+        const statusRaw = String(statusValue ?? (onlineFlag ? "online" : "offline")).toLowerCase();
+        const isOnline = onlineFlag === true || ["online", "active", "available"].includes(statusRaw);
         const statusText =
-          toTitle(c?.statusText ?? c?.status ?? c?.availability ?? c?.state) || (isOnline ? "Online" : "Offline");
+          toTitle(base?.statusText ?? statusValue) || (isOnline ? "Online" : "Offline");
         const taskCountRaw =
           c?.currentTaskCount ??
+          base?.currentTaskCount ??
           c?.currentTasks ??
+          base?.currentTasks ??
           c?.tasksCount ??
+          base?.tasksCount ??
           c?.taskCount ??
+          base?.taskCount ??
           c?.activeTaskCount ??
+          base?.activeTaskCount ??
           c?.assignedTaskCount ??
+          base?.assignedTaskCount ??
           null;
         const taskCountNum = taskCountRaw == null ? null : Number(taskCountRaw);
         const currentTaskCount = Number.isFinite(taskCountNum) ? taskCountNum : null;
@@ -293,13 +383,6 @@ export default function EnterpriseReportDetail() {
 
   function getReportCodeFromReport(r) {
     return String(r?.reportCode ?? r?.code ?? r?.id ?? "").trim();
-  }
-
-  function getRequestIdFromReport(r) {
-    const raw = r?.collectionRequestId ?? r?.requestId ?? r?.collection_request_id ?? null;
-    if (raw === null || raw === undefined || raw === "") return null;
-    const n = typeof raw === "number" ? raw : Number(raw);
-    return Number.isFinite(n) ? n : raw;
   }
 
   async function handleAcceptReport() {
