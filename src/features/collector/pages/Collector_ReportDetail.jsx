@@ -374,7 +374,19 @@ export default function CollectorReportDetail() {
           reportId={report?.id ?? null}
           statusLabel={statusLabel}
           statusVariant={reportStatusToPillVariant(task?.status)}
-          categories={Array.isArray(createReport?.items) ? createReport.items : []}
+          categories={
+            Array.isArray(createReport?.items)
+              ? createReport.items
+              : Array.isArray(createReport?.categories)
+                ? createReport.categories
+                : Array.isArray(createReport?.wasteItems)
+                  ? createReport.wasteItems
+                  : Array.isArray(createReport?.report?.items)
+                    ? createReport.report.items
+                    : Array.isArray(createReport?.report?.categories)
+                      ? createReport.report.categories
+                      : []
+          }
           initialAddress={initialCollectedAddress}
           initialCoords={initialCollectedCoords}
           onSubmit={submitCollected}
