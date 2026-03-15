@@ -8,6 +8,7 @@ import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import { updateCollectorPresence } from "../../../services/collector.service.js";
 import { collectorNavItems } from "../components/navigation/CollectorNavItems.jsx";
+import resolveApiBaseUrl from "../../../services/http/baseUrl.js";
 
 function isStoredOnline(user) {
   if (!user) return false;
@@ -32,9 +33,7 @@ export default function CollectorLayout({ children }) {
       })();
     }
 
-    const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
-    const normalizedBaseUrl = typeof configuredBaseUrl === "string" ? configuredBaseUrl.trim() : "";
-    const baseURL = import.meta.env.DEV ? "" : normalizedBaseUrl;
+    const baseURL = resolveApiBaseUrl();
 
     function sendOfflineKeepalive() {
       const token = typeof window !== "undefined" ? window.sessionStorage.getItem("token") : null;
