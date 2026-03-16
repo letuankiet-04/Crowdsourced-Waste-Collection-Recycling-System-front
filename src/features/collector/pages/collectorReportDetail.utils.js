@@ -82,8 +82,12 @@ export function buildCollectorReport({ id, task, createReport }) {
         const q = it?.suggestedQuantity ?? it?.quantity ?? it?.estimatedWeight ?? it?.weight ?? null;
         const num = typeof q === "number" ? q : Number(q);
         const unit = it?.wasteUnit ?? it?.unit ?? "kg";
-        if (!n || !Number.isFinite(num)) return null;
-        return { name: n, unit: unit ? String(unit).toLowerCase() : "kg", estimatedWeight: num };
+        if (!n) return null;
+        return {
+          name: n,
+          unit: unit ? String(unit).toLowerCase() : "kg",
+          estimatedWeight: Number.isFinite(num) ? num : null,
+        };
       })
       .filter(Boolean);
 

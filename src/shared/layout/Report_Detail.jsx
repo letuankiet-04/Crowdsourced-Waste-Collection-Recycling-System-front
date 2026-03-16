@@ -74,7 +74,7 @@ export default function ReportDetail({
         const name = item?.name ? String(item.name) : ''
         const unit = item?.unit ? String(item.unit) : ''
         const w = typeof item?.estimatedWeight === 'number' ? item.estimatedWeight : Number(item?.estimatedWeight)
-        return name && Number.isFinite(w) ? { name, unit, estimatedWeight: w } : null
+        return name ? { name, unit, estimatedWeight: Number.isFinite(w) ? w : null } : null
       })
       .filter(Boolean)
   }, [safeReport])
@@ -195,7 +195,9 @@ export default function ReportDetail({
                             <tr key={it.name}>
                               <td className="px-4 py-3 text-gray-900">{it.name}</td>
                               <td className="px-4 py-3 text-gray-900">
-                                {it.estimatedWeight} {it.unit ? String(it.unit).toLowerCase() : 'kg'}
+                                {it.estimatedWeight != null
+                                  ? `${it.estimatedWeight} ${it.unit ? String(it.unit).toLowerCase() : 'kg'}`
+                                  : '-'}
                               </td>
                             </tr>
                           ))}
