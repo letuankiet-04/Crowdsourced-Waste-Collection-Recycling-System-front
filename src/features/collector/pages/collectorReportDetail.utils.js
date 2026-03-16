@@ -1,6 +1,7 @@
 export function buildCollectorReport({ id, task, createReport }) {
   if (!id) return null;
-  const base = createReport?.report ?? createReport?.data ?? createReport ?? null;
+  const wrapper = createReport ?? null;
+  const base = wrapper?.report ?? wrapper ?? null;
 
   const address =
     (typeof base?.address === "string" && base.address.trim()) ||
@@ -40,7 +41,16 @@ export function buildCollectorReport({ id, task, createReport }) {
   const lng = Number(lngRaw);
   const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 
-  const imagesRaw = base?.images ?? base?.imageUrls ?? base?.image_urls ?? base?.imageUrl ?? null;
+  const imagesRaw =
+    wrapper?.images ??
+    wrapper?.imageUrls ??
+    wrapper?.image_urls ??
+    wrapper?.imageUrl ??
+    base?.images ??
+    base?.imageUrls ??
+    base?.image_urls ??
+    base?.imageUrl ??
+    null;
   const images = Array.isArray(imagesRaw)
     ? imagesRaw.filter(Boolean).map(String)
     : typeof imagesRaw === "string" && imagesRaw.trim()
@@ -50,9 +60,19 @@ export function buildCollectorReport({ id, task, createReport }) {
           .filter(Boolean)
       : [];
 
-  const wasteItemsRaw = Array.isArray(base?.wasteItems) ? base.wasteItems : [];
-  const itemsRaw = Array.isArray(base?.items) ? base.items : [];
-  const categoriesRaw = Array.isArray(base?.categories) ? base.categories : [];
+  const wasteItemsRaw = Array.isArray(wrapper?.wasteItems)
+    ? wrapper.wasteItems
+    : Array.isArray(base?.wasteItems)
+      ? base.wasteItems
+      : [];
+  const itemsRaw = Array.isArray(wrapper?.items) ? wrapper.items : Array.isArray(base?.items) ? base.items : [];
+  const categoriesRaw = Array.isArray(wrapper?.categories)
+    ? wrapper.categories
+    : Array.isArray(base?.categories)
+      ? base.categories
+      : Array.isArray(wrapper?.report?.categories)
+        ? wrapper.report.categories
+        : [];
 
   const wasteItemsFromRaw = (list) =>
     (Array.isArray(list) ? list : [])
@@ -70,8 +90,17 @@ export function buildCollectorReport({ id, task, createReport }) {
   const wasteItems =
     wasteItemsRaw.length ? wasteItemsFromRaw(wasteItemsRaw) : itemsRaw.length ? wasteItemsFromRaw(itemsRaw) : wasteItemsFromRaw(categoriesRaw);
 
-  const typesRaw = Array.isArray(base?.types) ? base.types.filter(Boolean).map(String) : [];
-  const wasteType = typeof base?.wasteType === "string" ? base.wasteType.trim() : "";
+  const typesRaw = Array.isArray(wrapper?.types)
+    ? wrapper.types.filter(Boolean).map(String)
+    : Array.isArray(base?.types)
+      ? base.types.filter(Boolean).map(String)
+      : [];
+  const wasteType =
+    typeof wrapper?.wasteType === "string"
+      ? wrapper.wasteType.trim()
+      : typeof base?.wasteType === "string"
+        ? base.wasteType.trim()
+        : "";
   const pickTypeName = (v) => {
     if (!v) return "";
     const candidates = [v?.name, v?.categoryName, v?.wasteCategoryName, v?.category?.name, v?.wasteCategory?.name];
@@ -98,7 +127,8 @@ export function buildCollectorReport({ id, task, createReport }) {
 
   return {
     id,
-    reportCode: base?.wasteReportCode ?? base?.reportCode ?? base?.code ?? task?.requestCode ?? null,
+    reportCode:
+      base?.wasteReportCode ?? base?.reportCode ?? base?.code ?? wrapper?.wasteReportCode ?? wrapper?.reportCode ?? wrapper?.code ?? task?.requestCode ?? null,
     status: task?.status ?? null,
     createdAt: task?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
     updatedAt: task?.updatedAt ?? null,
