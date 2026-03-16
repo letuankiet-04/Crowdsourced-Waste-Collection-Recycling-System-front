@@ -45,8 +45,10 @@ export default function ReportDetail({
   headerRight,
   aside,
   showWaste = true,
+  showWasteTypes = true,
   wasteItemsLabel = 'Estimated Items',
   showSubmittedBy = true,
+  reportInfoExtra,
 }) {
   const safeReport = report ?? null
   const reportCode = safeReport?.reportCode ?? safeReport?.code ?? null
@@ -75,6 +77,12 @@ export default function ReportDetail({
         return name && Number.isFinite(w) ? { name, unit, estimatedWeight: w } : null
       })
       .filter(Boolean)
+  }, [safeReport])
+
+  const wasteTypesEntries = useMemo(() => {
+    const raw = safeReport?.types
+    const list = Array.isArray(raw) ? raw : []
+    return list.map((t) => (t == null ? '' : String(t).trim())).filter(Boolean)
   }, [safeReport])
 
   if (!safeReport) {
@@ -145,6 +153,7 @@ export default function ReportDetail({
                 {safeReport?.updatedAt ? <Field label="Updated At" value={formatDateTime(safeReport?.updatedAt)} /> : null}
                 {safeReport?.priority ? <Field label="Priority" value={String(safeReport?.priority)} /> : null}
               </div>
+              {reportInfoExtra ? <div className="mt-6">{reportInfoExtra}</div> : null}
             </CardBody>
           </Card>
 
@@ -154,6 +163,22 @@ export default function ReportDetail({
                 <CardTitle className="text-2xl">Waste</CardTitle>
               </CardHeader>
               <CardBody className="p-8">
+                {showWasteTypes && wasteTypesEntries.length ? (
+                  <div className="mb-6">
+                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Waste types</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {wasteTypesEntries.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 {wasteItemsEntries.length ? (
                   <div>
                     <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">{wasteItemsLabel}</div>
@@ -178,9 +203,9 @@ export default function ReportDetail({
                       </table>
                     </div>
                   </div>
-                ) : (
+                ) : !showWasteTypes || !wasteTypesEntries.length ? (
                   <div className="text-gray-600">-</div>
-                )}
+                ) : null}
               </CardBody>
             </Card>
           ) : null}

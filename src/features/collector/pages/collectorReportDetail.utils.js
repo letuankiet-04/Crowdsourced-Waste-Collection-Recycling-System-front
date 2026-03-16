@@ -72,8 +72,29 @@ export function buildCollectorReport({ id, task, createReport }) {
 
   const typesRaw = Array.isArray(base?.types) ? base.types.filter(Boolean).map(String) : [];
   const wasteType = typeof base?.wasteType === "string" ? base.wasteType.trim() : "";
-  const categoryTypes = categoriesRaw.map((c) => (c?.name ? String(c.name).trim() : "")).filter(Boolean);
-  const types = typesRaw.length ? typesRaw : categoryTypes.length ? categoryTypes : wasteType ? [wasteType] : [];
+  const pickTypeName = (v) => {
+    if (!v) return "";
+    const candidates = [v?.name, v?.categoryName, v?.wasteCategoryName, v?.category?.name, v?.wasteCategory?.name];
+    for (const c of candidates) {
+      if (typeof c === "string" && c.trim()) return c.trim();
+    }
+    return "";
+  };
+  const categoryTypes = categoriesRaw.map(pickTypeName).filter(Boolean);
+  const itemTypes = itemsRaw.map(pickTypeName).filter(Boolean);
+  const wasteItemTypes = wasteItemsRaw.map(pickTypeName).filter(Boolean);
+  const types =
+    typesRaw.length
+      ? typesRaw
+      : categoryTypes.length
+        ? categoryTypes
+        : itemTypes.length
+          ? itemTypes
+          : wasteItemTypes.length
+            ? wasteItemTypes
+            : wasteType
+              ? [wasteType]
+              : [];
 
   return {
     id,

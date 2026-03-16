@@ -110,7 +110,7 @@ export default function CollectorReportDetail() {
           description={id ? `Viewing task: ${id}` : "Viewing task"}
           backLabel="Back to dashboard"
           showWaste
-          showWasteTypes={false}
+          showWasteTypes
           wasteItemsLabel="Waste item"
           showSubmittedBy={false}
         />
