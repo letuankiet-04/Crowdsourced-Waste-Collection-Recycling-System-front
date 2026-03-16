@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
@@ -8,6 +8,7 @@ import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";
 import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
+import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Truck, X, XCircle } from "lucide-react";
 import useNotify from "../../../shared/hooks/useNotify.js";
@@ -45,6 +46,7 @@ export default function CollectorReportDetail() {
   const [taskDetail, setTaskDetail] = useState(null);
   const [collectorReport, setCollectorReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -53,11 +55,12 @@ export default function CollectorReportDetail() {
       const requestId = Number(id);
       if (!Number.isFinite(requestId)) return;
       setLoading(true);
+      setReportError("");
       try {
-        const [detailData, reportData] = await Promise.all([
-          getCollectorTaskDetail(requestId),
-          getCollectorReportByCollectionRequest(requestId).catch(() => null),
-        ]);
+        const detailData = await getCollectorTaskDetail(requestId);
+        const raw = String(detailData?.status || "").trim().toLowerCase();
+        const reportData =
+          raw === "completed" ? await getCollectorReportByCollectionRequest(requestId).catch(() => null) : null;
 
         if (!active) return;
 
@@ -72,10 +75,7 @@ export default function CollectorReportDetail() {
         setCollectorReport(reportData);
       } catch (e) {
         if (!active) return;
-        setTask(null);
-        setTaskDetail(null);
-        setCollectorReport(null);
-        notify.error("Unable to load task", e?.message || "Request failed");
+        setReportError(e?.message || "Request failed");
       } finally {
         if (active) setLoading(false);
       }
@@ -89,6 +89,7 @@ export default function CollectorReportDetail() {
 
   const report = useMemo(() => {
     if (!id) return null;
+    if (!taskDetail && !collectorReport && !stateReport) return null;
     const baseCoords =
       taskDetail?.latitude != null && taskDetail?.longitude != null
         ? { lat: Number(taskDetail.latitude), lng: Number(taskDetail.longitude) }
@@ -212,38 +213,89 @@ export default function CollectorReportDetail() {
   return (
     <CollectorLayout>
       <div className="space-y-8">
-        <ReportDetail
-          report={report}
-          backTo={PATHS.collector.dashboard}
-          title="Task Detail"
-          description={id ? `Viewing task: ${id}` : "Viewing task"}
-          backLabel="Back to dashboard"
-          showWaste
-          showWasteTypes={false}
-          wasteItemsLabel="Waste item"
-          showSubmittedBy={false}
-        />
+        {loading && !report ? (
+          <div className="space-y-8">
+            <PageHeader
+              title="Report Detail"
+              description={id ? `Loading report: ${id}` : "Loading report"}
+              right={
+                <Button as={Link} to={PATHS.collector.tasks} variant="outline" size="sm" className="rounded-full">
+                  Back to tasks
+                </Button>
+              }
+            />
+            <Card>
+              <CardBody className="p-8">
+                <div className="text-gray-900 font-semibold">Loading report...</div>
+                <div className="mt-2 text-gray-600 text-sm">Please wait while we fetch report details.</div>
+              </CardBody>
+            </Card>
+          </div>
+        ) : null}
 
-        <Card className="overflow-hidden bg-gradient-to-br from-blue-50/70 via-white to-white">
-            <CardHeader className="py-6 px-8">
+        {!loading || report ? (
+          <ReportDetail
+            report={report}
+            backTo={PATHS.collector.tasks}
+            title="Report Detail"
+            description={id ? `Viewing report: ${id}` : "Viewing report"}
+            backLabel="Back to tasks"
+            showWaste
+            showWasteTypes
+            showSubmittedBy
+          />
+        ) : null}
+        {reportError && !loading ? <div className="text-sm text-red-600">{reportError}</div> : null}
+
+        <Card className="overflow-hidden bg-gradient-to-br from-emerald-50/70 via-white to-white">
+          <CardHeader className="py-6 px-8">
             <div className="min-w-0">
-              <CardTitle className="text-2xl">Update Status</CardTitle>
+              <CardTitle className="text-2xl">Decision</CardTitle>
               <div className="mt-1 text-sm text-gray-600">
-                Update the status of this collection task as you progress.
+                Update this task as you progress through collection.
               </div>
             </div>
             <div className="flex items-center gap-3">
-               <StatusPill variant={reportStatusToPillVariant(task?.status)}>{statusLabel}</StatusPill>
+              <div className="hidden sm:block text-xs text-gray-500">
+                {report?.updatedAt
+                  ? `Updated ${new Date(report.updatedAt).toLocaleString()}`
+                  : report?.createdAt
+                    ? `Created ${new Date(report.createdAt).toLocaleString()}`
+                    : null}
+              </div>
+              <StatusPill variant={reportStatusToPillVariant(task?.status)}>{statusLabel}</StatusPill>
             </div>
           </CardHeader>
           <CardBody className="p-8">
-             <div className="flex flex-wrap justify-end gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-center">
+              <div className="rounded-2xl border border-emerald-100 bg-white/70 p-5">
+                <div className="text-sm font-semibold text-gray-900">What happens next</div>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
+                  <div className="flex items-start gap-2">
+                    <Truck className="h-5 w-5 text-emerald-700 mt-0.5" aria-hidden="true" />
+                    <div>
+                      <div className="font-semibold text-gray-900">Progress</div>
+                      <div className="text-gray-600">Accept, start, confirm collected, then submit the collection report.</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <XCircle className="h-5 w-5 text-red-700 mt-0.5" aria-hidden="true" />
+                    <div>
+                      <div className="font-semibold text-gray-900">Reject</div>
+                      <div className="text-gray-600">If you cannot handle it, reject so it can be reassigned.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
                 {canAccept && (
                   <>
                     {canReject && (
                       <Button
+                        variant="outline"
                         size="lg"
-                        className="rounded-full bg-red-600 hover:bg-red-700 text-white"
+                        className="rounded-full border-red-600 text-red-700 hover:bg-red-50"
                         disabled={loading || rejectSubmitting}
                         onClick={() => {
                           setRejectReason("");
@@ -256,9 +308,9 @@ export default function CollectorReportDetail() {
                       </Button>
                     )}
 
-                                 <Button
+                    <Button
                       size="lg"
-                      className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+                      className="rounded-full"
                       disabled={loading}
                       onClick={() => {
                         setConfirmConfig({
@@ -296,7 +348,7 @@ export default function CollectorReportDetail() {
                 {canStart && (
                   <Button
                     size="lg"
-                    className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                    className="rounded-full"
                     disabled={loading}
                     onClick={() => {
                       setConfirmConfig({
@@ -370,6 +422,7 @@ export default function CollectorReportDetail() {
                     </div>
                 )}
              </div>
+            </div>
           </CardBody>
         </Card>
 
