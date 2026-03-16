@@ -57,10 +57,10 @@ export default function CollectorReportDetail() {
       setLoading(true);
       setReportError("");
       try {
-        const detailData = await getCollectorTaskDetail(requestId);
-        const raw = String(detailData?.status || "").trim().toLowerCase();
-        const reportData =
-          raw === "completed" ? await getCollectorReportByCollectionRequest(requestId).catch(() => null) : null;
+        const [detailData, reportData] = await Promise.all([
+          getCollectorTaskDetail(requestId),
+          getCollectorReportByCollectionRequest(requestId).catch(() => null),
+        ]);
 
         if (!active) return;
 
@@ -242,7 +242,6 @@ export default function CollectorReportDetail() {
             backLabel="Back to tasks"
             showWaste
             showWasteTypes
-            showSubmittedBy
           />
         ) : null}
         {reportError && !loading ? <div className="text-sm text-red-600">{reportError}</div> : null}

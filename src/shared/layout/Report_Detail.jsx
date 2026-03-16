@@ -163,22 +163,6 @@ export default function ReportDetail({
                 <CardTitle className="text-2xl">Waste</CardTitle>
               </CardHeader>
               <CardBody className="p-8">
-                {showWasteTypes && wasteTypesEntries.length ? (
-                  <div className="mb-6">
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Waste types</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {wasteTypesEntries.map((t) => (
-                        <span
-                          key={t}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
                 {wasteItemsEntries.length ? (
                   <div>
                     <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">{wasteItemsLabel}</div>
