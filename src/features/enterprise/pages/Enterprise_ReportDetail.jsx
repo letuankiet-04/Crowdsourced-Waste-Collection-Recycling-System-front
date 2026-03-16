@@ -205,8 +205,10 @@ export default function EnterpriseReportDetail() {
   const canDecide = status === "Pending";
   const canGoAssign = status === "Accepted";
 
-  const [collectorSource, setCollectorSource] = useState([]);
-  const [collectorsLoading, setCollectorsLoading] = useState(false);
+  const [enterpriseCollectorSource, setEnterpriseCollectorSource] = useState([]);
+  const [eligibleCollectorSource, setEligibleCollectorSource] = useState(null);
+  const [enterpriseCollectorsLoading, setEnterpriseCollectorsLoading] = useState(false);
+  const [eligibleCollectorsLoading, setEligibleCollectorsLoading] = useState(false);
   const [collectorsError, setCollectorsError] = useState("");
 
   useEffect(() => {
@@ -236,12 +238,12 @@ export default function EnterpriseReportDetail() {
 
   useEffect(() => {
     let cancelled = false;
-    setCollectorsLoading(true);
+    setEnterpriseCollectorsLoading(true);
     setCollectorsError("");
     getEnterpriseCollectors()
       .then((rows) => {
         if (cancelled) return;
-        setCollectorSource(extractCollectorRows(rows));
+        setEnterpriseCollectorSource(extractCollectorRows(rows));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -251,7 +253,7 @@ export default function EnterpriseReportDetail() {
       })
       .finally(() => {
         if (cancelled) return;
-        setCollectorsLoading(false);
+        setEnterpriseCollectorsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -260,14 +262,17 @@ export default function EnterpriseReportDetail() {
 
   useEffect(() => {
     const requestId = getRequestIdFromReport(report);
-    if (requestId == null) return;
+    if (requestId == null) {
+      setEligibleCollectorSource(null);
+      return;
+    }
     let cancelled = false;
-    setCollectorsLoading(true);
+    setEligibleCollectorsLoading(true);
     setCollectorsError("");
     getEligibleCollectorsForRequest(requestId)
       .then((rows) => {
         if (cancelled) return;
-        setCollectorSource(extractCollectorRows(rows));
+        setEligibleCollectorSource(extractCollectorRows(rows));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -277,7 +282,7 @@ export default function EnterpriseReportDetail() {
       })
       .finally(() => {
         if (cancelled) return;
-        setCollectorsLoading(false);
+        setEligibleCollectorsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -293,7 +298,8 @@ export default function EnterpriseReportDetail() {
   }
 
   const collectors = useMemo(() => {
-    const list = Array.isArray(collectorSource) ? collectorSource : [];
+    const enterpriseList = Array.isArray(enterpriseCollectorSource) ? enterpriseCollectorSource : [];
+    const eligibleList = Array.isArray(eligibleCollectorSource) ? eligibleCollectorSource : [];
     const toTitle = (value) => {
       const raw = String(value ?? "").trim();
       if (!raw) return "";
@@ -304,51 +310,70 @@ export default function EnterpriseReportDetail() {
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
     };
-    return list
-      .map((c, idx) => {
-        const base = c?.collector ?? c?.collectorInfo ?? c?.user ?? c?.account ?? c;
-        const id = base?.id ?? base?._id ?? c?.collectorId ?? c?.id ?? idx;
-        const email =
-          base?.email ??
-          base?.mail ??
-          base?.userEmail ??
-          base?.accountEmail ??
-          c?.email ??
-          c?.mail ??
-          null;
-        const name =
-          base?.name ??
-          base?.username ??
-          base?.displayName ??
-          base?.fullName ??
-          email ??
-          `Collector ${idx + 1}`;
-        const onlineFlag = base?.online ?? base?.active ?? base?.isActive ?? c?.online ?? c?.active ?? c?.isActive ?? false;
-        const statusValue = base?.status ?? base?.availability ?? base?.state ?? c?.status ?? c?.availability ?? c?.state ?? null;
+    const normalizeCollector = (row, idx) => {
+      const base = row?.collector ?? row?.collectorInfo ?? row?.user ?? row?.account ?? row;
+      const id = base?.id ?? base?._id ?? row?.collectorId ?? row?.id ?? idx;
+      const email =
+        base?.email ??
+        base?.mail ??
+        base?.userEmail ??
+        base?.accountEmail ??
+        base?.collectorEmail ??
+        row?.email ??
+        row?.mail ??
+        row?.collectorEmail ??
+        null;
+      const name = base?.name ?? base?.username ?? base?.displayName ?? base?.fullName ?? email ?? `Collector ${idx + 1}`;
+      const onlineFlag = base?.online ?? base?.active ?? base?.isActive ?? row?.online ?? row?.active ?? row?.isActive ?? false;
+      const statusValue = base?.status ?? base?.availability ?? base?.state ?? row?.status ?? row?.availability ?? row?.state ?? null;
+      const statusRaw = String(statusValue ?? (onlineFlag ? "online" : "offline")).toLowerCase();
+      const isOnline = onlineFlag === true || ["online", "active", "available"].includes(statusRaw);
+      const statusText = toTitle(base?.statusText ?? statusValue) || (isOnline ? "Online" : "Offline");
+      const taskCountRaw =
+        row?.currentTaskCount ??
+        base?.currentTaskCount ??
+        row?.currentTasks ??
+        base?.currentTasks ??
+        row?.tasksCount ??
+        base?.tasksCount ??
+        row?.taskCount ??
+        base?.taskCount ??
+        row?.activeTaskCount ??
+        base?.activeTaskCount ??
+        row?.assignedTaskCount ??
+        base?.assignedTaskCount ??
+        null;
+      const taskCountNum = taskCountRaw == null ? null : Number(taskCountRaw);
+      const currentTaskCount = Number.isFinite(taskCountNum) ? taskCountNum : null;
+      return { id, name, email, isOnline, statusText, currentTaskCount };
+    };
+
+    const enterpriseById = new Map();
+    enterpriseList.forEach((row, idx) => {
+      const normalized = normalizeCollector(row, idx);
+      if (normalized?.id != null) enterpriseById.set(String(normalized.id), normalized);
+    });
+
+    if (eligibleList.length) {
+      return eligibleList.map((row, idx) => {
+        const id = row?.id ?? row?.collectorId ?? idx;
+        const matched = id != null ? enterpriseById.get(String(id)) : null;
+        const email = matched?.email ?? row?.email ?? row?.collectorEmail ?? null;
+        const name = matched?.name ?? row?.fullName ?? row?.name ?? email ?? `Collector ${idx + 1}`;
+        const onlineFlag = row?.online ?? matched?.isOnline ?? false;
+        const statusValue = row?.status ?? matched?.statusText ?? null;
         const statusRaw = String(statusValue ?? (onlineFlag ? "online" : "offline")).toLowerCase();
         const isOnline = onlineFlag === true || ["online", "active", "available"].includes(statusRaw);
-        const statusText =
-          toTitle(base?.statusText ?? statusValue) || (isOnline ? "Online" : "Offline");
-        const taskCountRaw =
-          c?.currentTaskCount ??
-          base?.currentTaskCount ??
-          c?.currentTasks ??
-          base?.currentTasks ??
-          c?.tasksCount ??
-          base?.tasksCount ??
-          c?.taskCount ??
-          base?.taskCount ??
-          c?.activeTaskCount ??
-          base?.activeTaskCount ??
-          c?.assignedTaskCount ??
-          base?.assignedTaskCount ??
-          null;
+        const statusText = toTitle(statusValue) || (isOnline ? "Online" : "Offline");
+        const taskCountRaw = row?.activeTaskCount ?? row?.currentTaskCount ?? matched?.currentTaskCount ?? null;
         const taskCountNum = taskCountRaw == null ? null : Number(taskCountRaw);
         const currentTaskCount = Number.isFinite(taskCountNum) ? taskCountNum : null;
         return { id, name, email, isOnline, statusText, currentTaskCount };
-      })
-      .filter((c) => Boolean(c.email));
-  }, [collectorSource]);
+      });
+    }
+
+    return enterpriseList.map((row, idx) => normalizeCollector(row, idx));
+  }, [eligibleCollectorSource, enterpriseCollectorSource]);
 
   const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
   const assignedLabel = useMemo(() => {
@@ -360,7 +385,7 @@ export default function EnterpriseReportDetail() {
     return labels.join(", ");
   }, [assignedEmails, collectors]);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [selectedCollectorEmail, setSelectedCollectorEmail] = useState("");
+  const [selectedCollectorId, setSelectedCollectorId] = useState("");
   const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
   const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
@@ -375,9 +400,17 @@ export default function EnterpriseReportDetail() {
     return () => unlockBodyScroll();
   }, [rejectOpen]);
 
+  function getAssignedCollectorIdFromReport(r) {
+    const many = Array.isArray(r?.assignedCollectors) ? r.assignedCollectors : [];
+    const manyIds = many.map((c) => c?.id ?? c?._id).filter((v) => v != null);
+    if (manyIds.length) return manyIds[0];
+    return r?.assignedCollector?.id ?? r?.assignedCollectorId ?? r?.collectorId ?? null;
+  }
+
   function openAssignDialog(nextReport) {
     const r = nextReport ?? report;
-    setSelectedCollectorEmail(getAssignedEmailsFromReport(r)[0] ?? "");
+    const assignedId = getAssignedCollectorIdFromReport(r);
+    setSelectedCollectorId(assignedId == null ? "" : String(assignedId));
     setAssignOpen(true);
   }
 
@@ -491,7 +524,7 @@ export default function EnterpriseReportDetail() {
 
   async function handleAssignSelectedCollectors() {
     if (!report || !canGoAssign || assignSubmitting) return;
-    const primaryCollector = collectors.find((c) => c.email === selectedCollectorEmail) ?? null;
+    const primaryCollector = collectors.find((c) => String(c.id) === String(selectedCollectorId)) ?? null;
     if (!primaryCollector) return;
     setAssignConfirmOpen(false);
     setAssignSubmitting(true);
@@ -689,19 +722,19 @@ export default function EnterpriseReportDetail() {
                   </div>
                   {collectorsError ? <div className="text-sm text-red-600">{collectorsError}</div> : null}
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
-                    {collectorsLoading ? (
+                    {enterpriseCollectorsLoading || eligibleCollectorsLoading ? (
                       <div className="px-4 py-5 text-sm text-gray-600">Loading collectors...</div>
                     ) : collectors.length ? (
                       collectors.map((c) => {
-                        const checked = selectedCollectorEmail === c.email;
+                        const checked = String(selectedCollectorId) === String(c.id);
                         return (
                           <label
-                            key={c.email}
+                            key={c.id ?? c.email}
                             className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50"
                           >
                             <div className="min-w-0">
                               <div className="truncate font-semibold">{c.name}</div>
-                              <div className="truncate text-xs text-gray-600">{c.email}</div>
+                              <div className="truncate text-xs text-gray-600">{c.email ?? "-"}</div>
                               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
                                 <span>
                                   Status:{" "}
@@ -724,7 +757,7 @@ export default function EnterpriseReportDetail() {
                               checked={checked}
                               disabled={!report || !canGoAssign}
                               onChange={() => {
-                                setSelectedCollectorEmail(c.email);
+                                setSelectedCollectorId(c?.id == null ? "" : String(c.id));
                               }}
                             />
                           </label>
@@ -744,9 +777,9 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorEmail || assignSubmitting}
+                  disabled={!report || !canGoAssign || !selectedCollectorId || assignSubmitting}
                   onClick={() => {
-                    if (!report || !canGoAssign || !selectedCollectorEmail || assignSubmitting) return;
+                    if (!report || !canGoAssign || !selectedCollectorId || assignSubmitting) return;
                     setAssignConfirmOpen(true);
                   }}
                 >
