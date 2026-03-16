@@ -9,13 +9,7 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import { updateCollectorPresence } from "../../../services/collector.service.js";
 import { collectorNavItems } from "../components/navigation/CollectorNavItems.jsx";
 import resolveApiBaseUrl from "../../../services/http/baseUrl.js";
-
-function isStoredOnline(user) {
-  if (!user) return false;
-  if (user.online === true || user.active === true || user.isActive === true) return true;
-  const raw = String(user.availability ?? user.status ?? "").trim().toLowerCase();
-  return raw === "online" || raw === "active";
-}
+import { readCollectorPresence } from "../../../shared/lib/collectorPresenceStorage.js";
 
 export default function CollectorLayout({ children }) {
   const { user } = useStoredUser();
@@ -23,7 +17,7 @@ export default function CollectorLayout({ children }) {
   useEffect(() => {
     if (!user) return;
 
-    if (isStoredOnline(user)) {
+    if (readCollectorPresence() === true) {
       void (async () => {
         try {
           await updateCollectorPresence({ status: "ONLINE" });
@@ -36,6 +30,7 @@ export default function CollectorLayout({ children }) {
     const baseURL = resolveApiBaseUrl();
 
     function sendOfflineKeepalive() {
+      if (readCollectorPresence() !== true) return;
       const token = typeof window !== "undefined" ? window.sessionStorage.getItem("token") : null;
       if (!token) return;
       void fetch(`${baseURL}/api/collector/status`, {

@@ -4,6 +4,7 @@ import { PATHS } from "../../app/routes/paths.js";
 import { logout } from "../../services/auth.service.js";
 import { updateCollectorPresence } from "../../services/collector.service.js";
 import useStoredUser from "./useStoredUser.js";
+import { clearCollectorPresence } from "../lib/collectorPresenceStorage.js";
 
 export default function useLogout() {
   const navigate = useNavigate();
@@ -30,6 +31,9 @@ export default function useLogout() {
         void err;
       }
 
+      if (String(user?.role || "").toUpperCase() === "COLLECTOR") {
+        clearCollectorPresence();
+      }
       clearAuth();
       onLoggedOut?.();
       navigate(to, { replace });
