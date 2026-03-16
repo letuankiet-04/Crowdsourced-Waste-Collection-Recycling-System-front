@@ -242,6 +242,7 @@ export default function CollectorReportDetail() {
             backLabel="Back to tasks"
             showWaste
             showWasteTypes
+            showSubmittedBy={false}
           />
         ) : null}
         {reportError && !loading ? <div className="text-sm text-red-600">{reportError}</div> : null}
