@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
@@ -16,6 +16,7 @@ import {
   acceptCollectorTask,
   completeCollectorTask,
   getCollectorCreateReport,
+  getCollectorReportByCollectionRequest,
   getCollectorTasks,
   getCollectorWorkHistory,
   markCollectorCollected,
@@ -25,11 +26,26 @@ import {
 
 export default function CollectorReportDetail() {
   const { reportId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const notify = useNotify();
-  const id = reportId ? String(reportId) : "";
-  const [task, setTask] = useState(null);
+  const stateReport = location?.state?.report ?? null;
+  const stateId = stateReport?.collectionRequestId ?? stateReport?.requestId ?? stateReport?.id ?? null;
+  const id = reportId ? String(reportId) : stateId != null ? String(stateId) : "";
+
+  const [task, setTask] = useState(() => {
+    if (!stateReport) return null;
+    const taskId = stateId != null ? Number(stateId) : null;
+    return {
+      id: Number.isFinite(taskId) ? taskId : null,
+      requestCode: stateReport?.reportCode ?? stateReport?.code ?? null,
+      status: stateReport?.status ?? null,
+      createdAt: stateReport?.createdAt ?? null,
+      updatedAt: stateReport?.updatedAt ?? null,
+    };
+  });
   const [createReport, setCreateReport] = useState(null);
+  const [collectorReport, setCollectorReport] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -40,11 +56,27 @@ export default function CollectorReportDetail() {
       if (!Number.isFinite(requestId)) return;
       setLoading(true);
       try {
-        const [createData, tasksData, historyData] = await Promise.all([
-          getCollectorCreateReport(requestId).catch(() => null),
+        const [tasksData, historyData] = await Promise.all([
           getCollectorTasks({ all: true }).catch(() => []),
           getCollectorWorkHistory().catch(() => []),
         ]);
+
+        let createData = null;
+        try {
+          createData = await getCollectorCreateReport(requestId);
+        } catch (e) {
+          createData = null;
+          notify.error("Unable to load report info", e?.message || "Request failed");
+        }
+
+        let reportData = null;
+        if (!createData) {
+          try {
+            reportData = await getCollectorReportByCollectionRequest(requestId);
+          } catch {
+            reportData = null;
+          }
+        }
 
         if (!active) return;
 
@@ -71,10 +103,12 @@ export default function CollectorReportDetail() {
 
         setTask(syntheticTask);
         setCreateReport(createData);
+        setCollectorReport(reportData);
       } catch (e) {
         if (!active) return;
         setTask(null);
         setCreateReport(null);
+        setCollectorReport(null);
         notify.error("Unable to load task", e?.message || "Request failed");
       } finally {
         if (active) setLoading(false);
@@ -89,12 +123,28 @@ export default function CollectorReportDetail() {
 
   const report = useMemo(() => {
     if (!id) return null;
-    const coords =
+    const baseCoords =
       createReport?.latitude != null && createReport?.longitude != null
         ? { lat: Number(createReport.latitude), lng: Number(createReport.longitude) }
+        : stateReport?.coords ?? null;
+
+    const collectedCoords =
+      collectorReport?.latitude != null && collectorReport?.longitude != null
+        ? { lat: Number(collectorReport.latitude), lng: Number(collectorReport.longitude) }
         : null;
-    const items = Array.isArray(createReport?.items) ? createReport.items : [];
-    const wasteItems = items
+
+    const collectedCategories = Array.isArray(collectorReport?.categories) ? collectorReport.categories : [];
+    const collectedWasteItems = collectedCategories
+      .map((it) => {
+        const name = it?.name ? String(it.name) : null;
+        const estimatedWeight = it?.quantity != null ? Number(it.quantity) : NaN;
+        if (!name || !Number.isFinite(estimatedWeight)) return null;
+        return { name, unit: it?.unit ? String(it.unit).toLowerCase() : "kg", estimatedWeight };
+      })
+      .filter(Boolean);
+
+    const suggestedItems = Array.isArray(createReport?.items) ? createReport.items : [];
+    const suggestedWasteItems = suggestedItems
       .map((it) => {
         const name = it?.categoryName ? String(it.categoryName) : null;
         const estimatedWeight = it?.suggestedQuantity != null ? Number(it.suggestedQuantity) : NaN;
@@ -105,17 +155,26 @@ export default function CollectorReportDetail() {
 
     return {
       id,
-      reportCode: createReport?.wasteReportCode ?? task?.requestCode ?? null,
-      status: task?.status ?? null,
-      createdAt: task?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
+      collectionRequestId: createReport?.collectionRequestId ?? collectorReport?.collectionRequestId ?? Number(id),
+      reportCode:
+        createReport?.wasteReportCode ??
+        collectorReport?.reportCode ??
+        task?.requestCode ??
+        stateReport?.reportCode ??
+        stateReport?.code ??
+        null,
+      status: task?.status ?? collectorReport?.status ?? stateReport?.status ?? null,
+      createdAt: task?.createdAt ?? collectorReport?.createdAt ?? stateReport?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
       updatedAt: task?.updatedAt ?? null,
-      address: createReport?.address ?? null,
-      coords,
-      images: Array.isArray(createReport?.imageUrls) ? createReport.imageUrls : [],
-      types: createReport?.wasteType ? [String(createReport.wasteType)] : [],
-      wasteItems,
+      address: createReport?.address ?? stateReport?.address ?? null,
+      coords: baseCoords,
+      collectedCoords,
+      images: Array.isArray(createReport?.imageUrls) ? createReport.imageUrls : stateReport?.images ?? stateReport?.imageUrls ?? [],
+      collectedImages: Array.isArray(collectorReport?.imageUrls) ? collectorReport.imageUrls : [],
+      types: createReport?.wasteType ? [String(createReport.wasteType)] : Array.isArray(stateReport?.types) ? stateReport.types : [],
+      wasteItems: collectedWasteItems.length ? collectedWasteItems : suggestedWasteItems,
     };
-  }, [createReport, id, task]);
+  }, [collectorReport, createReport, id, stateReport, task]);
 
   const rawStatus = String(task?.status || "").trim().toLowerCase();
   const statusLabel = normalizeReportStatus(task?.status);

@@ -57,12 +57,12 @@ export default function ReportDetail({
   const displayReportId = safeReport?.id != null && String(safeReport.id).trim() !== '' ? String(safeReport.id) : null
 
   const images = useMemo(() => {
-    const raw = safeReport?.images
+    const raw = safeReport?.images ?? safeReport?.imageUrls ?? safeReport?.image_urls
     return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
   }, [safeReport])
 
   const collectedImages = useMemo(() => {
-    const raw = safeReport?.collectedImages
+    const raw = safeReport?.collectedImages ?? safeReport?.collectedImageUrls ?? safeReport?.collected_image_urls
     return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
   }, [safeReport])
 
