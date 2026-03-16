@@ -1,22 +1,15 @@
-import { ClipboardList, LayoutDashboard, User, History } from "lucide-react";
 import { useEffect } from "react";
 import RoleSidebar from "../../../shared/layout/sidebar/RoleSidebar.jsx";
-import SidebarNavItem from "../../../shared/layout/sidebar/SidebarNavItem.jsx";
 import SidebarLogoutButton from "../../../shared/layout/sidebar/SidebarLogoutButton.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import logo from "../../../assets/app-logo.jpg";
-import { PATHS } from "../../../app/routes/paths.js";
 import CollectorNavbar from "../components/navigation/CollectorNavbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import { updateCollectorPresence } from "../../../services/collector.service.js";
-
-function isStoredOnline(user) {
-  if (!user) return false;
-  if (user.online === true || user.active === true || user.isActive === true) return true;
-  const raw = String(user.availability ?? user.status ?? "").trim().toLowerCase();
-  return raw === "online" || raw === "active";
-}
+import { collectorNavItems } from "../components/navigation/CollectorNavItems.jsx";
+import resolveApiBaseUrl from "../../../services/http/baseUrl.js";
+import { readCollectorPresence } from "../../../shared/lib/collectorPresenceStorage.js";
 
 export default function CollectorLayout({ children }) {
   const { user } = useStoredUser();
@@ -24,7 +17,7 @@ export default function CollectorLayout({ children }) {
   useEffect(() => {
     if (!user) return;
 
-    if (isStoredOnline(user)) {
+    if (readCollectorPresence() === true) {
       void (async () => {
         try {
           await updateCollectorPresence({ status: "ONLINE" });
@@ -34,11 +27,10 @@ export default function CollectorLayout({ children }) {
       })();
     }
 
-    const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
-    const normalizedBaseUrl = typeof configuredBaseUrl === "string" ? configuredBaseUrl.trim() : "";
-    const baseURL = import.meta.env.DEV ? "" : normalizedBaseUrl;
+    const baseURL = resolveApiBaseUrl();
 
     function sendOfflineKeepalive() {
+      if (readCollectorPresence() !== true) return;
       const token = typeof window !== "undefined" ? window.sessionStorage.getItem("token") : null;
       if (!token) return;
       void fetch(`${baseURL}/api/collector/status`, {
@@ -69,20 +61,7 @@ export default function CollectorLayout({ children }) {
             logoAlt: "Collector Portal Logo",
             title: "Collector Portal",
           }}
-          navItems={[
-            <SidebarNavItem key="dashboard" to={PATHS.collector.dashboard} end icon={<LayoutDashboard className="h-5 w-5" />}>
-              Dashboard
-            </SidebarNavItem>,
-            <SidebarNavItem key="tasks" to={PATHS.collector.tasks} icon={<ClipboardList className="h-5 w-5" />}>
-              My Tasks
-            </SidebarNavItem>,
-            <SidebarNavItem key="history" to={PATHS.collector.history} icon={<History className="h-5 w-5" />}>
-              History
-            </SidebarNavItem>,
-            <SidebarNavItem key="profile" to={PATHS.collector.profile} icon={<User className="h-5 w-5" />}>
-              Profile
-            </SidebarNavItem>,
-          ]}
+          navItems={collectorNavItems}
           footer={<SidebarLogoutButton />}
         />
       }

@@ -33,7 +33,7 @@ export default function FeedbackForm() {
         .catch(() => notify.error("Failed to load your reports"))
         .finally(() => setLoadingReports(false))
     }
-  }, [reportId]);
+  }, [notify, reportId]);
 
   const filteredReports = useMemo(() => {
     const all = Array.isArray(reports) ? reports : []
@@ -267,7 +267,7 @@ export default function FeedbackForm() {
             isSubmitting
           }
         >
-          {isSubmitting ? "Sending…" : "Send complaint →"}
+          {isSubmitting ? "Sending..." : "Send complaint →"}
         </button>
       </div>
     </form>

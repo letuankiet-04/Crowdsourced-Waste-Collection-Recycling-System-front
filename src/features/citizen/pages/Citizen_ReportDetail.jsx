@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Sidebar from "../components/navigation/Sidebar";
 import Navbar from "../components/navigation/CD_Navbar";
@@ -12,95 +12,21 @@ import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import { PATHS } from "../../../app/routes/paths.js";
-import { deleteReport, getMyReportById, getMyReportResult, getWasteCategories } from "../../../services/reports.service.js";
+import { deleteReport } from "../../../services/reports.service.js";
 import { formatWasteTypeUnit } from "../../../shared/constants/wasteTypes.js";
+import useCitizenReportDetail from "../hooks/useCitizenReportDetail.js";
+import { buildCitizenReportDetail } from "./citizenReportDetail.utils.js";
 
 export default function CitizenReportDetail() {
   const { reportId } = useParams();
   const navigate = useNavigate();
   const notify = useNotify();
 
-  const [apiReport, setApiReport] = useState(null);
-  const [apiResult, setApiResult] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
-  const [categoryOptions, setCategoryOptions] = useState([]);
-
-  useEffect(() => {
-    if (!reportId) return;
-    let cancelled = false;
-    Promise.resolve().then(() => {
-      if (cancelled) return;
-      setLoading(true);
-      Promise.all([getMyReportById(reportId), getMyReportResult(reportId), getWasteCategories()])
-        .then(([r, res, cats]) => {
-          if (cancelled) return;
-          setApiReport(r ?? null);
-          setApiResult(res ?? null);
-          const list = Array.isArray(cats) ? cats : [];
-          setCategoryOptions(
-            list.map((c) => ({
-              id: Number(c.id),
-              name: String(c.name ?? "").trim(),
-              unit: c.unit ?? null,
-              pointPerUnit: c.pointPerUnit ?? null,
-            }))
-          );
-        })
-        .catch((err) => notify.error("Load report failed", err?.message || "Unable to load report."))
-        .finally(() => {
-          if (cancelled) return;
-          setLoading(false);
-        });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [reportId, notify]);
+  const { apiReport, apiResult, loading, categoryOptions } = useCitizenReportDetail({ reportId, notify });
 
   const report = useMemo(() => {
-    if (!apiReport) return null;
-    const categories = Array.isArray(apiReport?.categories) ? apiReport.categories : [];
-    const images = Array.isArray(apiReport?.images) ? apiReport.images : [];
-    const address =
-      (typeof apiReport?.address === "string" && apiReport.address.trim()) ||
-      (typeof apiReport?.reportedAddress === "string" && apiReport.reportedAddress.trim()) ||
-      (typeof apiReport?.location?.address === "string" && apiReport.location.address.trim()) ||
-      "";
-    const lat =
-      apiReport?.latitude ??
-      apiReport?.lat ??
-      apiReport?.coords?.lat ??
-      apiReport?.location?.lat ??
-      apiReport?.reportedLatitude ??
-      null;
-    const lng =
-      apiReport?.longitude ??
-      apiReport?.lng ??
-      apiReport?.coords?.lng ??
-      apiReport?.location?.lng ??
-      apiReport?.reportedLongitude ??
-      null;
-    const coords =
-      lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
-        ? { lat: Number(lat), lng: Number(lng) }
-        : null;
-    return {
-      id: apiReport?.id ?? reportId,
-      status: apiReport?.status ?? null,
-      createdAt: apiReport?.createdAt ?? null,
-      address,
-      coords,
-      images,
-      wasteItems: categories
-        .map((c) => {
-          const name = c?.name ? String(c.name) : "";
-          const unit = c?.unit ?? null;
-          const q = typeof c?.quantity === "number" ? c.quantity : Number(c?.quantity);
-          return name && Number.isFinite(q) ? { name, unit, estimatedWeight: q } : null;
-        })
-        .filter(Boolean),
-    };
+    return buildCitizenReportDetail(apiReport, reportId);
   }, [apiReport, reportId]);
 
   const status = normalizeReportStatus(report?.status);

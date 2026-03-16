@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { 
   Search, 
   Filter, 
@@ -27,11 +27,7 @@ export default function Enterprise_ReviewFeedback() {
   const [loading, setLoading] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
-  useEffect(() => {
-    fetchFeedbacks();
-  }, []);
-
-  const fetchFeedbacks = async () => {
+  const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
     try {
         const data = await getEnterpriseFeedbacks();
@@ -50,7 +46,11 @@ export default function Enterprise_ReviewFeedback() {
     } finally {
         setLoading(false);
     }
-  };
+  }, [notify]);
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, [fetchFeedbacks]);
 
   // Filtering Logic
   const filteredFeedback = useMemo(() => {
@@ -197,7 +197,13 @@ export default function Enterprise_ReviewFeedback() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {paginatedFeedback.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="px-8 py-12 text-center text-gray-500">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : paginatedFeedback.length > 0 ? (
                   paginatedFeedback.map((item) => (
                     <tr 
                         key={item.id} 

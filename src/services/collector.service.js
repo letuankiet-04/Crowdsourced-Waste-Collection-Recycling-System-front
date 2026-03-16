@@ -16,6 +16,11 @@ export async function getCollectorTasks({ status, all } = {}) {
   return unwrapApiResponse(data)
 }
 
+export async function getCollectorTaskDetail(requestId) {
+  const { data } = await api.get(`${COLLECTIONS_BASE}/tasks/${requestId}`)
+  return unwrapApiResponse(data)
+}
+
 export async function getCollectorWorkHistory({ status } = {}) {
   const params = {}
   if (status) params.status = status

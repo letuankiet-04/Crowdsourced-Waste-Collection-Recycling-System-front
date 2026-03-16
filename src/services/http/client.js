@@ -1,9 +1,8 @@
 import axios from 'axios'
 import ApiError from './ApiError.js'
+import resolveApiBaseUrl from './baseUrl.js'
 
-const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL
-const normalizedBaseUrl = typeof configuredBaseUrl === 'string' ? configuredBaseUrl.trim() : ''
-const baseURL = import.meta.env.DEV ? '' : normalizedBaseUrl
+const baseURL = resolveApiBaseUrl()
 
 const api = axios.create({
   baseURL,

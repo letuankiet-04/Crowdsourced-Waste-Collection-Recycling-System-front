@@ -61,7 +61,7 @@ export default function FeedbackDetails() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [feedbackId]);
+  }, [feedbackId, notify]);
 
   useEffect(() => {
     const isReward = String(feedback?.type || "").toUpperCase().includes("REWARD");
@@ -76,7 +76,7 @@ export default function FeedbackDetails() {
     } else {
       setLinkedReport(null);
     }
-  }, [feedback]);
+  }, [feedback, notify]);
 
   if (loading) {
     return (

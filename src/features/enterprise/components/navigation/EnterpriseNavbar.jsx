@@ -1,13 +1,12 @@
-import { useNavigate } from "react-router-dom";
-import { logout } from "../../../../services/auth.service.js";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 import { PATHS } from "../../../../app/routes/paths.js";
 import UserMenu from "../../../../shared/ui/UserMenu.jsx";
 import NotificationBell from "../../../../shared/ui/NotificationBell.jsx";
+import useLogout from "../../../../shared/hooks/useLogout.js";
 
 export default function EnterpriseNavbar() {
-  const { displayName, roleLabel, clearAuth } = useStoredUser();
-  const navigate = useNavigate();
+  const { displayName, roleLabel } = useStoredUser();
+  const logoutAndRedirect = useLogout();
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
@@ -23,15 +22,7 @@ export default function EnterpriseNavbar() {
                 { to: PATHS.enterprise.profile, label: "Profile" },
               ]}
               onLogout={() => {
-                void (async () => {
-                  try {
-                    await logout();
-                  } catch (err) {
-                    void err;
-                  }
-                  clearAuth();
-                  navigate(PATHS.auth.login, { replace: true });
-                })();
+                void logoutAndRedirect();
               }}
             />
           </div>

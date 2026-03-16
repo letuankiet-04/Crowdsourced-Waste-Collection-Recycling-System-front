@@ -1,104 +1,41 @@
 import { Bell } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { logout } from "../../../../services/auth.service.js";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 import { PATHS } from "../../../../app/routes/paths.js";
 import UserMenu from "../../../../shared/ui/UserMenu.jsx";
 import useNotify from "../../../../shared/hooks/useNotify.js";
 import { cn } from "../../../../shared/lib/cn.js";
-import { getCollectorDashboard, updateCollectorPresence } from "../../../../services/collector.service.js";
-
-function coerceCollectorOnline(payload, fallback = false) {
-  const candidate =
-    payload?.collector ??
-    payload?.user ??
-    payload?.profile ??
-    payload?.data ??
-    payload ??
-    null;
-
-  const statusRaw = String(
-    candidate?.availability ??
-      candidate?.status ??
-      (candidate?.online || candidate?.active || candidate?.isActive ? "active" : "available")
-  ).toLowerCase();
-
-  if (candidate?.online === true || candidate?.active === true || candidate?.isActive === true) return true;
-  if (statusRaw === "active" || statusRaw === "online") return true;
-  if (statusRaw === "available" || statusRaw === "offline") return false;
-  return fallback;
-}
-
-function writeStoredPresence(nextOnline) {
-  try {
-    const raw = typeof window !== "undefined" ? window.sessionStorage.getItem("user") : null;
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!parsed || typeof parsed !== "object") return;
-    const nextStatus = nextOnline ? "online" : "offline";
-    const nextUser = {
-      ...parsed,
-      status: typeof parsed.status === "string" ? nextStatus : parsed.status,
-      availability: nextStatus,
-      online: nextOnline,
-      active: nextOnline,
-      isActive: nextOnline,
-    };
-    window.sessionStorage.setItem("user", JSON.stringify(nextUser));
-    window.dispatchEvent(new Event("storage"));
-  } catch {
-    void 0;
-  }
-}
+import { readCollectorPresence, clearCollectorPresence, writeCollectorPresence } from "../../../../shared/lib/collectorPresenceStorage.js";
+import { updateCollectorPresence } from "../../../../services/collector.service.js";
+import useLogout from "../../../../shared/hooks/useLogout.js";
 
 export default function CollectorNavbar() {
   const notify = useNotify();
-  const { user, displayName, roleLabel, clearAuth } = useStoredUser();
-  const navigate = useNavigate();
-  const initialOnline = useMemo(() => coerceCollectorOnline(user, false), [user]);
-  const [online, setOnline] = useState(initialOnline);
+  const { user, displayName, roleLabel } = useStoredUser();
+  const logoutAndRedirect = useLogout();
+  const initialOnline = useMemo(() => (user ? readCollectorPresence() ?? false : false), [user]);
+  const [online, setOnline] = useState(() => readCollectorPresence() ?? false);
   const [presencePending, setPresencePending] = useState(false);
 
   useEffect(() => {
     setOnline(initialOnline);
   }, [initialOnline]);
 
-  useEffect(() => {
-    let active = true;
-    if (!user) return () => void 0;
-    const desiredOnline = coerceCollectorOnline(user, false);
-    void (async () => {
-      try {
-        const dash = await getCollectorDashboard();
-        if (!active) return;
-        setOnline((prev) => (desiredOnline ? true : coerceCollectorOnline(dash, prev)));
-      } catch (e) {
-        void e;
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
   async function handleTogglePresence() {
     if (presencePending) return;
-    if (online) {
-      notify.info("Trạng thái", "Chỉ chuyển Offline khi logout hoặc tắt trang.");
-      return;
-    }
+    const nextOnline = !online;
     setPresencePending(true);
     try {
-      await notify.promise(updateCollectorPresence({ status: "ONLINE" }), {
+      await notify.promise(updateCollectorPresence({ status: nextOnline ? "ONLINE" : "OFFLINE" }), {
         loadingTitle: "Updating status...",
-        loadingMessage: "Switching to online.",
+        loadingMessage: nextOnline ? "Switching to online." : "Switching to offline.",
         successTitle: "Status updated",
-        successMessage: "You are now online.",
+        successMessage: nextOnline ? "You are now online." : "You are now offline.",
         errorTitle: "Update failed",
         errorMessage: (err) => err?.message || "Unable to update status.",
       });
-      setOnline(true);
-      writeStoredPresence(true);
+      setOnline(nextOnline);
+      writeCollectorPresence(nextOnline);
     } catch (e) {
       void e;
     } finally {
@@ -153,21 +90,9 @@ export default function CollectorNavbar() {
                 { to: PATHS.collector.history, label: "Work History" },
               ]}
               onLogout={() => {
-                void (async () => {
-                  try {
-                      await updateCollectorPresence({ status: "OFFLINE" });
-                      writeStoredPresence(false);
-                    } catch (err) {
-                      void err;
-                    }
-                    try {
-                    await logout();
-                  } catch (err) {
-                    void err;
-                  }
-                  clearAuth();
-                  navigate(PATHS.auth.login, { replace: true });
-                })();
+                void logoutAndRedirect({
+                  onLoggedOut: () => clearCollectorPresence(),
+                });
               }}
             />
           </div>

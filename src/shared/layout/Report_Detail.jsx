@@ -45,8 +45,10 @@ export default function ReportDetail({
   headerRight,
   aside,
   showWaste = true,
+  showWasteTypes = true,
   wasteItemsLabel = 'Estimated Items',
   showSubmittedBy = true,
+  reportInfoExtra,
 }) {
   const safeReport = report ?? null
   const reportCode = safeReport?.reportCode ?? safeReport?.code ?? null
@@ -55,12 +57,12 @@ export default function ReportDetail({
   const displayReportId = safeReport?.id != null && String(safeReport.id).trim() !== '' ? String(safeReport.id) : null
 
   const images = useMemo(() => {
-    const raw = safeReport?.images
+    const raw = safeReport?.images ?? safeReport?.imageUrls ?? safeReport?.image_urls
     return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
   }, [safeReport])
 
   const collectedImages = useMemo(() => {
-    const raw = safeReport?.collectedImages
+    const raw = safeReport?.collectedImages ?? safeReport?.collectedImageUrls ?? safeReport?.collected_image_urls
     return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
   }, [safeReport])
 
@@ -72,9 +74,15 @@ export default function ReportDetail({
         const name = item?.name ? String(item.name) : ''
         const unit = item?.unit ? String(item.unit) : ''
         const w = typeof item?.estimatedWeight === 'number' ? item.estimatedWeight : Number(item?.estimatedWeight)
-        return name && Number.isFinite(w) ? { name, unit, estimatedWeight: w } : null
+        return name ? { name, unit, estimatedWeight: Number.isFinite(w) ? w : null } : null
       })
       .filter(Boolean)
+  }, [safeReport])
+
+  const wasteTypesEntries = useMemo(() => {
+    const raw = safeReport?.types
+    const list = Array.isArray(raw) ? raw : []
+    return list.map((t) => (t == null ? '' : String(t).trim())).filter(Boolean)
   }, [safeReport])
 
   if (!safeReport) {
@@ -145,6 +153,7 @@ export default function ReportDetail({
                 {safeReport?.updatedAt ? <Field label="Updated At" value={formatDateTime(safeReport?.updatedAt)} /> : null}
                 {safeReport?.priority ? <Field label="Priority" value={String(safeReport?.priority)} /> : null}
               </div>
+              {reportInfoExtra ? <div className="mt-6">{reportInfoExtra}</div> : null}
             </CardBody>
           </Card>
 
@@ -170,7 +179,9 @@ export default function ReportDetail({
                             <tr key={it.name}>
                               <td className="px-4 py-3 text-gray-900">{it.name}</td>
                               <td className="px-4 py-3 text-gray-900">
-                                {it.estimatedWeight} {it.unit ? String(it.unit).toLowerCase() : 'kg'}
+                                {it.estimatedWeight != null
+                                  ? `${it.estimatedWeight} ${it.unit ? String(it.unit).toLowerCase() : 'kg'}`
+                                  : '-'}
                               </td>
                             </tr>
                           ))}
@@ -178,9 +189,9 @@ export default function ReportDetail({
                       </table>
                     </div>
                   </div>
-                ) : (
+                ) : !showWasteTypes || !wasteTypesEntries.length ? (
                   <div className="text-gray-600">-</div>
-                )}
+                ) : null}
               </CardBody>
             </Card>
           ) : null}

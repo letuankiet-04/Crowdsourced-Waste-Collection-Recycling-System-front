@@ -5,6 +5,19 @@ import { PATHS } from '../../routes/paths.js'
 import protectedRouteRaw from '../../auth/ProtectedRoute.jsx?raw'
 import roleLayoutRaw from '../../../shared/layout/RoleLayout.jsx?raw'
 import appRoutesRaw from '../../routes/AppRoutes.jsx?raw'
+import clientRaw from '../../../services/http/client.js?raw'
+import apiErrorRaw from '../../../services/http/ApiError.js?raw'
+import unwrapApiResponseRaw from '../../../services/http/unwrapApiResponse.js?raw'
+import notifyProviderRaw from '../../../shared/ui/NotifyProvider.jsx?raw'
+import notifyCoreRaw from '../../../notifications/notifyCore.js?raw'
+import useNotifyRaw from '../../../shared/hooks/useNotify.js?raw'
+import useStoredUserRaw from '../../../shared/hooks/useStoredUser.js?raw'
+import useLogoutRaw from '../../../shared/hooks/useLogout.js?raw'
+import sidebarLogoutButtonRaw from '../../../shared/layout/sidebar/SidebarLogoutButton.jsx?raw'
+import roleSidebarRaw from '../../../shared/layout/sidebar/RoleSidebar.jsx?raw'
+import appSidebarRaw from '../../../shared/layout/AppSidebar.jsx?raw'
+import adminNavItemsRaw from '../../../features/admin/components/navigation/AdminNavItems.jsx?raw'
+import citizenNavItemsRaw from '../../../features/citizen/components/navigation/CitizenNavItems.jsx?raw'
 
 function normalizeVitePath(p) {
   return String(p || '').replace(/^\/src\//, 'src/')
@@ -184,6 +197,47 @@ function extractHooks(raw) {
   return hooks.filter((h) => text.includes(`${h}(`))
 }
 
+function extractServiceEndpoints(raw) {
+  const text = String(raw ?? '')
+  const endpoints = []
+
+  const callRe = /\bapi\.(get|post|put|patch|delete)\(\s*(["'`])([^"'`]+)\2/gi
+  let m
+  while ((m = callRe.exec(text))) {
+    const method = String(m[1] || '').toUpperCase()
+    const url = String(m[3] || '').trim()
+    if (!url) continue
+    if (m[2] === '`' && url.includes('${')) continue
+    endpoints.push({ method, url })
+  }
+
+  const requestRe = /\bapi\.request\(\s*\{([\s\S]*?)\}\s*\)/gi
+  while ((m = requestRe.exec(text))) {
+    const body = String(m[1] || '')
+    const methodMatch = body.match(/\bmethod\s*:\s*(["'`])([a-z]+)\1/i)
+    const urlMatch = body.match(/\burl\s*:\s*(["'`])([^"'`]+)\1/i)
+    const method = String(methodMatch?.[2] || '').toUpperCase()
+    const url = String(urlMatch?.[2] || '').trim()
+    if (method && url) endpoints.push({ method, url })
+  }
+
+  const fetchRe = /\bfetch\(\s*(["'`])(https?:\/\/[^"'`]+)\1/gi
+  while ((m = fetchRe.exec(text))) {
+    endpoints.push({ method: 'FETCH', url: String(m[2] || '').trim() })
+  }
+
+  const seen = new Set()
+  const out = []
+  for (const e of endpoints) {
+    const key = `${e.method} ${e.url}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(e)
+  }
+  out.sort((a, b) => (a.method + a.url).localeCompare(b.method + b.url))
+  return out
+}
+
 function CodeBlock({ code }) {
   return (
     <pre className="mt-3 overflow-auto rounded-2xl border border-slate-200 bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
@@ -271,11 +325,32 @@ function resolveComponentsFromRaw({ entryFile, raw, srcIndex }) {
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function FeatureEntry({ entry, srcIndex }) {
+function FeatureEntry({ entry, srcIndex, rawServiceFiles }) {
   const imports = useMemo(() => parseImports(entry.raw), [entry.raw])
   const importedComponents = useMemo(() => extractImportedComponentNames(imports), [imports])
   const hooks = useMemo(() => extractHooks(entry.raw), [entry.raw])
   const returnLine = useMemo(() => findReturnLine(entry.raw), [entry.raw])
+
+  const serviceUsage = useMemo(() => {
+    const serviceImports = imports.filter((it) => String(it.source || '').includes('/services/'))
+    if (!serviceImports.length) return []
+    const out = []
+    for (const it of serviceImports) {
+      const resolvedSrc = resolveImportToSrcPath(entry.file, it.source)
+      const resolvedFile = resolveToExistingSrcFile(srcIndex, resolvedSrc)
+      const viteKey = toViteSrcKey(resolvedFile)
+      const raw = rawServiceFiles?.[viteKey]
+      const endpoints = extractServiceEndpoints(raw)
+      out.push({
+        source: it.source,
+        file: resolvedFile || it.source,
+        endpoints,
+      })
+    }
+    return out
+      .filter((x) => x.file)
+      .sort((a, b) => String(a.file).localeCompare(String(b.file)))
+  }, [entry.file, imports, rawServiceFiles, srcIndex])
 
   const screenComponents = useMemo(() => {
     if (entry.kind !== 'screen') return []
@@ -339,6 +414,37 @@ function FeatureEntry({ entry, srcIndex }) {
                 </li>
               ))}
             </ul>
+          </div>
+        ) : null}
+
+        {serviceUsage.length ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="text-sm font-semibold text-slate-900">Services & API đang được gọi (theo import)</div>
+            <div className="mt-1 text-xs text-slate-600">
+              Nếu endpoint không hiện ra, thường do url được build bằng template string hoặc gọi qua helper khác.
+            </div>
+            <div className="mt-3 grid gap-2">
+              {serviceUsage.map((s) => (
+                <details key={s.file} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <summary className="cursor-pointer select-none text-xs font-semibold text-slate-800">
+                    <span className="font-mono">{s.file}</span>{' '}
+                    <span className="text-slate-500">·</span>{' '}
+                    <span className="text-slate-600">{s.endpoints.length} endpoint</span>
+                  </summary>
+                  {s.endpoints.length ? (
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-700">
+                      {s.endpoints.map((e) => (
+                        <li key={`${e.method}:${e.url}`}>
+                          <span className="font-semibold">{e.method}</span> <span className="font-mono">{e.url}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-2 text-xs text-slate-600">Không trích được endpoint từ file service này.</div>
+                  )}
+                </details>
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -420,6 +526,15 @@ export default function FeatureKnowledge() {
 
   const rawComponentFolderFiles = useMemo(() => {
     const files = import.meta.glob('/src/features/**/components/**/*.{js,jsx,ts,tsx}', {
+      eager: true,
+      query: '?raw',
+      import: 'default',
+    })
+    return files
+  }, [])
+
+  const rawServiceFiles = useMemo(() => {
+    const files = import.meta.glob('/src/services/**/*.{js,ts}', {
       eager: true,
       query: '?raw',
       import: 'default',
@@ -597,11 +712,74 @@ export default function FeatureKnowledge() {
         code: sliceLines(protectedRouteRaw, 1, 60),
       },
       {
+        title: 'Auth state (sessionStorage): useStoredUser',
+        meta: 'src/shared/hooks/useStoredUser.js',
+        explanation:
+          'Hook đọc sessionStorage.user (JSON) để có user hiện tại, đồng thời cung cấp clearAuth() để xoá token/user khi logout hoặc khi token hết hạn.',
+        code: sliceLines(useStoredUserRaw, 1, 65),
+      },
+      {
         title: 'Layout theo role: RoleLayout.jsx',
         meta: 'src/shared/layout/RoleLayout.jsx',
         explanation:
           'RoleLayout nhận sidebar/navbar/footer qua props và render children ở giữa. Đây là ví dụ quan trọng về "composition" trong React.',
         code: sliceLines(roleLayoutRaw, 1, 80),
+      },
+      {
+        title: 'Sidebar theo role: RoleSidebar + AppSidebar',
+        meta: 'src/shared/layout/sidebar/RoleSidebar.jsx + src/shared/layout/AppSidebar.jsx',
+        explanation:
+          'Sidebar được cấu hình qua navItems theo từng role. AppSidebar render brand + list navItems (có thể là object hoặc JSX element), giúp mỗi role tuỳ biến menu mà vẫn dùng chung layout.',
+        code: `${sliceLines(roleSidebarRaw, 1, 23)}\n\n${sliceLines(appSidebarRaw, 1, 73)}`,
+      },
+      {
+        title: 'navItems theo role: ví dụ Admin vs Citizen',
+        meta: 'src/features/admin/components/navigation/AdminNavItems.jsx + src/features/citizen/components/navigation/CitizenNavItems.jsx',
+        explanation:
+          'Admin dùng navItems dạng object (dễ cấu hình key/to/icon/name). Citizen dùng navItems dạng JSX <SidebarNavItem /> (dễ custom layout cho từng item). Cả hai đều được sidebar nhận và render.',
+        code: `${sliceLines(adminNavItemsRaw, 1, 41)}\n\n${sliceLines(citizenNavItemsRaw, 1, 55)}`,
+      },
+      {
+        title: 'HTTP client: axios + interceptor',
+        meta: 'src/services/http/client.js',
+        explanation:
+          'Đây là “đầu vào” của mọi request API. DEV dùng Vite proxy (/api) nên baseURL="". Interceptor tự gắn Bearer token (trừ login/register), xử lý FormData để upload ảnh, và chuẩn hoá lỗi thành ApiError.',
+        code: sliceLines(clientRaw, 1, 55),
+      },
+      {
+        title: 'Chuẩn hoá error: ApiError',
+        meta: 'src/services/http/ApiError.js',
+        explanation:
+          'Thay vì throw object lạ, project chuẩn hoá lỗi về ApiError(message, { status, data, url }). UI thường chỉ cần dùng err.message.',
+        code: sliceLines(apiErrorRaw, 1, 9),
+      },
+      {
+        title: 'Chuẩn hoá response: unwrapApiResponse',
+        meta: 'src/services/http/unwrapApiResponse.js',
+        explanation:
+          'Backend đôi khi wrap payload dưới key result. Helper này lấy data.result nếu có, còn không thì trả data để service/UI không cần quan tâm format response.',
+        code: sliceLines(unwrapApiResponseRaw, 1, 4),
+      },
+      {
+        title: 'Logout dùng chung: useLogout + SidebarLogoutButton',
+        meta: 'src/shared/hooks/useLogout.js + src/shared/layout/sidebar/SidebarLogoutButton.jsx',
+        explanation:
+          'Hook gom toàn bộ logic logout: (tuỳ chọn) cập nhật presence collector → gọi API logout → clearAuth() → điều hướng về login. SidebarLogoutButton chỉ là UI wrapper gọi hook.',
+        code: `${sliceLines(useLogoutRaw, 1, 39)}\n\n${sliceLines(sidebarLogoutButtonRaw, 1, 35)}`,
+      },
+      {
+        title: 'Toast/notify: Provider + hook',
+        meta: 'src/shared/ui/NotifyProvider.jsx + src/shared/hooks/useNotify.js',
+        explanation:
+          'Pattern dùng chung để show toast: bọc app bằng <NotifyProvider>, rồi gọi const notify = useNotify(); notify.success/error hoặc notify.promise(promise, opts).',
+        code: `${sliceLines(notifyProviderRaw, 90, 148)}\n\n${sliceLines(useNotifyRaw, 1, 8)}`,
+      },
+      {
+        title: 'Toast/notify: helper notifyPromise',
+        meta: 'src/notifications/notifyCore.js',
+        explanation:
+          'Helper này giúp UI hiển thị loading → success/error theo vòng đời của một promise (thường dùng khi submit form hoặc gọi API).',
+        code: sliceLines(notifyCoreRaw, 1, 47),
       },
     ],
     []
@@ -632,7 +810,7 @@ export default function FeatureKnowledge() {
       <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
         <div className="text-base font-semibold text-slate-900">Kiến thức nền (bắt buộc hiểu trước)</div>
         <div className="mt-1 text-sm text-slate-600">
-          Nếu bạn hiểu 3 khối này, bạn sẽ lần ra được hầu hết cách các page trong features hoạt động.
+          Nếu bạn hiểu các khối này, bạn sẽ lần ra được hầu hết cách các page trong features hoạt động.
         </div>
         <div className="mt-4 grid gap-3">
           {foundations.map((b) => (
@@ -686,7 +864,7 @@ export default function FeatureKnowledge() {
                       <div className="text-sm font-semibold text-slate-900">Folder pages</div>
                       <div className="mt-3 grid gap-3">
                         {(pagesFiltered.length ? pagesFiltered : g.pages).map((e) => (
-                          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} />
+                          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} rawServiceFiles={rawServiceFiles} />
                         ))}
                         {!g.pages.length ? <div className="mt-2 text-sm text-slate-600">Không có file pages.</div> : null}
                       </div>
@@ -696,7 +874,7 @@ export default function FeatureKnowledge() {
                       <div className="text-sm font-semibold text-slate-900">Folder components</div>
                       <div className="mt-3 grid gap-3">
                         {(componentsFiltered.length ? componentsFiltered : g.components).map((e) => (
-                          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} />
+                          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} rawServiceFiles={rawServiceFiles} />
                         ))}
                         {!g.components.length ? (
                           <div className="mt-2 text-sm text-slate-600">Feature này chưa có folder components.</div>
@@ -833,7 +1011,7 @@ export default function FeatureKnowledge() {
 
       <div className="mt-6 grid gap-4">
         {filtered.map((e) => (
-          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} />
+          <FeatureEntry key={e.id} entry={e} srcIndex={srcIndex} rawServiceFiles={rawServiceFiles} />
         ))}
       </div>
     </div>

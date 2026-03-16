@@ -10,23 +10,28 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, 'VITE_')
   const apiTarget = (env.VITE_API_BASE_URL || 'http://localhost:8080').trim()
 
+  const apiProxy = {
+    '/api': {
+      target: apiTarget,
+      changeOrigin: true,
+      secure: false,
+      configure: (proxy) => {
+        proxy.on('proxyReq', (proxyReq) => {
+          proxyReq.removeHeader('origin')
+        })
+      },
+    },
+  }
+
   return {
     plugins: [react(), tailwindcss()],
     server: {
       port: 3000,
       strictPort: true,
-      proxy: {
-        '/api': {
-          target: apiTarget,
-          changeOrigin: true,
-          secure: false,
-          configure: (proxy) => {
-            proxy.on('proxyReq', (proxyReq) => {
-              proxyReq.removeHeader('origin')
-            })
-          },
-        },
-      },
+      proxy: apiProxy,
+    },
+    preview: {
+      proxy: apiProxy,
     },
   }
 })
