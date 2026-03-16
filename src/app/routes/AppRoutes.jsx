@@ -15,6 +15,8 @@ import {
   CollectorProfile,
   CollectorReportDetail,
   CollectorTasks,
+  CollectorFeedback,
+  CollectorMyFeedback,
   CreateReport,
   EnterpriseAdminPanel,
   EnterpriseReviewFeedback,
@@ -36,6 +38,7 @@ import {
   CitizenProfile,
   AdminProfile,
   AdminUserManagement,
+  AdminCreateUser,
   AdminReviewFeedback,
   CitizenRewards,
   PointHistory,
@@ -181,6 +184,22 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path={PATHS.collector.feedback}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.myFeedback}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorMyFeedback />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path={PATHS.enterprise.dashboard}
@@ -311,6 +330,15 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['admin']}>
             <AdminUserManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path={PATHS.admin.createUser}
+        element={
+          <ProtectedRoute role={['admin']}>
+            <AdminCreateUser />
           </ProtectedRoute>
         }
       />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
-import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle, Loader2 } from "lucide-react";
+import { Users, UserPlus, Activity, Search, Filter, Download, Eye, Edit2, Key, ChevronLeft, ChevronRight, XCircle, Loader2, UserCircle, Building2, Truck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AdminNavbar from "../components/navigation/AdminNavbar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
@@ -8,9 +9,11 @@ import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import StatCard from "../components/dashboard/StatCard.jsx";
 import { getAdminAccounts } from "../../../services/admin.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
+import { PATHS } from "../../../app/routes/paths.js";
 
 export default function AdminUserManagement() {
   const notify = useNotify();
+  const navigate = useNavigate();
   // Filter State
   const [filter, setFilter] = useState({
     search: "",
@@ -172,13 +175,34 @@ export default function AdminUserManagement() {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in-up">
           <div>
-            <div className="text-sm text-gray-500 font-medium mb-1">Admin / User Management</div>
             <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
           </div>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-md active:scale-95">
-             <UserPlus className="w-5 h-5" />
-             Invite User
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(PATHS.admin.createUser.replace(':role', 'citizen'))}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-all shadow-md active:scale-95"
+            >
+              <UserCircle className="w-5 h-5" />
+              Create Citizen
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(PATHS.admin.createUser.replace(':role', 'enterprise'))}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all shadow-md active:scale-95"
+            >
+              <Building2 className="w-5 h-5" />
+              Create Enterprise
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(PATHS.admin.createUser.replace(':role', 'collector'))}
+              className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all shadow-md active:scale-95"
+            >
+              <Truck className="w-5 h-5" />
+              Create Collector
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -240,7 +264,6 @@ export default function AdminUserManagement() {
                   className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none"
                 >
                    <option value="All">Role: All</option>
-                   <option value="ADMIN">Admin</option>
                    <option value="CITIZEN">Citizen</option>
                    <option value="COLLECTOR">Collector</option>
                    <option value="ENTERPRISE">Enterprise</option>

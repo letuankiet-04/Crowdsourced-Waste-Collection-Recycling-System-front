@@ -15,6 +15,7 @@ import { getAdminSystemAnalytics } from "../../../services/admin.service.js";
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -22,8 +23,10 @@ export default function AdminDashboard() {
         setLoading(true);
         const data = await getAdminSystemAnalytics();
         setAnalytics(data);
-      } catch (error) {
-        console.error("Failed to fetch system analytics:", error);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch system analytics:", err);
+        setError("Failed to load dashboard data. Please refresh.");
       } finally {
         setLoading(false);
       }
@@ -62,7 +65,11 @@ export default function AdminDashboard() {
               <WasteActivityChart />
             </div>
             <div>
-              <RoleDistributionChart />
+              <RoleDistributionChart 
+                analytics={analytics} 
+                loading={loading} 
+                error={error} 
+              />
             </div>
             <div className="lg:col-span-2">
               <CollectByUnitChart />

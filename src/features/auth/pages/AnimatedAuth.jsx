@@ -164,7 +164,7 @@ export default function AnimatedAuth() {
           </div>
 
           <div className="relative mx-auto w-full overflow-hidden rounded-3xl bg-white/90 shadow-2xl ring-1 ring-white/15 backdrop-blur">
-            <div className="relative min-h-[680px] lg:min-h-[620px]">
+            <div className="relative min-h-[800px] lg:min-h-[760px]">
               <DesktopOverlay mode={mode} onGoLogin={goLogin} onGoSignup={goSignup} />
 
               <div

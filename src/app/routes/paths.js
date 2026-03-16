@@ -30,6 +30,9 @@ export const PATHS = {
     history: '/collector/history',
     profile: '/collector/profile',
     reportDetail: '/collector/reports/:reportId',
+    feedback: '/collector/feedback',
+    myFeedback: '/collector/my-feedback',
+    feedbackDetail: '/collector/feedback/:feedbackId',
   },
   enterprise: {
     dashboard: '/enterprise/dashboard',
@@ -51,6 +54,7 @@ export const PATHS = {
     reportDetail: '/admin/reports/:reportId',
     profile: '/admin/profile',
     userManagement: '/admin/users',
+    createUser: '/admin/users/create/:role',
     reviewFeedback: '/admin/review-feedback',
   },
   unauthorized: '/unauthorized',

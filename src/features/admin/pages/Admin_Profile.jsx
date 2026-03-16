@@ -9,7 +9,7 @@ export default function AdminProfile() {
   return (
     <RoleLayout
       sidebar={<AdminSidebar />}
-      navbar={<Navbar brandTitle="Admin Portal" />}
+      navbar={<Navbar brandTitle="" />}
       footer={<CD_Footer />}
     >
       <div className="space-y-8">
