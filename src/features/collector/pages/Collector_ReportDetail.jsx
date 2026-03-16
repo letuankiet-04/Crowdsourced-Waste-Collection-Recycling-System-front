@@ -15,10 +15,8 @@ import CollectReportDialog from "../../../components/collector/CollectReportDial
 import {
   acceptCollectorTask,
   completeCollectorTask,
-  getCollectorCreateReport,
   getCollectorReportByCollectionRequest,
-  getCollectorTasks,
-  getCollectorWorkHistory,
+  getCollectorTaskDetail,
   markCollectorCollected,
   rejectCollectorTask,
   startCollectorTask,
@@ -44,7 +42,7 @@ export default function CollectorReportDetail() {
       updatedAt: stateReport?.updatedAt ?? null,
     };
   });
-  const [createReport, setCreateReport] = useState(null);
+  const [taskDetail, setTaskDetail] = useState(null);
   const [collectorReport, setCollectorReport] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,58 +54,26 @@ export default function CollectorReportDetail() {
       if (!Number.isFinite(requestId)) return;
       setLoading(true);
       try {
-        const [tasksData, historyData] = await Promise.all([
-          getCollectorTasks({ all: true }).catch(() => []),
-          getCollectorWorkHistory().catch(() => []),
+        const [detailData, reportData] = await Promise.all([
+          getCollectorTaskDetail(requestId),
+          getCollectorReportByCollectionRequest(requestId).catch(() => null),
         ]);
-
-        let createData = null;
-        try {
-          createData = await getCollectorCreateReport(requestId);
-        } catch (e) {
-          createData = null;
-          notify.error("Unable to load report info", e?.message || "Request failed");
-        }
-
-        let reportData = null;
-        if (!createData) {
-          try {
-            reportData = await getCollectorReportByCollectionRequest(requestId);
-          } catch {
-            reportData = null;
-          }
-        }
 
         if (!active) return;
 
-        const tasks = Array.isArray(tasksData) ? tasksData : [];
-        const foundTask = tasks.find((t) => Number(t?.id) === requestId) ?? null;
-
-        const history = Array.isArray(historyData) ? historyData : [];
-        const foundHistory =
-          history.find((h) => Number(h?.collectionRequestId) === requestId) ??
-          history.find((h) => Number(h?.id) === requestId) ??
-          null;
-
-        const syntheticTask = foundTask
-          ? foundTask
-          : foundHistory
-            ? {
-                id: foundHistory.collectionRequestId ?? requestId,
-                requestCode: foundHistory.requestCode ?? null,
-                status: foundHistory.status ?? null,
-                createdAt: foundHistory.updatedAt ?? foundHistory.startedAt ?? null,
-                updatedAt: foundHistory.updatedAt ?? null,
-              }
-            : null;
-
-        setTask(syntheticTask);
-        setCreateReport(createData);
+        setTask({
+          id: requestId,
+          requestCode: detailData?.reportCode ?? null,
+          status: detailData?.status ?? null,
+          createdAt: detailData?.createdAt ?? null,
+          updatedAt: null,
+        });
+        setTaskDetail(detailData);
         setCollectorReport(reportData);
       } catch (e) {
         if (!active) return;
         setTask(null);
-        setCreateReport(null);
+        setTaskDetail(null);
         setCollectorReport(null);
         notify.error("Unable to load task", e?.message || "Request failed");
       } finally {
@@ -124,8 +90,8 @@ export default function CollectorReportDetail() {
   const report = useMemo(() => {
     if (!id) return null;
     const baseCoords =
-      createReport?.latitude != null && createReport?.longitude != null
-        ? { lat: Number(createReport.latitude), lng: Number(createReport.longitude) }
+      taskDetail?.latitude != null && taskDetail?.longitude != null
+        ? { lat: Number(taskDetail.latitude), lng: Number(taskDetail.longitude) }
         : stateReport?.coords ?? null;
 
     const collectedCoords =
@@ -143,21 +109,21 @@ export default function CollectorReportDetail() {
       })
       .filter(Boolean);
 
-    const suggestedItems = Array.isArray(createReport?.items) ? createReport.items : [];
-    const suggestedWasteItems = suggestedItems
+    const suggestedCategories = Array.isArray(taskDetail?.categories) ? taskDetail.categories : [];
+    const suggestedWasteItems = suggestedCategories
       .map((it) => {
-        const name = it?.categoryName ? String(it.categoryName) : null;
-        const estimatedWeight = it?.suggestedQuantity != null ? Number(it.suggestedQuantity) : NaN;
+        const name = it?.name ? String(it.name) : null;
+        const estimatedWeight = it?.quantity != null ? Number(it.quantity) : NaN;
         if (!name || !Number.isFinite(estimatedWeight)) return null;
-        return { name, unit: it?.wasteUnit ? String(it.wasteUnit).toLowerCase() : "kg", estimatedWeight };
+        return { name, unit: it?.unit ? String(it.unit).toLowerCase() : "kg", estimatedWeight };
       })
       .filter(Boolean);
 
     return {
       id,
-      collectionRequestId: createReport?.collectionRequestId ?? collectorReport?.collectionRequestId ?? Number(id),
+      collectionRequestId: taskDetail?.collectionRequestId ?? collectorReport?.collectionRequestId ?? Number(id),
       reportCode:
-        createReport?.wasteReportCode ??
+        taskDetail?.reportCode ??
         collectorReport?.reportCode ??
         task?.requestCode ??
         stateReport?.reportCode ??
@@ -166,15 +132,15 @@ export default function CollectorReportDetail() {
       status: task?.status ?? collectorReport?.status ?? stateReport?.status ?? null,
       createdAt: task?.createdAt ?? collectorReport?.createdAt ?? stateReport?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
       updatedAt: task?.updatedAt ?? null,
-      address: createReport?.address ?? stateReport?.address ?? null,
+      address: taskDetail?.address ?? stateReport?.address ?? null,
       coords: baseCoords,
       collectedCoords,
-      images: Array.isArray(createReport?.imageUrls) ? createReport.imageUrls : stateReport?.images ?? stateReport?.imageUrls ?? [],
+      images: Array.isArray(taskDetail?.imageUrls) ? taskDetail.imageUrls : stateReport?.images ?? stateReport?.imageUrls ?? [],
       collectedImages: Array.isArray(collectorReport?.imageUrls) ? collectorReport.imageUrls : [],
-      types: createReport?.wasteType ? [String(createReport.wasteType)] : Array.isArray(stateReport?.types) ? stateReport.types : [],
+      types: taskDetail?.wasteType ? [String(taskDetail.wasteType)] : Array.isArray(stateReport?.types) ? stateReport.types : [],
       wasteItems: collectedWasteItems.length ? collectedWasteItems : suggestedWasteItems,
     };
-  }, [collectorReport, createReport, id, stateReport, task]);
+  }, [collectorReport, id, stateReport, task, taskDetail]);
 
   const rawStatus = String(task?.status || "").trim().toLowerCase();
   const statusLabel = normalizeReportStatus(task?.status);
@@ -202,9 +168,15 @@ export default function CollectorReportDetail() {
     if (!Number.isFinite(requestId)) return;
     try {
       await markCollectorCollected(requestId);
-      const data = await getCollectorTasks({ all: true });
-      const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-      if (next) setTask(next);
+      const nextDetail = await getCollectorTaskDetail(requestId);
+      setTask({
+        id: requestId,
+        requestCode: nextDetail?.reportCode ?? null,
+        status: nextDetail?.status ?? null,
+        createdAt: nextDetail?.createdAt ?? null,
+        updatedAt: null,
+      });
+      setTaskDetail(nextDetail);
       notify.success("Collected", "Task marked as collected.");
     } catch (e) {
       notify.error("Unable to mark collected", e?.message || "Request failed");
@@ -299,11 +271,15 @@ export default function CollectorReportDetail() {
                             if (!Number.isFinite(requestId)) return;
                             try {
                               await acceptCollectorTask(requestId);
-                              const data = await getCollectorTasks({ all: true });
-                              const next = Array.isArray(data)
-                                ? data.find((t) => Number(t?.id) === requestId) ?? null
-                                : null;
-                              setTask(next);
+                              const nextDetail = await getCollectorTaskDetail(requestId);
+                              setTask({
+                                id: requestId,
+                                requestCode: nextDetail?.reportCode ?? null,
+                                status: nextDetail?.status ?? null,
+                                createdAt: nextDetail?.createdAt ?? null,
+                                updatedAt: null,
+                              });
+                              setTaskDetail(nextDetail);
                               notify.success("Accepted", "Task accepted successfully.");
                             } catch (e) {
                               notify.error("Unable to accept task", e?.message || "Request failed");
@@ -333,9 +309,15 @@ export default function CollectorReportDetail() {
                           if (!Number.isFinite(requestId)) return;
                           try {
                             await startCollectorTask(requestId);
-                            const data = await getCollectorTasks({ all: true });
-                            const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-                            setTask(next);
+                            const nextDetail = await getCollectorTaskDetail(requestId);
+                            setTask({
+                              id: requestId,
+                              requestCode: nextDetail?.reportCode ?? null,
+                              status: nextDetail?.status ?? null,
+                              createdAt: nextDetail?.createdAt ?? null,
+                              updatedAt: null,
+                            });
+                            setTaskDetail(nextDetail);
                             notify.success("Started", "Task started successfully.");
                           } catch (e) {
                             notify.error("Unable to start task", e?.message || "Request failed");
@@ -484,10 +466,19 @@ export default function CollectorReportDetail() {
                         try {
                           setRejectSubmitting(true);
                           await rejectCollectorTask(requestId, reason);
-                          const data = await getCollectorTasks({ all: true });
-                          const next = Array.isArray(data) ? data.find((t) => Number(t?.id) === requestId) ?? null : null;
-                          if (next) setTask(next);
-                          else navigate(PATHS.collector.dashboard, { replace: true });
+                          try {
+                            const nextDetail = await getCollectorTaskDetail(requestId);
+                            setTask({
+                              id: requestId,
+                              requestCode: nextDetail?.reportCode ?? null,
+                              status: nextDetail?.status ?? null,
+                              createdAt: nextDetail?.createdAt ?? null,
+                              updatedAt: null,
+                            });
+                            setTaskDetail(nextDetail);
+                          } catch {
+                            navigate(PATHS.collector.dashboard, { replace: true });
+                          }
                           setRejectOpen(false);
                           notify.success("Rejected", "Task rejected. The enterprise can reassign it.");
                         } catch (e) {
@@ -511,7 +502,16 @@ export default function CollectorReportDetail() {
           reportId={report?.id ?? null}
           statusLabel={statusLabel}
           statusVariant={reportStatusToPillVariant(task?.status)}
-          categories={Array.isArray(createReport?.items) ? createReport.items : []}
+          categories={
+            Array.isArray(taskDetail?.categories)
+              ? taskDetail.categories.map((c) => ({
+                  id: c?.id ?? null,
+                  name: c?.name ?? null,
+                  unit: c?.unit ?? null,
+                  estimatedWeight: c?.quantity,
+                }))
+              : []
+          }
           initialAddress={initialCollectedAddress}
           initialCoords={initialCollectedCoords}
           onSubmit={submitCollected}
