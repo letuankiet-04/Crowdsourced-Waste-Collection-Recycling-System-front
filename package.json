@@ -11,6 +11,9 @@
     "vercel-build": "npm run lint && npm run build",
     "preview": "vite preview"
   },
+  "overrides": {
+    "minimist": "^1.2.8"
+  },
   "dependencies": {
     "@goongmaps/goong-js": "^1.0.9",
     "@tailwindcss/vite": "^4.1.18",
