@@ -31,7 +31,10 @@ export default function CollectorLayout({ children }) {
 
     function sendOfflineKeepalive() {
       if (readCollectorPresence() !== true) return;
-      const token = typeof window !== "undefined" ? window.sessionStorage.getItem("token") : null;
+      const token =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("token") || window.localStorage.getItem("token")
+          : null;
       if (!token) return;
       void fetch(`${baseURL}/api/collector/status`, {
         method: "PATCH",
