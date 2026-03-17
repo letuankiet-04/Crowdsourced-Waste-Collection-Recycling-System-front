@@ -87,6 +87,20 @@ export async function getCollectorReportByCollectionRequest(requestId) {
   return unwrapApiResponse(data)
 }
 
+export async function getCollectorFullData() {
+  const [dashboard, tasks, history] = await Promise.all([
+    getCollectorDashboard(),
+    getCollectorTasks({ all: true }),
+    getCollectorWorkHistory(),
+  ])
+
+  return {
+    dashboard,
+    tasks: Array.isArray(tasks) ? tasks : [],
+    history: Array.isArray(history) ? history : [],
+  }
+}
+
 export async function getMyCollectionTasks() {
   return getCollectorTasks()
 }
