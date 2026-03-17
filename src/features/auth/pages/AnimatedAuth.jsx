@@ -82,15 +82,19 @@ export default function AnimatedAuth() {
     if (mode !== 'signup') navigate(PATHS.auth.signup)
   }
 
-  async function handleLogin({ email, password }) {
+  async function handleLogin({ email, password, remember }) {
     setPending(true)
     try {
       const res = await login({ email, password })
-      sessionStorage.setItem('token', res.token)
+      const tokenStorage = remember ? window.localStorage : window.sessionStorage
+      const otherStorage = remember ? window.sessionStorage : window.localStorage
+      tokenStorage.setItem('token', res.token)
+      otherStorage.removeItem('token')
       const { token: _token, ...restRes } = res
       const tokenData = buildStoredUserFromToken(res.token, restRes)
       const userToStore = { ...restRes, ...tokenData }
-      sessionStorage.setItem('user', JSON.stringify(userToStore))
+      tokenStorage.setItem('user', JSON.stringify(userToStore))
+      otherStorage.removeItem('user')
 
       switch (userToStore.role) {
         case 'citizen':
@@ -120,11 +124,13 @@ export default function AnimatedAuth() {
     try {
       const res = await register({ name, email, password })
       sessionStorage.setItem('token', res.token)
+      localStorage.removeItem('token')
       const { token: _token, ...restRes } = res
       const fullName = restRes.fullName ?? restRes.full_name ?? restRes.name ?? restRes.username ?? name ?? null
       const tokenData = buildStoredUserFromToken(res.token, { ...restRes, fullName })
       const userToStore = { ...restRes, ...tokenData }
       sessionStorage.setItem('user', JSON.stringify(userToStore))
+      localStorage.removeItem('user')
 
       switch (userToStore.role) {
         case 'citizen':

@@ -14,7 +14,10 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const url = String(config?.url || '')
   const isTokenlessAuthRequest = url.includes('/api/auth/login') || url.includes('/api/auth/register')
-  const token = typeof window !== 'undefined' ? window.sessionStorage.getItem('token') : null
+  const token =
+    typeof window !== 'undefined'
+      ? window.sessionStorage.getItem('token') || window.localStorage.getItem('token')
+      : null
 
   if (typeof FormData !== 'undefined' && config?.data instanceof FormData) {
     config.headers = config.headers ?? {}
@@ -22,7 +25,10 @@ api.interceptors.request.use((config) => {
     delete config.headers['content-type']
   }
 
-  if (!isTokenlessAuthRequest && token && !config.headers?.Authorization) {
+  const hasAuthHeader =
+    Boolean(config.headers?.Authorization) || Boolean(config.headers?.authorization)
+
+  if (!isTokenlessAuthRequest && token && !hasAuthHeader) {
     config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
   }

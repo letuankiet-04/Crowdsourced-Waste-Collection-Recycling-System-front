@@ -33,7 +33,7 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
       setError('Email and password are required.')
       return
     }
-    onLogin({ email, password }).catch((err) => {
+    onLogin({ email, password, remember: values.remember }).catch((err) => {
       setError(err.message || 'Login failed. Please try again.')
     })
   }

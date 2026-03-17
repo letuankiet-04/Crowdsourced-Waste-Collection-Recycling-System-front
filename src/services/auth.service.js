@@ -10,6 +10,61 @@ function decodeBase64Url(input) {
   return text
 }
 
+function extractToken(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  const direct =
+    payload.token ??
+    payload.accessToken ??
+    payload.access_token ??
+    payload.jwt ??
+    payload.idToken ??
+    payload.id_token ??
+    null
+  if (typeof direct !== 'string') return null
+  let token = direct.trim()
+  if (!token) return null
+  token = token.replace(/^bearer\s+/i, '').trim()
+  return token || null
+}
+
+function normalizeAuthPayload(rawBody) {
+  const candidates = []
+  const primary = unwrapApiResponse(rawBody)
+  candidates.push(primary)
+
+  if (rawBody && typeof rawBody === 'object') {
+    if ('data' in rawBody) candidates.push(rawBody.data)
+    if ('result' in rawBody) candidates.push(rawBody.result)
+  }
+
+  for (const c of candidates) {
+    if (!c || typeof c !== 'object') continue
+    const directToken = extractToken(c)
+    const dataToken = extractToken(c?.data)
+    const resultToken = extractToken(c?.result)
+    const userToken = extractToken(c?.user)
+
+    const token = directToken ?? dataToken ?? resultToken ?? userToken
+    if (!token) continue
+
+    const basePayload =
+      directToken ? c : dataToken ? c.data : resultToken ? c.result : userToken ? c.user : c
+    if (!basePayload || typeof basePayload !== 'object') continue
+
+    const userFields = basePayload?.user && typeof basePayload.user === 'object' ? basePayload.user : null
+    const normalized = { ...(userFields ?? {}), ...(basePayload ?? {}), token }
+    delete normalized.user
+    delete normalized.accessToken
+    delete normalized.access_token
+    delete normalized.jwt
+    delete normalized.idToken
+    delete normalized.id_token
+    return normalized
+  }
+
+  return null
+}
+
 export function parseJwt(token) {
   if (!token) return null
   const parts = String(token).split('.')
@@ -65,9 +120,9 @@ export function buildStoredUserFromToken(token, extra = null) {
 
 export async function login({ email, password }) {
   const { data } = await api.post('/api/auth/login', { email, password })
-  const result = unwrapApiResponse(data)
-  if (!result?.token) throw new Error('Login failed')
-  return result
+  const normalized = normalizeAuthPayload(data)
+  if (!normalized?.token) throw new Error('Login failed')
+  return normalized
 }
 
 export async function register({ name, email, password }) {
@@ -76,9 +131,9 @@ export async function register({ name, email, password }) {
     email,
     password,
   })
-  const result = unwrapApiResponse(data)
-  if (!result?.token) throw new Error('Signup failed')
-  return result
+  const normalized = normalizeAuthPayload(data)
+  if (!normalized?.token) throw new Error('Signup failed')
+  return normalized
 }
 
 export async function logout() {

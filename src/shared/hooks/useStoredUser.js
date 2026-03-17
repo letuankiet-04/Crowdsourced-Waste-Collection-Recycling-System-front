@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function readStoredUser() {
-  const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem("user") : null;
+  const raw =
+    typeof window !== 'undefined'
+      ? window.sessionStorage.getItem("user") || window.localStorage.getItem("user")
+      : null;
   if (!raw) return null;
 
   try {
@@ -58,6 +61,8 @@ export default function useStoredUser() {
   const clearAuth = useCallback(() => {
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   }, []);
 
