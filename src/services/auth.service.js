@@ -86,7 +86,14 @@ export function getRoleFromJwt(token) {
 
 export function buildStoredUserFromToken(token, extra = null) {
   const payload = parseJwt(token)
-  const role = getRoleFromJwt(token)
+  const jwtRole = getRoleFromJwt(token)
+  const extraRole =
+    typeof extra?.role === 'string'
+      ? extra.role
+      : typeof extra?.roles === 'string'
+        ? extra.roles
+        : null
+  const role = extraRole ? String(extraRole).toLowerCase() : jwtRole
   const scope = typeof payload?.scope === 'string' ? payload.scope : ''
   const email = typeof payload?.sub === 'string' ? payload.sub : null
 
