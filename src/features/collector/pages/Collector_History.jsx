@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
-import Button from "../../../shared/ui/Button.jsx";
+import Button from "../../../shared.ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
+import useNotify from "../../../shared/hooks/useNotify.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
@@ -13,6 +14,7 @@ import { getCollectorWorkHistory } from "../../../services/collector.service.js"
 
 export default function CollectorHistory() {
   const { user } = useStoredUser();
+  const notify = useNotify();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
 
@@ -84,16 +86,20 @@ export default function CollectorHistory() {
         const data = await getCollectorWorkHistory();
         if (!active) return;
         setItems(Array.isArray(data) ? data : []);
-      } catch {
+      } catch (e) {
         if (!active) return;
         setItems([]);
+        notify.error(
+          "Không thể tải lịch sử công việc",
+          e?.message || "Dịch vụ cho người thu gom hiện đang gặp sự cố. Vui lòng thử lại sau."
+        );
       }
     };
     if (user) load();
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [notify, user]);
 
   return (
     <CollectorLayout>

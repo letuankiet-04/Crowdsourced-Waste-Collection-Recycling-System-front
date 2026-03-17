@@ -112,7 +112,10 @@ export default function CollectorTasks() {
       } catch (e) {
         if (!active) return;
         setTasks([]);
-        notify.error("Unable to load tasks", e?.message || "Request failed");
+        notify.error(
+          "Không thể tải danh sách nhiệm vụ",
+          e?.message || "Dịch vụ cho người thu gom hiện đang gặp sự cố. Vui lòng thử lại sau."
+        );
       }
     };
     if (user) load();
