@@ -9,7 +9,7 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import { updateCollectorPresence } from "../../../services/collector.service.js";
 import { collectorNavItems } from "../components/navigation/CollectorNavItems.jsx";
 import resolveApiBaseUrl from "../../../services/http/baseUrl.js";
-import { readCollectorPresence } from "../../../shared/lib/collectorPresenceStorage.js";
+import { readCollectorPresence, writeCollectorPresence } from "../../../shared/lib/collectorPresenceStorage.js";
 
 export default function CollectorLayout({ children }) {
   const { user } = useStoredUser();
@@ -17,7 +17,12 @@ export default function CollectorLayout({ children }) {
   useEffect(() => {
     if (!user) return;
 
-    if (readCollectorPresence() === true) {
+    const storedPresence = readCollectorPresence();
+    if (storedPresence === null) {
+      writeCollectorPresence(true);
+    }
+
+    if (storedPresence !== false) {
       void (async () => {
         try {
           await updateCollectorPresence({ status: "ONLINE" });

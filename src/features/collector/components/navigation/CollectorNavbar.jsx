@@ -13,8 +13,13 @@ export default function CollectorNavbar() {
   const notify = useNotify();
   const { user, displayName, roleLabel } = useStoredUser();
   const logoutAndRedirect = useLogout();
-  const initialOnline = useMemo(() => (user ? readCollectorPresence() ?? false : false), [user]);
-  const [online, setOnline] = useState(() => readCollectorPresence() ?? false);
+  const initialOnline = useMemo(() => {
+    if (!user) return false;
+    const stored = readCollectorPresence();
+    if (stored === null) return true;
+    return stored ?? false;
+  }, [user]);
+  const [online, setOnline] = useState(initialOnline);
   const [presencePending, setPresencePending] = useState(false);
 
   useEffect(() => {
