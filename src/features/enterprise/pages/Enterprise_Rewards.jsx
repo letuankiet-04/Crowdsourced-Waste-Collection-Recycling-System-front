@@ -111,7 +111,7 @@ export default function EnterpriseRewards() {
       <div className="space-y-8">
         <PageHeader title="Rewards" description="Reward rules, points, and incentives." />
         <Card>
-          <CardHeader className="py-6 px-8">
+          <CardHeader className="py-6 px-4 sm:px-6 lg:px-8 flex-col sm:flex-row items-start sm:items-center justify-start sm:justify-between gap-4">
             <div>
               <CardTitle className="text-2xl">Vouchers</CardTitle>
               <div className="mt-1 text-sm text-gray-600">
@@ -126,7 +126,7 @@ export default function EnterpriseRewards() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex w-full sm:w-auto flex-wrap items-center gap-3 sm:justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -148,36 +148,36 @@ export default function EnterpriseRewards() {
           </CardHeader>
 
           <CardBody className="p-0">
-            <div className="px-8 pt-6">
+            <div className="px-4 sm:px-6 lg:px-8 pt-6">
               <ValidationError message={error} />
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
+              <table className="w-full table-fixed text-left">
                 <thead className="bg-gray-50/60">
-                  <tr className="text-xs uppercase tracking-wider text-gray-500">
-                    <th className="px-8 py-4 font-bold">Code</th>
-                    <th className="px-8 py-4 font-bold">Title</th>
-                    <th className="px-8 py-4 font-bold">Value</th>
-                    <th className="px-8 py-4 font-bold">Points</th>
-                    <th className="px-8 py-4 font-bold">Valid Until</th>
-                    <th className="px-8 py-4 font-bold">Stock</th>
-                    <th className="px-8 py-4 font-bold text-right">Status</th>
-                    <th className="px-8 py-4 font-bold text-right">Actions</th>
+                  <tr className="text-sm uppercase tracking-wider text-gray-500">
+                    <th className="w-24 px-4 sm:px-6 lg:px-8 py-4 font-bold">Code</th>
+                    <th className="px-4 sm:px-6 lg:px-8 py-4 font-bold">Title</th>
+                    <th className="w-28 px-4 sm:px-6 lg:px-8 py-4 font-bold">Value</th>
+                    <th className="w-28 px-4 sm:px-6 lg:px-8 py-4 font-bold">Points</th>
+                    <th className="w-32 px-4 sm:px-6 lg:px-8 py-4 font-bold">Valid Until</th>
+                    <th className="w-24 px-4 sm:px-6 lg:px-8 py-4 font-bold">Stock</th>
+                    <th className="w-28 px-4 sm:px-6 lg:px-8 py-4 font-bold text-right">Status</th>
+                    <th className="w-44 pl-4 sm:pl-6 lg:pl-8 pr-2 sm:pr-3 lg:pr-4 py-4 font-bold text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
                     <tr>
-                      <td className="px-8 py-8 text-sm text-gray-600" colSpan={8}>
+                      <td className="px-4 sm:px-6 lg:px-8 py-8 text-sm text-gray-600" colSpan={8}>
                         Loading vouchers...
                       </td>
                     </tr>
                   ) : vouchers.length ? (
                     vouchers.map((v) => (
                       <tr key={v?.id ?? v?.voucherCode} className="hover:bg-gray-50/50">
-                        <td className="px-8 py-5 text-sm font-semibold text-gray-900">{v?.voucherCode || "-"}</td>
-                        <td className="px-8 py-5 text-sm text-gray-900">
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] font-semibold text-gray-900">{v?.voucherCode || "-"}</td>
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-900">
                           <div className="flex items-center gap-3">
                             {v?.logoUrl ? (
                               <img alt="logo" src={v.logoUrl} className="h-8 w-8 rounded-lg object-cover border border-gray-100" />
@@ -190,19 +190,19 @@ export default function EnterpriseRewards() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-8 py-5 text-sm text-gray-700">{v?.valueDisplay || "-"}</td>
-                        <td className="px-8 py-5 text-sm text-gray-700">{v?.pointsRequired ?? "-"}</td>
-                        <td className="px-8 py-5 text-sm text-gray-700">{formatDateOnly(v?.validUntil)}</td>
-                        <td className="px-8 py-5 text-sm text-gray-700">{v?.remainingStock ?? "-"}</td>
-                        <td className="px-8 py-5 text-sm text-right">
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{v?.valueDisplay || "-"}</td>
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{v?.pointsRequired ?? "-"}</td>
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{formatDateOnly(v?.validUntil)}</td>
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{v?.remainingStock ?? "-"}</td>
+                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-right">
                           <StatusPill variant={v?.active ? "green" : "red"}>{v?.active ? "Active" : "Inactive"}</StatusPill>
                         </td>
-                        <td className="px-8 py-5 text-sm text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="pl-4 sm:pl-6 lg:pl-8 pr-2 sm:pr-3 lg:pr-4 py-4 text-[15px] text-right">
+                          <div className="flex flex-nowrap items-center justify-end gap-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="rounded-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                              className="rounded-full h-8 px-2 text-xs border-gray-300 text-gray-700 hover:bg-gray-50"
                               onClick={() => openVoucherDetail(v)}
                               disabled={loading || selectedVoucherLoading}
                             >
@@ -211,7 +211,7 @@ export default function EnterpriseRewards() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="rounded-full"
+                              className="rounded-full h-8 px-2 text-xs"
                               onClick={() => openVoucherEdit(v)}
                               disabled={loading || selectedVoucherLoading}
                             >
@@ -220,7 +220,7 @@ export default function EnterpriseRewards() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="rounded-full border-red-600 text-red-700 hover:bg-red-50 hover:text-red-700"
+                              className="rounded-full h-8 px-2 text-xs border-red-600 text-red-700 hover:bg-red-50 hover:text-red-700"
                               onClick={() => {
                                 setSelectedVoucher(v);
                                 setDeleteOpen(true);
@@ -235,7 +235,7 @@ export default function EnterpriseRewards() {
                     ))
                   ) : (
                     <tr>
-                      <td className="px-8 py-10 text-sm text-gray-600" colSpan={8}>
+                      <td className="px-4 sm:px-6 lg:px-8 py-10 text-sm text-gray-600" colSpan={8}>
                         No vouchers found.
                       </td>
                     </tr>
@@ -245,7 +245,7 @@ export default function EnterpriseRewards() {
             </div>
           </CardBody>
 
-          <CardFooter className="px-8 py-6 flex items-center justify-between">
+          <CardFooter className="px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
             <div className="text-sm text-gray-600">{loading ? "Loading..." : `${totalCount} voucher(s)`}</div>
             <Button
               variant="outline"
