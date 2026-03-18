@@ -125,10 +125,11 @@ export async function login({ email, password }) {
   return normalized
 }
 
-export async function register({ name, email, password }) {
+export async function register({ name, email, phone, password }) {
   const { data } = await api.post('/api/auth/register', {
     fullName: name,
     email,
+    phone,
     password,
   })
   const normalized = normalizeAuthPayload(data)
@@ -141,8 +142,45 @@ export async function logout() {
 }
 
 export async function updateProfile(userData) {
-  const { data } = await api.put('/api/users/profile', userData ?? {})
-  return unwrapApiResponse(data)
+  const role = normalizeRole(userData?.role ?? userData?.roleCode)
+  const endpoint =
+    role === 'citizen'
+      ? '/api/citizen/profile'
+      : role === 'enterprise'
+        ? '/api/enterprise/profile'
+        : role === 'collector'
+          ? '/api/collector/profile'
+          : '/api/users/profile'
+
+  const payload =
+    role === 'citizen'
+      ? {
+          fullName: userData?.fullName ?? undefined,
+          address: userData?.address ?? undefined,
+          phone: userData?.phone ?? undefined,
+          ward: userData?.ward ?? undefined,
+          city: userData?.city ?? undefined,
+        }
+      : role === 'enterprise'
+        ? {
+            name: userData?.name ?? userData?.fullName ?? undefined,
+            address: userData?.address ?? undefined,
+            phone: userData?.phone ?? undefined,
+            email: userData?.email ?? undefined,
+            serviceWards: userData?.serviceWards ?? userData?.service_wards ?? undefined,
+            serviceCities: userData?.serviceCities ?? userData?.service_cities ?? undefined,
+          }
+        : role === 'collector'
+          ? {
+              fullName: userData?.fullName ?? undefined,
+              email: userData?.email ?? undefined,
+              vehicleType: userData?.vehicleType ?? userData?.vehicle_type ?? undefined,
+              vehiclePlate: userData?.vehiclePlate ?? userData?.vehicle_plate ?? undefined,
+            }
+          : userData ?? {}
+
+  const { data } = await api.put(endpoint, payload)
+  return sanitizeProfile(unwrapApiResponse(data))
 }
 
 export async function changePassword({ currentPassword, newPassword }) {
@@ -151,4 +189,36 @@ export async function changePassword({ currentPassword, newPassword }) {
     newPassword,
   })
   return unwrapApiResponse(data)
+}
+
+function normalizeRole(role) {
+  if (typeof role !== 'string') return null
+  const trimmed = role.trim()
+  return trimmed ? trimmed.toLowerCase() : null
+}
+
+export async function getMyProfileByRole(role) {
+  const normalized = normalizeRole(role)
+  const endpoint =
+    normalized === 'citizen'
+      ? '/api/citizen/profile'
+      : normalized === 'enterprise'
+        ? '/api/enterprise/profile'
+        : normalized === 'collector'
+          ? '/api/collector/profile'
+          : null
+
+  if (!endpoint) return null
+
+  const { data } = await api.put(endpoint, {})
+  return sanitizeProfile(unwrapApiResponse(data))
+}
+
+function sanitizeProfile(profile) {
+  if (!profile || typeof profile !== 'object') return profile
+  const cloned = { ...profile }
+  delete cloned.password
+  delete cloned.passwordHash
+  delete cloned.password_hash
+  return cloned
 }

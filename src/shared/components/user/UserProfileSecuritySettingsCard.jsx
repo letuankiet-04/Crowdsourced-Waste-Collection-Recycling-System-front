@@ -11,7 +11,6 @@ export default function UserProfileSecuritySettingsCard() {
   const [pwdForm, setPwdForm] = useState({ current: "", next: "", confirm: "" });
   const [pwdError, setPwdError] = useState("");
   const [pwdSuccess, setPwdSuccess] = useState("");
-  const visCurrent = usePasswordVisibility(false);
   const visNext = usePasswordVisibility(false);
   const visConfirm = usePasswordVisibility(false);
 
@@ -71,19 +70,9 @@ export default function UserProfileSecuritySettingsCard() {
           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Current Password</div>
           <TextField
             id="current_password"
-            type={visCurrent.visible ? "text" : "password"}
+            type="password"
             value={pwdForm.current}
             onChange={handlePwdChange("current")}
-            rightSlot={
-              <button
-                type="button"
-                onClick={visCurrent.toggle}
-                className="text-slate-500 hover:text-slate-700"
-                aria-label={visCurrent.visible ? "Hide password" : "Show password"}
-              >
-                {visCurrent.visible ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            }
           />
         </div>
         <div className="grid gap-4">

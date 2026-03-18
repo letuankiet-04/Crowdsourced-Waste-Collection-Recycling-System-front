@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useStoredUser from "../../hooks/useStoredUser.js";
 import { cn } from "../../lib/cn.js";
-import { updateProfile } from "../../../services/auth.service.js";
+import { getMyProfileByRole, updateProfile } from "../../../services/auth.service.js";
 import UserProfileHeader from "./UserProfileHeader.jsx";
 import UserProfilePersonalDetailsCard from "./UserProfilePersonalDetailsCard.jsx";
 import UserProfileSecuritySettingsCard from "./UserProfileSecuritySettingsCard.jsx";
-import UserProfileSystemInfoCard from "./UserProfileSystemInfoCard.jsx";
-import { formatDate, formatDateTime } from "./userProfile.utils.js";
 
 export default function UserProfile({ user: propUser, className }) {
   const { user: storedUser } = useStoredUser();
@@ -15,6 +13,7 @@ export default function UserProfile({ user: propUser, className }) {
   const [isEditing, setIsEditing] = useState(false);
   const [pending, setPending] = useState(false);
   const [formData, setFormData] = useState({});
+  const hydrateRef = useRef("");
 
   useEffect(() => {
     if (user) {
@@ -29,13 +28,74 @@ export default function UserProfile({ user: propUser, className }) {
     }
   }, [user]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateProfile() {
+      if (!user) return;
+      if (isEditing) return;
+
+      const roleNormalized = String(user.role ?? user.roleCode ?? "").toLowerCase();
+      if (roleNormalized !== "citizen" && roleNormalized !== "enterprise") return;
+
+      const keyBase = String(user.email ?? user.id ?? user.citizenId ?? user.enterpriseId ?? "");
+      const hydrateKey = `${roleNormalized}:${keyBase}`;
+      if (hydrateRef.current === hydrateKey) return;
+      hydrateRef.current = hydrateKey;
+
+      const missingAddress =
+        !user.address || (roleNormalized === "citizen" && (!user.city || !user.ward));
+      const missingPhone = !user.phone;
+      if (!missingAddress && !missingPhone) return;
+
+      try {
+        const profile = await getMyProfileByRole(roleNormalized);
+        if (cancelled || !profile) return;
+
+        setFormData((prev) => {
+          const next = { ...prev };
+          if (typeof profile.phone === "string" && profile.phone.trim() && !String(prev.phone ?? "").trim()) next.phone = profile.phone;
+          if (typeof profile.address === "string" && profile.address.trim() && !String(prev.address ?? "").trim()) next.address = profile.address;
+          if (roleNormalized === "citizen") {
+            if (typeof profile.city === "string" && profile.city.trim() && !String(prev.city ?? "").trim()) next.city = profile.city;
+            if (typeof profile.ward === "string" && profile.ward.trim() && !String(prev.ward ?? "").trim()) next.ward = profile.ward;
+          }
+          return next;
+        });
+
+        const mergedUser = { ...user, ...profile };
+        const serialized = JSON.stringify(mergedUser);
+        const storedSession = window.sessionStorage.getItem("user");
+        const storedLocal = window.localStorage.getItem("user");
+        if (storedSession) window.sessionStorage.setItem("user", serialized);
+        if (storedLocal) window.localStorage.setItem("user", serialized);
+
+        try {
+          window.dispatchEvent(new StorageEvent("storage", { key: "user", newValue: serialized }));
+        } catch {
+          window.dispatchEvent(new Event("storage"));
+        }
+      } catch {
+        return;
+      }
+    }
+
+    hydrateProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isEditing]);
+
   const role = useMemo(() => (user?.role || user?.roleCode || "User").toUpperCase(), [user?.role, user?.roleCode]);
   const enterpriseId = useMemo(() => user?.enterpriseId ?? user?.enterprise_id ?? null, [user?.enterpriseId, user?.enterprise_id]);
   const enterpriseName = useMemo(() => user?.enterpriseName ?? user?.enterprise_name ?? null, [user?.enterpriseName, user?.enterprise_name]);
   const location = useMemo(() => {
-    if (formData.address) return formData.city ? `${formData.address}, ${formData.city}` : formData.address;
-    if (formData.city) return formData.city;
-    if (formData.ward) return `${formData.ward}`;
+    const address = typeof formData.address === "string" ? formData.address.trim() : "";
+    const ward = typeof formData.ward === "string" ? formData.ward.trim() : "";
+    const city = typeof formData.city === "string" ? formData.city.trim() : "";
+
+    const parts = [address, ward, city].filter(Boolean);
+    if (parts.length) return parts.join(", ");
     return "Location not set";
   }, [formData.address, formData.city, formData.ward]);
   const status = useMemo(() => {
@@ -43,8 +103,6 @@ export default function UserProfile({ user: propUser, className }) {
     return user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase();
   }, [user?.status]);
   const isVerified = useMemo(() => status.toLowerCase() === 'active', [status]);
-  const createdAt = useMemo(() => formatDate(user?.createdAt), [user?.createdAt]);
-  const lastLogin = useMemo(() => formatDateTime(user?.lastLogin), [user?.lastLogin]);
   const membership = useMemo(() => {
     const totalPoints = user?.totalPoints;
     if (totalPoints) {
@@ -73,15 +131,29 @@ export default function UserProfile({ user: propUser, className }) {
   const handleSave = async () => {
       setPending(true);
       try {
-          // 1. Call API to update profile
           const updatedUser = await updateProfile({ ...user, ...formData });
+          const mergedUser = { ...user, ...updatedUser, ...formData };
+          const serialized = JSON.stringify(mergedUser);
+          const hasLocalToken = Boolean(window.localStorage.getItem("token"));
+          const targetStorage = hasLocalToken ? window.localStorage : window.sessionStorage;
+          const otherStorage = hasLocalToken ? window.sessionStorage : window.localStorage;
+          targetStorage.setItem("user", serialized);
+          otherStorage.removeItem("user");
+
+          try {
+            window.dispatchEvent(new StorageEvent("storage", { key: "user", newValue: serialized }));
+          } catch {
+            window.dispatchEvent(new Event("storage"));
+          }
           
-          // 2. Update Session Storage
-          sessionStorage.setItem('user', JSON.stringify(updatedUser));
-          
-          // 3. Force re-render (or trigger storage event) - simple reload for now or rely on hook if it listened to storage
-          window.dispatchEvent(new Event("storage"));
-          
+          setFormData({
+            fullName: mergedUser.fullName || "",
+            email: mergedUser.email || "",
+            phone: mergedUser.phone || "",
+            address: mergedUser.address || "",
+            city: mergedUser.city || "",
+            ward: mergedUser.ward || "",
+          });
           setIsEditing(false);
       } catch (error) {
           console.error("Failed to update profile", error);
@@ -122,18 +194,14 @@ export default function UserProfile({ user: propUser, className }) {
           isEditing={isEditing}
           onChange={handleInputChange}
           location={location}
-        />
-        <UserProfileSystemInfoCard
           isVerified={isVerified}
           status={status}
           enterpriseId={enterpriseId}
           enterpriseName={enterpriseName}
           membership={membership}
-          createdAt={createdAt}
-          lastLogin={lastLogin}
         />
+        <UserProfileSecuritySettingsCard />
       </div>
-      <UserProfileSecuritySettingsCard />
     </div>
   );
 }

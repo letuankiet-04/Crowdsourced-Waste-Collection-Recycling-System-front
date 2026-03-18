@@ -37,7 +37,7 @@ export default function useStoredUser() {
 
   useEffect(() => {
     function handleStorage(e) {
-      if (e.key === "user") setUser(readStoredUser());
+      if (!e || e.key == null || e.key === "user") setUser(readStoredUser());
     }
 
     window.addEventListener("storage", handleStorage);

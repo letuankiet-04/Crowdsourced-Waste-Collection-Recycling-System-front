@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Edit, Loader2, MapPin, MessageSquare, Save, User, X } from "lucide-react";
+import { Edit, Loader2, MapPin, Save, User, X } from "lucide-react";
 
 const UserProfileHeader = memo(function UserProfileHeader({ fullName, role, location, avatarUrl, isEditing, pending, onEdit, onCancel, onSave }) {
   return (
@@ -50,13 +50,6 @@ const UserProfileHeader = memo(function UserProfileHeader({ fullName, role, loca
             >
               <Edit size={16} />
               Edit
-            </button>
-            <button
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-200 text-sm"
-              type="button"
-            >
-              <MessageSquare size={16} />
-              Contact
             </button>
           </>
         )}

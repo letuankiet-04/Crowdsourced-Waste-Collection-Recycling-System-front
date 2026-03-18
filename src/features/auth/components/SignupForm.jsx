@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Lock, Mail, UserRound, X } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, Phone, UserRound, X } from 'lucide-react'
 import { cn } from '../../../shared/lib/cn.js'
 import TextField from '../../../shared/ui/TextField.jsx'
 import LoadingButton from '../../../shared/ui/LoadingButton.jsx'
 import usePasswordVisibility from '../../../shared/hooks/usePasswordVisibility.js'
 
 export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin }) {
-  const [values, setValues] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [values, setValues] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' })
   const passwordVisibility = usePasswordVisibility(false)
   const confirmVisibility = usePasswordVisibility(false)
   const [error, setError] = useState('')
@@ -28,13 +28,18 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
     if (pending) return
     const name = values.name.trim()
     const email = values.email.trim()
+    const phone = values.phone.trim()
     const password = values.password
     if (!agreed) {
       setError('You must agree to the Terms of Service and Privacy Policy to create an account.')
       return
     }
-    if (!name || !email || !password) {
+    if (!name || !email || !phone || !password) {
       setError('Please fill in all fields.')
+      return
+    }
+    if (!/^\+?\d{9,15}$/.test(phone)) {
+      setError('Please enter a valid phone number.')
       return
     }
     if (password.length < 6) {
@@ -45,7 +50,7 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
       setError('Passwords do not match.')
       return
     }
-    Promise.resolve(onSignup({ name, email, password })).catch((err) => {
+    Promise.resolve(onSignup({ name, email, phone, password })).catch((err) => {
       setError(err?.message || 'Signup failed. Please try again.')
     })
   }
@@ -53,7 +58,7 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
   return (
     <form
       className={cn(
-        'grid gap-4 transition-all duration-700 ease-in-out',
+        'grid gap-3 transition-all duration-700 ease-in-out',
         isActive ? 'opacity-100 translate-y-0' : 'pointer-events-none absolute inset-0 opacity-0 translate-y-4'
       )}
       onSubmit={handleSubmit}
@@ -79,6 +84,18 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
         placeholder="you@example.com"
         disabled={pending}
         leftIcon={Mail}
+        accent={accent}
+      />
+      <TextField
+        id="signup_phone"
+        label="Phone number"
+        type="tel"
+        autoComplete="tel"
+        value={values.phone}
+        onChange={handleChange('phone')}
+        placeholder="e.g. 0912345678"
+        disabled={pending}
+        leftIcon={Phone}
         accent={accent}
       />
       <TextField

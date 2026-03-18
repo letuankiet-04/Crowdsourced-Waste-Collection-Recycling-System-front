@@ -119,10 +119,10 @@ export default function AnimatedAuth() {
     }
   }
 
-  async function handleSignup({ name, email, password }) {
+  async function handleSignup({ name, email, phone, password }) {
     setPending(true)
     try {
-      const res = await register({ name, email, password })
+      const res = await register({ name, email, phone, password })
       sessionStorage.setItem('token', res.token)
       localStorage.removeItem('token')
       const { token: _token, ...restRes } = res
@@ -170,7 +170,7 @@ export default function AnimatedAuth() {
           </div>
 
           <div className="relative mx-auto w-full overflow-hidden rounded-3xl bg-white/90 shadow-2xl ring-1 ring-white/15 backdrop-blur">
-            <div className="relative min-h-[680px] lg:min-h-[620px]">
+            <div className="relative min-h-[680px] lg:min-h-[660px]">
               <DesktopOverlay mode={mode} onGoLogin={goLogin} onGoSignup={goSignup} />
 
               <div
@@ -179,9 +179,9 @@ export default function AnimatedAuth() {
                   mode === 'signup' ? 'lg:translate-x-full' : 'lg:translate-x-0'
                 )}
               >
-                <div className="px-6 py-10 sm:px-10">
-                  <div className="mx-auto max-w-md">
-                    <div className="mb-8 flex items-center justify-between gap-4">
+                <div className="h-full overflow-y-auto px-6 py-6 sm:px-10">
+                  <div className="mx-auto max-w-lg">
+                    <div className="mb-6 flex items-center justify-between gap-4">
                       <div>
                         <div className="text-2xl font-semibold tracking-tight text-slate-900">
                           {mode === 'signup' ? 'Create account' : 'Login'}
