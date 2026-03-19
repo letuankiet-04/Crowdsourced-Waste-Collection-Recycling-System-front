@@ -183,10 +183,30 @@ export async function updateProfile(userData) {
   return sanitizeProfile(unwrapApiResponse(data))
 }
 
-export async function changePassword({ currentPassword, newPassword }) {
-  const { data } = await api.post('/api/users/change-password', {
+export async function changePassword({ currentPassword, newPassword, confirmNewPassword }) {
+  const storedUser = readStoredUser()
+  const role =
+    normalizeRole(storedUser?.role ?? storedUser?.roleCode) ??
+    getRoleFromJwt(
+      typeof window !== 'undefined'
+        ? window.sessionStorage.getItem('token') || window.localStorage.getItem('token')
+        : null,
+    )
+  const endpoint =
+    role === 'citizen'
+      ? '/api/citizen/password'
+      : role === 'enterprise'
+        ? '/api/enterprise/password'
+        : role === 'collector'
+          ? '/api/collector/password'
+          : null
+
+  if (!endpoint) throw new Error('Unsupported user role for password change')
+
+  const { data } = await api.put(endpoint, {
     currentPassword,
     newPassword,
+    confirmNewPassword: confirmNewPassword ?? newPassword,
   })
   return unwrapApiResponse(data)
 }
@@ -195,6 +215,20 @@ function normalizeRole(role) {
   if (typeof role !== 'string') return null
   const trimmed = role.trim()
   return trimmed ? trimmed.toLowerCase() : null
+}
+
+function readStoredUser() {
+  const raw =
+    typeof window !== 'undefined'
+      ? window.sessionStorage.getItem('user') || window.localStorage.getItem('user')
+      : null
+  if (!raw) return null
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
 }
 
 export async function getMyProfileByRole(role) {

@@ -39,7 +39,11 @@ export default function UserProfileSecuritySettingsCard() {
     setPwdError("");
     setPwdSuccess("");
     try {
-      await changePassword({ currentPassword: pwdForm.current, newPassword: pwdForm.next });
+      await changePassword({
+        currentPassword: pwdForm.current,
+        newPassword: pwdForm.next,
+        confirmNewPassword: pwdForm.confirm,
+      });
       setPwdSuccess("Password updated successfully.");
       setPwdForm({ current: "", next: "", confirm: "" });
     } catch (e) {
