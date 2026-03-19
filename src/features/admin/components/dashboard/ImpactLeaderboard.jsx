@@ -13,6 +13,14 @@ function getInitials(name) {
     .slice(0, 2);
 }
 
+function toNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (value == null) return 0;
+  const cleaned = String(value).replace(/,/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function UserAvatar({ name, className = "" }) {
   const initials = getInitials(name);
   return (
@@ -154,7 +162,7 @@ function CitizenLeaderboardTable({ title, rows, loading, error }) {
                   </td>
                   <td className="py-4 px-2 text-right">
                     <span className="text-lg font-bold text-green-600 italic">
-                      {row.totalPoints?.toLocaleString() ?? 0}
+                      {toNumber(row.totalPoints ?? row.totalPoint).toLocaleString()}
                     </span>
                   </td>
                 </tr>
