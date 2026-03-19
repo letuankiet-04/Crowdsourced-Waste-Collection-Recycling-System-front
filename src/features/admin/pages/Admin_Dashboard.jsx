@@ -11,17 +11,20 @@ import ImpactLeaderboard from "../components/dashboard/ImpactLeaderboard.jsx";
 import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import { useEffect, useState } from "react";
 import { getAdminSystemAnalytics } from "../../../services/admin.service.js";
+import { getPendingAdminFeedbackCount } from "../../../services/feedback.service.js";
 
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState(null);
+  const [pendingFeedbackCount, setPendingFeedbackCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchAnalytics() {
       try {
         setLoading(true);
-        const data = await getAdminSystemAnalytics();
+        const [data, pendingCount] = await Promise.all([getAdminSystemAnalytics(), getPendingAdminFeedbackCount()]);
         setAnalytics(data);
+        setPendingFeedbackCount(pendingCount);
       } catch (error) {
         console.error("Failed to fetch system analytics:", error);
       } finally {
@@ -52,7 +55,7 @@ export default function AdminDashboard() {
 
         {/* SUMMARY CARDS */}
         <div className="animate-fade-in-up">
-          <SummaryCards analytics={analytics} loading={loading} />
+          <SummaryCards analytics={analytics} pendingFeedbackCount={pendingFeedbackCount} loading={loading} />
         </div>
 
         {/* CHARTS SECTION */}

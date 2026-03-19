@@ -1,7 +1,7 @@
 import { Users, AlertCircle, Trash2 } from "lucide-react";
 import StatCard from "./StatCard.jsx";
 
-export default function SummaryCards({ analytics, loading }) {
+export default function SummaryCards({ analytics, pendingFeedbackCount, loading }) {
   const stats = [
     {
       title: "Total Active Users",
@@ -10,8 +10,8 @@ export default function SummaryCards({ analytics, loading }) {
       color: "blue",
     },
     {
-      title: "Pending Reports",
-      value: analytics?.reportStats?.pending ?? 0,
+      title: "Pending Feedback",
+      value: pendingFeedbackCount ?? 0,
       icon: <AlertCircle className="w-6 h-6" />,
       color: "orange",
     },

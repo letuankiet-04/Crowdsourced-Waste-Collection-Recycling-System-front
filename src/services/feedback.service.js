@@ -56,3 +56,13 @@ export async function resolveAdminFeedback(id, payload) {
   const { data } = await api.post(`/api/admin/complaints/${id}/resolve`, payload)
   return unwrapApiResponse(data)
 }
+
+export async function getPendingAdminFeedbackCount() {
+  const list = await getAdminFeedbacks({ _: Date.now() })
+  if (!Array.isArray(list)) return 0
+  return list.filter((item) => {
+    const status = String(item?.status || '').toUpperCase()
+    if (status === 'REJECT' || status === 'REJECTED') return false
+    return status === 'PENDING'
+  }).length
+}
