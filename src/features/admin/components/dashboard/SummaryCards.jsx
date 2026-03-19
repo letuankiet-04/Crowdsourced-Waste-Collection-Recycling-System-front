@@ -1,23 +1,31 @@
 import { Users, AlertCircle, Trash2 } from "lucide-react";
 import StatCard from "./StatCard.jsx";
 
-export default function SummaryCards({ analytics, pendingFeedbackCount, loading }) {
+function toNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (value == null) return 0;
+  const cleaned = String(value).replace(/,/g, "");
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export default function SummaryCards({ totalActiveUsers, pendingFeedbackCount, monthlyWasteKg, loading }) {
   const stats = [
     {
       title: "Total Active Users",
-      value: analytics?.citizenActivityStats?.totalCitizens ?? 0,
+      value: toNumber(totalActiveUsers).toLocaleString(),
       icon: <Users className="w-6 h-6" />,
       color: "blue",
     },
     {
       title: "Pending Feedback",
-      value: pendingFeedbackCount ?? 0,
+      value: toNumber(pendingFeedbackCount).toLocaleString(),
       icon: <AlertCircle className="w-6 h-6" />,
       color: "orange",
     },
     {
       title: "Monthly Waste Collected",
-      value: `${analytics?.collectorActivityStats?.totalWasteCollected ?? 0} kg`,
+      value: `${toNumber(monthlyWasteKg).toLocaleString()} kg`,
       icon: <Trash2 className="w-6 h-6" />,
       color: "green",
     },

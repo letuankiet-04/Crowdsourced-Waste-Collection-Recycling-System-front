@@ -10,21 +10,31 @@ import CollectByUnitChart from "../components/dashboard/CollectByUnitChart.jsx";
 import ImpactLeaderboard from "../components/dashboard/ImpactLeaderboard.jsx";
 import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import { useEffect, useState } from "react";
-import { getAdminSystemAnalytics } from "../../../services/admin.service.js";
+import { getAdminAccounts, getAdminCollectedWeightDailyChart } from "../../../services/admin.service.js";
 import { getPendingAdminFeedbackCount } from "../../../services/feedback.service.js";
 
 export default function AdminDashboard() {
-  const [analytics, setAnalytics] = useState(null);
   const [pendingFeedbackCount, setPendingFeedbackCount] = useState(0);
+  const [totalActiveUsers, setTotalActiveUsers] = useState(0);
+  const [monthlyWasteKg, setMonthlyWasteKg] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchAnalytics() {
       try {
         setLoading(true);
-        const [data, pendingCount] = await Promise.all([getAdminSystemAnalytics(), getPendingAdminFeedbackCount()]);
-        setAnalytics(data);
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+
+        const [pendingCount, activeUsers, monthlyWeight] = await Promise.all([
+          getPendingAdminFeedbackCount(),
+          getAdminAccounts({ status: "active" }),
+          getAdminCollectedWeightDailyChart(year, month),
+        ]);
         setPendingFeedbackCount(pendingCount);
+        setTotalActiveUsers(Array.isArray(activeUsers) ? activeUsers.length : 0);
+        setMonthlyWasteKg(monthlyWeight?.totalWeightKg ?? 0);
       } catch (error) {
         console.error("Failed to fetch system analytics:", error);
       } finally {
@@ -55,7 +65,12 @@ export default function AdminDashboard() {
 
         {/* SUMMARY CARDS */}
         <div className="animate-fade-in-up">
-          <SummaryCards analytics={analytics} pendingFeedbackCount={pendingFeedbackCount} loading={loading} />
+          <SummaryCards
+            totalActiveUsers={totalActiveUsers}
+            pendingFeedbackCount={pendingFeedbackCount}
+            monthlyWasteKg={monthlyWasteKg}
+            loading={loading}
+          />
         </div>
 
         {/* CHARTS SECTION */}
