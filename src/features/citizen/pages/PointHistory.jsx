@@ -31,6 +31,22 @@ export default function PointHistory() {
     return 'text-gray-500';
   };
 
+  const getActivityLabel = (item) => {
+    const reportId = item?.reportId ?? item?.reportID ?? item?.report_id ?? item?.report?.id;
+    if (reportId != null && String(reportId).trim() !== '') return `Report #${reportId}`;
+
+    const pointsValue = toNumber(item?.point ?? item?.points ?? 0);
+    if (pointsValue < 0) return 'Đổi voucher';
+
+    return item?.activity ?? item?.description ?? 'Hoạt động';
+  };
+
+  const getDateLabel = (item) => {
+    if (item?.date) return item.date;
+    if (item?.createdAt) return new Date(item.createdAt).toLocaleDateString();
+    return new Date().toLocaleDateString();
+  };
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -181,28 +197,31 @@ export default function PointHistory() {
             <table className="w-full text-left table-fixed">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="py-3 px-4 w-32 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Activity</th>
                   <th className="py-3 px-4 w-44 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Points Change</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {historyData.map((item, idx) => (
-                  <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
-                    {(() => {
-                      const pointsValue = toNumber(item.point ?? item.points ?? 0);
-                      return (
-                        <>
-                          <td className="py-3 px-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                            {item.date || new Date().toLocaleDateString()}
-                          </td>
-                          <td className={`py-3 px-4 text-right font-bold tabular-nums whitespace-nowrap ${pointsToneClassName(pointsValue)}`}>
-                            {formatSignedPoints(pointsValue)} pts
-                          </td>
-                        </>
-                      );
-                    })()}
-                  </tr>
-                ))}
+                {historyData.map((item, idx) => {
+                  const pointsValue = toNumber(item.point ?? item.points ?? 0);
+                  const dateLabel = getDateLabel(item);
+                  const activityLabel = getActivityLabel(item);
+
+                  return (
+                    <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="py-3 px-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                        {dateLabel}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-700 truncate max-w-0">
+                        {activityLabel}
+                      </td>
+                      <td className={`py-3 px-4 text-right font-bold tabular-nums whitespace-nowrap ${pointsToneClassName(pointsValue)}`}>
+                        {formatSignedPoints(pointsValue)} pts
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
