@@ -13,6 +13,24 @@ export default function PointHistory() {
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
   const [error, setError] = useState('');
 
+  const toNumber = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const formatSignedPoints = (value) => {
+    const n = toNumber(value);
+    const sign = n < 0 ? '-' : '+';
+    return `${sign}${Math.abs(n)}`;
+  };
+
+  const pointsToneClassName = (value) => {
+    const n = toNumber(value);
+    if (n < 0) return 'text-red-600';
+    if (n > 0) return 'text-green-600';
+    return 'text-gray-500';
+  };
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -45,7 +63,7 @@ export default function PointHistory() {
       }
     >
 
-      <div className="space-y-8 mt-8">
+      <div className="mx-auto w-full max-w-4xl space-y-8 mt-8">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -85,11 +103,11 @@ export default function PointHistory() {
                 </div>
               </div>
               
-              <div className="flex items-center justify-center md:justify-start gap-2 text-green-600 font-medium">
+              <div className={`flex items-center justify-center md:justify-start gap-2 font-medium ${pointsToneClassName(pointsData.monthlyPoints)}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
                 </svg>
-                <span>+{pointsData.monthlyPoints} pts this month</span>
+                <span>{formatSignedPoints(pointsData.monthlyPoints)} pts this month</span>
               </div>
             </div>
 
@@ -160,18 +178,29 @@ export default function PointHistory() {
             {error ? (
               <div className="p-6 text-sm text-red-600">{error}</div>
             ) : null}
-            <table className="w-full text-left">
+            <table className="w-full text-left table-fixed">
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Points Earned</th>
+                  <th className="py-3 px-4 w-44 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Points Change</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {historyData.map((item, idx) => (
                   <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.date || new Date().toLocaleDateString()}</td>
-                    <td className="py-3 px-4 text-right font-bold text-green-600">+{(item.point ?? item.points ?? 0) || 0} pts</td>
+                    {(() => {
+                      const pointsValue = toNumber(item.point ?? item.points ?? 0);
+                      return (
+                        <>
+                          <td className="py-3 px-4 text-sm font-medium text-gray-900 whitespace-nowrap">
+                            {item.date || new Date().toLocaleDateString()}
+                          </td>
+                          <td className={`py-3 px-4 text-right font-bold tabular-nums whitespace-nowrap ${pointsToneClassName(pointsValue)}`}>
+                            {formatSignedPoints(pointsValue)} pts
+                          </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>
