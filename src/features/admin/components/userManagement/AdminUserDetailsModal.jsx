@@ -5,12 +5,15 @@ function getStatusBadgeClassName(status) {
   const s = String(status || "").toLowerCase();
   if (s === "active") return "bg-green-100 text-green-700 border-green-200";
   if (s === "pending") return "bg-orange-100 text-orange-700 border-orange-200";
+  if (s === "suspended") return "bg-red-100 text-red-700 border-red-200";
   return "bg-gray-100 text-gray-600 border-gray-200";
 }
 
 export default function AdminUserDetailsModal({ user, onClose, onToggleStatus }) {
   if (!user) return null;
   const isActive = String(user.status || "").toLowerCase() === "active";
+  const role = user.roleName || user.roleCode || user.role || "N/A";
+  const joinedDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -29,10 +32,9 @@ export default function AdminUserDetailsModal({ user, onClose, onToggleStatus })
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{user.fullName || "N/A"}</h2>
-              <p className="text-gray-500">{user.email}</p>
               <div className="flex gap-2 mt-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold border ${getRoleBadgeStyle(user.roleName || user.roleCode)}`}>
-                  {user.roleName || user.roleCode || "N/A"}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold border ${getRoleBadgeStyle(role)}`}>
+                  {role}
                 </span>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadgeClassName(user.status)}`}>
                   {user.status}
@@ -43,16 +45,22 @@ export default function AdminUserDetailsModal({ user, onClose, onToggleStatus })
 
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-1">User ID</p>
+              <p className="font-medium text-gray-900">{user.id ?? "N/A"}</p>
+            </div>
+          
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-1">Email</p>
+              <p className="font-medium text-gray-900 break-all">{user.email || "N/A"}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
               <p className="text-xs font-bold text-gray-500 uppercase mb-1">Phone</p>
               <p className="font-medium text-gray-900">{user.phone || "Not provided"}</p>
             </div>
+            
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
               <p className="text-xs font-bold text-gray-500 uppercase mb-1">Joined Date</p>
-              <p className="font-medium text-gray-900">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}</p>
-            </div>
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 col-span-2">
-              <p className="text-xs font-bold text-gray-500 uppercase mb-1">Last Login</p>
-              <p className="font-medium text-gray-900">{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : "Never logged in"}</p>
+              <p className="font-medium text-gray-900">{joinedDate}</p>
             </div>
           </div>
 

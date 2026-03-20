@@ -5,7 +5,7 @@ function getStatusBadgeClassName(status) {
   const s = String(status || "").toLowerCase();
   if (s === "active") return "bg-green-100 text-green-700 border-green-200";
   if (s === "pending") return "bg-orange-100 text-orange-700 border-orange-200";
-  if (s === "suspended") return "bg-gray-100 text-gray-600 border-gray-200";
+  if (s === "suspended") return "bg-red-100 text-red-700 border-red-200";
   return "bg-gray-50 text-gray-500 border-gray-200";
 }
 
@@ -13,10 +13,11 @@ function getStatusDotClassName(status) {
   const s = String(status || "").toLowerCase();
   if (s === "active") return "bg-green-500";
   if (s === "pending") return "bg-orange-500";
+  if (s === "suspended") return "bg-red-500";
   return "bg-gray-400";
 }
 
-export default function AdminUsersTable({ users, loading, onResetFilters, onViewUser, onStatusToggle }) {
+export default function AdminUsersTable({ users, loading, onResetFilters, onViewUser, onEditUser, onStatusToggle }) {
   return (
     <div className="overflow-x-auto min-h-[300px]">
       {loading ? (
@@ -88,6 +89,7 @@ export default function AdminUsersTable({ users, loading, onResetFilters, onView
                         <Eye className="w-4 h-4" aria-hidden="true" />
                       </button>
                       <button
+                        onClick={() => onEditUser?.(user)}
                         className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                         type="button"
                       >
