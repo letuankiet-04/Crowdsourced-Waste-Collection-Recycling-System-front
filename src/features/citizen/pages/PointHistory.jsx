@@ -165,7 +165,7 @@ export default function PointHistory() {
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           {/* Tabs */}
           <div className="border-b border-gray-200 px-6 pt-4 flex gap-8 overflow-x-auto">
-            {['All Activities', 'Reports', 'Bonuses', 'Challenges'].map((tab) => (
+            {['All Activities', 'Reports', 'Voucher'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
