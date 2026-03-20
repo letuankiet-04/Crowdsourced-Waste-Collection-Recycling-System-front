@@ -12,6 +12,7 @@ export default function PointHistory() {
   const [historyData, setHistoryData] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
   const [error, setError] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   const toNumber = (value) => {
     const n = Number(value);
@@ -46,6 +47,33 @@ export default function PointHistory() {
     if (item?.createdAt) return new Date(item.createdAt).toLocaleDateString();
     return new Date().toLocaleDateString();
   };
+
+  const getSortTimestamp = (item) => {
+    const raw = item?.createdAt ?? item?.date;
+    if (!raw) return 0;
+
+    const parsed = Date.parse(raw);
+    if (Number.isFinite(parsed)) return parsed;
+
+    const text = String(raw);
+    const parts = text.split('/');
+    if (parts.length === 3) {
+      const [d, m, y] = parts;
+      const day = Number(d);
+      const month = Number(m);
+      const year = Number(y);
+      if (Number.isFinite(day) && Number.isFinite(month) && Number.isFinite(year)) {
+        return new Date(year, month - 1, day).getTime();
+      }
+    }
+
+    return 0;
+  };
+
+  const sortedHistoryData = [...historyData].sort((a, b) => {
+    const diff = getSortTimestamp(b) - getSortTimestamp(a);
+    return sortOrder === 'asc' ? -diff : diff;
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -173,9 +201,13 @@ export default function PointHistory() {
             <div className="flex gap-3 w-full md:w-auto">
               <div className="flex items-center gap-2 text-sm text-gray-500 whitespace-nowrap">
                 SORT BY:
-                <select className="border-none bg-transparent font-bold text-gray-900 focus:ring-0 cursor-pointer p-0">
-                  <option>Newest First</option>
-                  <option>Oldest First</option>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="border-none bg-transparent font-bold text-gray-900 focus:ring-0 cursor-pointer p-0"
+                >
+                  <option value="desc">Newest First</option>
+                  <option value="asc">Oldest First</option>
                 </select>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500 whitespace-nowrap ml-4">
@@ -194,7 +226,7 @@ export default function PointHistory() {
             {error ? (
               <div className="p-6 text-sm text-red-600">{error}</div>
             ) : null}
-            <table className="w-full text-left table-fixed">
+            <table className="w-full table-fixed text-center">
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="py-3 px-4 w-32 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
@@ -203,7 +235,7 @@ export default function PointHistory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {historyData.map((item, idx) => {
+                {sortedHistoryData.map((item, idx) => {
                   const pointsValue = toNumber(item.point ?? item.points ?? 0);
                   const dateLabel = getDateLabel(item);
                   const activityLabel = getActivityLabel(item);
