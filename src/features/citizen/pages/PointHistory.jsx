@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Sidebar from "../components/navigation/Sidebar";
 import Navbar from "../components/navigation/CD_Navbar";
-import Header from "../../../shared/layout/CD_Header.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card } from "../../../shared/ui/Card.jsx";
@@ -13,6 +12,7 @@ export default function PointHistory() {
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
   const [error, setError] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toNumber = (value) => {
     const n = Number(value);
@@ -32,9 +32,16 @@ export default function PointHistory() {
     return 'text-gray-500';
   };
 
-  const getActivityLabel = (item) => {
+  const getReportId = (item) => {
     const reportId = item?.reportId ?? item?.reportID ?? item?.report_id ?? item?.report?.id;
-    if (reportId != null && String(reportId).trim() !== '') return `Report #${reportId}`;
+    if (reportId == null) return null;
+    const text = String(reportId).trim();
+    return text === '' ? null : text;
+  };
+
+  const getActivityLabel = (item) => {
+    const reportId = getReportId(item);
+    if (reportId) return `Report #${reportId}`;
 
     const pointsValue = toNumber(item?.point ?? item?.points ?? 0);
     if (pointsValue < 0) return 'Đổi voucher';
@@ -70,7 +77,31 @@ export default function PointHistory() {
     return 0;
   };
 
-  const sortedHistoryData = [...historyData].sort((a, b) => {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const filteredHistoryData = historyData.filter((item) => {
+    const pointsValue = toNumber(item?.point ?? item?.points ?? 0);
+    const reportId = getReportId(item);
+
+    const matchesTab =
+      activeTab === 'All Activities' ||
+      (activeTab === 'Reports' && Boolean(reportId)) ||
+      (activeTab === 'Bonuses' && pointsValue < 0) ||
+      (activeTab === 'Challenges' && !reportId && pointsValue > 0);
+
+    if (!matchesTab) return false;
+
+    if (!normalizedQuery) return true;
+
+    const activityLabel = getActivityLabel(item).toLowerCase();
+    if (activityLabel.includes(normalizedQuery)) return true;
+    if (reportId && reportId.toLowerCase().includes(normalizedQuery)) return true;
+    if (item?.id != null && String(item.id).toLowerCase().includes(normalizedQuery)) return true;
+
+    return false;
+  });
+
+  const sortedHistoryData = [...filteredHistoryData].sort((a, b) => {
     const diff = getSortTimestamp(b) - getSortTimestamp(a);
     return sortOrder === 'asc' ? -diff : diff;
   });
@@ -194,6 +225,8 @@ export default function PointHistory() {
               <input
                 type="text"
                 placeholder="Search by activity or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 block w-full rounded-xl border-gray-200 bg-white focus:border-green-500 focus:ring-green-500 sm:text-sm py-2.5 shadow-sm"
               />
             </div>
@@ -208,14 +241,6 @@ export default function PointHistory() {
                 >
                   <option value="desc">Newest First</option>
                   <option value="asc">Oldest First</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-500 whitespace-nowrap ml-4">
-                CATEGORY:
-                <select className="border-none bg-transparent font-bold text-gray-900 focus:ring-0 cursor-pointer p-0">
-                  <option>All Categories</option>
-                  <option>Recyclable</option>
-                  <option>Organic</option>
                 </select>
               </div>
             </div>
@@ -245,7 +270,7 @@ export default function PointHistory() {
                       <td className="py-3 px-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                         {dateLabel}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700 truncate max-w-0">
+                      <td className="py-3 px-4 text-sm text-gray-700 text-center truncate max-w-0">
                         {activityLabel}
                       </td>
                       <td className={`py-3 px-4 text-right font-bold tabular-nums whitespace-nowrap ${pointsToneClassName(pointsValue)}`}>
