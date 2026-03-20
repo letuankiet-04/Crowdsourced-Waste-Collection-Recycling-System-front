@@ -164,7 +164,6 @@ export default function PointHistory() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Activity</th>
                   <th className="py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Points Earned</th>
                 </tr>
               </thead>
@@ -172,23 +171,6 @@ export default function PointHistory() {
                 {historyData.map((item, idx) => (
                   <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
                     <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.date || new Date().toLocaleDateString()}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-full ${(item.activity || '').includes('Bonus') || (item.activity || '').includes('Hero') ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                           {(item.activity || '').includes('Bonus') || (item.activity || '').includes('Hero') ? (
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                               <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.699-3.181a1 1 0 011.827.954L16.25 7l2.229 4.177a1 1 0 01-1.827.954L12.75 10.5V14a1 1 0 01-2 0v-3.5l-3.903 1.631-1.827-.954L7.25 7 5.021 2.823a1 1 0 011.827-.954L8.55 5.05V3a1 1 0 011-1z" clipRule="evenodd" />
-                             </svg>
-                           ) : (
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                             </svg>
-                           )}
-                        </div>
-                        <span className="font-bold text-gray-800 text-sm">{item.activity || 'Unknown Activity'}</span>
-                      </div>
-                    </td>
-                    
                     <td className="py-3 px-4 text-right font-bold text-green-600">+{(item.point ?? item.points ?? 0) || 0} pts</td>
                   </tr>
                 ))}
