@@ -25,13 +25,6 @@ export const adminNavItems = [
     className: "text-lg",
   },
   {
-    key: "stats",
-    to: "#",
-    icon: <BarChart3 className="h-6 w-6" />,
-    name: "Statistical Report",
-    className: "text-lg",
-  },
-  {
     key: "profile",
     to: PATHS.admin.profile,
     icon: <User className="h-6 w-6" />,
