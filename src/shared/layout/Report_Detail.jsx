@@ -55,6 +55,12 @@ export default function ReportDetail({
   const collectionRequestId = safeReport?.collectionRequestId ?? safeReport?.requestId ?? null
   const displayReportCode = reportCode != null && String(reportCode).trim() !== '' ? String(reportCode) : null
   const displayReportId = safeReport?.id != null && String(safeReport.id).trim() !== '' ? String(safeReport.id) : null
+  const descriptionText = useMemo(() => {
+    const raw = safeReport?.description ?? safeReport?.notes ?? safeReport?.note ?? safeReport?.detail ?? null
+    if (raw == null) return null
+    const s = String(raw).trim()
+    return s ? s : null
+  }, [safeReport])
 
   const images = useMemo(() => {
     const raw = safeReport?.images ?? safeReport?.imageUrls ?? safeReport?.image_urls
@@ -153,6 +159,12 @@ export default function ReportDetail({
                 {safeReport?.updatedAt ? <Field label="Updated At" value={formatDateTime(safeReport?.updatedAt)} /> : null}
                 {safeReport?.priority ? <Field label="Priority" value={String(safeReport?.priority)} /> : null}
               </div>
+              {descriptionText ? (
+                <div className="mt-6">
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Description</div>
+                  <div className="mt-2 whitespace-pre-line text-gray-900">{descriptionText}</div>
+                </div>
+              ) : null}
               {reportInfoExtra ? <div className="mt-6">{reportInfoExtra}</div> : null}
             </CardBody>
           </Card>

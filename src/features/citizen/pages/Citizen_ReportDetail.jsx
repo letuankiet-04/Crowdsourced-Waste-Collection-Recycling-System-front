@@ -273,7 +273,10 @@ export default function CitizenReportDetail() {
                             id: apiReport?.id ?? reportId,
                             status: apiReport?.status ?? null,
                             address: "",
-                            notes: "",
+                            notes:
+                              (typeof apiReport?.description === "string" && apiReport.description.trim()) ||
+                              (typeof apiReport?.notes === "string" && apiReport.notes.trim()) ||
+                              "",
                             coords: null,
                             images,
                             wasteItems: categories

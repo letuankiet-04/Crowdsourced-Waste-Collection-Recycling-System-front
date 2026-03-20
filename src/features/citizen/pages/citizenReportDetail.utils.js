@@ -12,6 +12,10 @@ export function buildCitizenReportDetail(apiReport, reportId) {
   if (!apiReport) return null;
   const categories = Array.isArray(apiReport?.categories) ? apiReport.categories : [];
   const images = Array.isArray(apiReport?.images) ? apiReport.images : [];
+  const description =
+    (typeof apiReport?.description === "string" && apiReport.description.trim()) ||
+    (typeof apiReport?.notes === "string" && apiReport.notes.trim()) ||
+    "";
   const address =
     (typeof apiReport?.address === "string" && apiReport.address.trim()) ||
     (typeof apiReport?.reportedAddress === "string" && apiReport.reportedAddress.trim()) ||
@@ -38,6 +42,7 @@ export function buildCitizenReportDetail(apiReport, reportId) {
     id: apiReport?.id ?? reportId,
     status: apiReport?.status ?? null,
     createdAt: apiReport?.createdAt ?? null,
+    description,
     address,
     coords,
     images,

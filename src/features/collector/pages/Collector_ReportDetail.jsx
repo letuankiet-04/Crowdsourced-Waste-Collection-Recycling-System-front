@@ -133,6 +133,7 @@ export default function CollectorReportDetail() {
       status: task?.status ?? collectorReport?.status ?? stateReport?.status ?? null,
       createdAt: task?.createdAt ?? collectorReport?.createdAt ?? stateReport?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
       updatedAt: task?.updatedAt ?? null,
+      description: taskDetail?.description ?? taskDetail?.notes ?? stateReport?.description ?? stateReport?.notes ?? null,
       address: taskDetail?.address ?? stateReport?.address ?? null,
       coords: baseCoords,
       collectedCoords,
