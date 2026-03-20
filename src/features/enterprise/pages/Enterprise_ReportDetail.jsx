@@ -204,6 +204,7 @@ export default function EnterpriseReportDetail() {
   const status = normalizeReportStatus(report?.status);
   const canDecide = status === "Pending";
   const canGoAssign = status === "Accepted";
+  const canReassign = status === "Reassign" || String(report?.status ?? "").toLowerCase() === "reassign";
 
   const [enterpriseCollectorSource, setEnterpriseCollectorSource] = useState([]);
   const [eligibleCollectorSource, setEligibleCollectorSource] = useState(null);
@@ -523,7 +524,7 @@ export default function EnterpriseReportDetail() {
   }
 
   async function handleAssignSelectedCollectors() {
-    if (!report || !canGoAssign || assignSubmitting) return;
+    if (!report || !(canGoAssign || canReassign) || assignSubmitting) return;
     const primaryCollector = collectors.find((c) => String(c.id) === String(selectedCollectorId)) ?? null;
     if (!primaryCollector) return;
     setAssignConfirmOpen(false);
@@ -671,6 +672,11 @@ export default function EnterpriseReportDetail() {
                     Assign collector
                   </Button>
                 ) : null}
+                {canReassign ? (
+                  <Button variant="outline" size="sm" className="rounded-full" onClick={() => openAssignDialog()}>
+                    Reassign collector
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </CardBody>
@@ -755,7 +761,7 @@ export default function EnterpriseReportDetail() {
                               name="collector"
                               className="h-4 w-4"
                               checked={checked}
-                              disabled={!report || !canGoAssign}
+                              disabled={!report || !(canGoAssign || canReassign)}
                               onChange={() => {
                                 setSelectedCollectorId(c?.id == null ? "" : String(c.id));
                               }}
@@ -777,9 +783,9 @@ export default function EnterpriseReportDetail() {
                 <Button
                   size="sm"
                   className="rounded-full"
-                  disabled={!report || !canGoAssign || !selectedCollectorId || assignSubmitting}
+                  disabled={!report || !(canGoAssign || canReassign) || !selectedCollectorId || assignSubmitting}
                   onClick={() => {
-                    if (!report || !canGoAssign || !selectedCollectorId || assignSubmitting) return;
+                    if (!report || !(canGoAssign || canReassign) || !selectedCollectorId || assignSubmitting) return;
                     setAssignConfirmOpen(true);
                   }}
                 >
