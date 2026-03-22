@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { createPortal } from "react-dom";
 import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import ReportDetail from "../../../shared/layout/Report_Detail.jsx";
-import { createNotification } from "../../../services/notifications.js";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../../shared/lib/reportStatus.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
@@ -12,7 +11,6 @@ import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Users, X, XCircle } from "lucide-react";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
-import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import { lockBodyScroll, unlockBodyScroll } from "../../../shared/lib/lockBodyScroll.js";
 import {
@@ -80,7 +78,6 @@ export default function EnterpriseReportDetail() {
   const location = useLocation();
   const navigate = useNavigate();
   const notify = useNotify();
-  const { user } = useStoredUser();
   const id = reportId ? String(reportId) : "";
   const stateReport = location?.state?.report ?? null;
 
@@ -447,19 +444,6 @@ export default function EnterpriseReportDetail() {
       setReportData(next);
       setReportError("");
 
-      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
-      try {
-        await createNotification({
-          receiverId: report.createdBy,
-          senderId,
-          reportId: report.id,
-          type: "REPORT_ACCEPTED",
-          message: "Your report has been accepted.",
-        });
-      } catch (e) {
-        notify.error("Notify failed", e?.message || "Report accepted, but failed to send notification.");
-      }
-
       openAssignDialog(next);
     } catch (e) {
       notify.error("Accept failed", e?.message || "Failed to accept the report. Please try again.");
@@ -499,20 +483,6 @@ export default function EnterpriseReportDetail() {
       setReportOverride(next);
       setReportData(next);
       setReportError("");
-
-      const senderId = user?.id ?? user?._id ?? user?.userId ?? 2;
-      try {
-        await createNotification({
-          receiverId: report.createdBy,
-          senderId,
-          reportId: report.id,
-          type: "REPORT_REJECTED",
-          message: "Your report has been rejected.",
-          reason,
-        });
-      } catch (e) {
-        notify.error("Notify failed", e?.message || "Report rejected, but failed to send notification.");
-      }
 
       setRejectOpen(false);
       navigate(PATHS.enterprise.dashboard, { replace: true });

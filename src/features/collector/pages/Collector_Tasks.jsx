@@ -9,6 +9,7 @@ import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { getCollectorTasks } from "../../../services/collector.service.js";
 
@@ -33,6 +34,8 @@ export default function CollectorTasks() {
   const notify = useNotify();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Filter states
   const initialFilterState = {
@@ -42,6 +45,10 @@ export default function CollectorTasks() {
     search: "",
   };
   const [filter, setFilter] = useState(initialFilterState);
+  const updateFilter = (patch) => {
+    setFilter((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
 
   const allTasks = useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
@@ -62,8 +69,12 @@ export default function CollectorTasks() {
     }).length;
   }, [allTasks]);
 
+  const incompleteTaskCount = useMemo(() => {
+    return allTasks.filter((r) => normalizeReportStatus(r.status) !== "Completed").length;
+  }, [allTasks]);
+
   const filteredTasks = useMemo(() => {
-    let result = [...allTasks];
+    let result = [...allTasks].filter((r) => normalizeReportStatus(r.status) !== "Completed");
 
     // Status
     if (filter.status !== "All") {
@@ -95,11 +106,54 @@ export default function CollectorTasks() {
       );
     }
 
+    const statusRank = (row) => {
+      const status = normalizeReportStatus(row?.status);
+      if (["Assigned", "Accepted", "On The Way", "Pending"].includes(status)) return 0;
+      if (["Collected"].includes(status)) return 1;
+      if (["Rejected"].includes(status)) return 2;
+      return 3;
+    };
+
+    result.sort((a, b) => {
+      const ra = statusRank(a);
+      const rb = statusRank(b);
+      if (ra !== rb) return ra - rb;
+      const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+
     return result;
   }, [allTasks, filter]);
 
+  const totalPages = useMemo(
+    () => Math.ceil(filteredTasks.length / itemsPerPage),
+    [filteredTasks.length, itemsPerPage]
+  );
+
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+
+  const pagedTasks = useMemo(() => {
+    if (!filteredTasks.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredTasks.slice(start, start + itemsPerPage);
+  }, [filteredTasks, safePage, itemsPerPage]);
+
+  const pageStart = filteredTasks.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredTasks.length ? Math.min(safePage * itemsPerPage, filteredTasks.length) : 0;
+
   const handleResetFilter = () => {
     setFilter(initialFilterState);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -132,7 +186,7 @@ export default function CollectorTasks() {
           description={
             <>
               Hello, <span className="font-semibold text-gray-900">{displayName}</span>. You have{" "}
-              <span className="font-bold text-emerald-700">{activeTaskCount}</span> active tasks.
+              <span className="font-bold text-emerald-700">{incompleteTaskCount}</span> pending tasks.
             </>
           }
         />
@@ -148,14 +202,13 @@ export default function CollectorTasks() {
                 <select
                   className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
                   value={filter.status}
-                  onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+                  onChange={(e) => updateFilter({ status: e.target.value })}
                 >
                   <option value="All">All</option>
                   <option value="Assigned">Assigned</option>
                   <option value="Accepted">Accepted</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
-                  <option value="Completed">Completed</option>
                   <option value="Rejected">Rejected</option>
                 </select>
               </div>
@@ -164,21 +217,21 @@ export default function CollectorTasks() {
                 label="From Date"
                 type="date"
                 value={filter.fromDate}
-                onChange={(e) => setFilter({ ...filter, fromDate: e.target.value })}
+                onChange={(e) => updateFilter({ fromDate: e.target.value })}
               />
 
               <TextField
                 label="To Date"
                 type="date"
                 value={filter.toDate}
-                onChange={(e) => setFilter({ ...filter, toDate: e.target.value })}
+                onChange={(e) => updateFilter({ toDate: e.target.value })}
               />
 
               <TextField
                 label="Search"
                 placeholder="Search by ID or Location..."
                 value={filter.search}
-                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                onChange={(e) => updateFilter({ search: e.target.value })}
               />
             </div>
             <div className="flex justify-end gap-3 mt-6">
@@ -206,7 +259,7 @@ export default function CollectorTasks() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredTasks.length ? (
-                    filteredTasks.map((r) => {
+                    pagedTasks.map((r) => {
                       return (
                         <ReportRow
                           key={r.id}
@@ -221,7 +274,11 @@ export default function CollectorTasks() {
                   ) : (
                     <tr>
                       <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                        {allTasks.length === 0 ? "No tasks assigned yet." : "No tasks match your filter."}
+                        {allTasks.length === 0
+                          ? "No tasks assigned yet."
+                          : incompleteTaskCount === 0
+                            ? "No pending tasks."
+                            : "No tasks match your filter."}
                       </td>
                     </tr>
                   )}
@@ -229,6 +286,15 @@ export default function CollectorTasks() {
               </table>
             </div>
           </CardBody>
+          {filteredTasks.length ? (
+            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
+                <span className="font-bold text-gray-900">{filteredTasks.length}</span> tasks
+              </div>
+              <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+            </div>
+          ) : null}
         </Card>
       </div>
     </CollectorLayout>

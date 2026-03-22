@@ -1,8 +1,6 @@
 
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 
-import NotificationBell from "../../../../shared/ui/NotificationBell.jsx";
-
 export default function CD_Navbar({ brandTitle = "" }) {
   const { displayName, roleLabel, user } = useStoredUser();
 
@@ -17,8 +15,6 @@ export default function CD_Navbar({ brandTitle = "" }) {
             <div className="text-lg font-extrabold text-gray-900 tracking-tight">{brandTitle}</div>
           </div>
           <div className="flex items-center gap-8">
-            <NotificationBell />
-
             <div className="flex items-center gap-4 pl-8 border-l border-gray-200">
               <div className="hidden md:flex flex-col items-end">
                 <span className="text-base font-semibold text-gray-900">{displayName}</span>

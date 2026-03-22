@@ -14,7 +14,7 @@ export default function TopRank() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getCitizenLeaderboard({ limit: 3 });
+        const data = await getCitizenLeaderboard({ limit: 5 });
         if (!active) return;
         setRows(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -69,10 +69,6 @@ export default function TopRank() {
             ))}
           </div>
         )}
-
-        <button className="w-full mt-8 py-3.5 text-base text-gray-500 font-medium border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-all duration-200 active:scale-[0.98]">
-          View leaderboard
-        </button>
       </CardBody>
     </Card>
   );

@@ -5,6 +5,7 @@ import PageHeader from "../../../shared/ui/PageHeader.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { getCollectorReports } from "../../../services/enterprise.service.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
@@ -13,6 +14,8 @@ export default function EnterpriseCollectorReports() {
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Filter states
   const initialFilterState = {
@@ -21,6 +24,11 @@ export default function EnterpriseCollectorReports() {
     searchId: "",
   };
   const [filter, setFilter] = useState(initialFilterState);
+
+  const updateFilter = (patch) => {
+    setFilter((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     fetchReports();
@@ -72,8 +80,34 @@ export default function EnterpriseCollectorReports() {
     return filtered;
   }, [ordered, filter]);
 
+  const totalPages = useMemo(
+    () => Math.ceil(filteredReports.length / itemsPerPage),
+    [filteredReports.length, itemsPerPage]
+  );
+
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+
+  const pagedReports = useMemo(() => {
+    if (!filteredReports.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredReports.slice(start, start + itemsPerPage);
+  }, [filteredReports, safePage, itemsPerPage]);
+
+  const pageStart = filteredReports.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredReports.length ? Math.min(safePage * itemsPerPage, filteredReports.length) : 0;
+
   const handleResetFilter = () => {
     setFilter(initialFilterState);
+    setCurrentPage(1);
   };
 
   const getStatusVariant = (status) => {
@@ -100,21 +134,21 @@ export default function EnterpriseCollectorReports() {
                 label="From Date"
                 type="date"
                 value={filter.fromDate}
-                onChange={(e) => setFilter({ ...filter, fromDate: e.target.value })}
+                onChange={(e) => updateFilter({ fromDate: e.target.value })}
               />
 
               <TextField
                 label="To Date"
                 type="date"
                 value={filter.toDate}
-                onChange={(e) => setFilter({ ...filter, toDate: e.target.value })}
+                onChange={(e) => updateFilter({ toDate: e.target.value })}
               />
 
               <TextField
                 label="Search"
                 placeholder="ID or Code..."
                 value={filter.searchId}
-                onChange={(e) => setFilter({ ...filter, searchId: e.target.value })}
+                onChange={(e) => updateFilter({ searchId: e.target.value })}
               />
             </div>
             <div className="flex justify-end gap-3 mt-6">
@@ -145,7 +179,7 @@ export default function EnterpriseCollectorReports() {
                   {loading ? (
                     <tr><td colSpan={5} className="px-8 py-8 text-center">Loading...</td></tr>
                   ) : filteredReports.length ? (
-                    filteredReports.map((r) => (
+                    pagedReports.map((r) => (
                       <tr 
                         key={r.id} 
                         className="hover:bg-gray-50/40 transition-colors cursor-pointer"
@@ -175,6 +209,15 @@ export default function EnterpriseCollectorReports() {
               </table>
             </div>
           </CardBody>
+          {!loading && filteredReports.length > 0 ? (
+            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
+                <span className="font-bold text-gray-900">{filteredReports.length}</span> reports
+              </div>
+              <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+            </div>
+          ) : null}
         </Card>
       </div>
     </EnterpriseLayout>

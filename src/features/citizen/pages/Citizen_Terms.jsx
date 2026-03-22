@@ -213,21 +213,6 @@ export default function Citizen_Terms() {
               <li>• Fraudulent reports will result in account suspension.</li>
             </ul>
           </div>
-
-          <Card>
-            <CardBody>
-              <div className="font-semibold text-gray-900">Need Help?</div>
-              <p className="mt-1 text-sm text-gray-600">
-                If you have questions about specific categories or terms, our support team is ready to assist.
-              </p>
-              <button
-                type="button"
-                className="mt-4 inline-flex items-center rounded-xl px-4 py-2 bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800"
-              >
-                Contact Support
-              </button>
-            </CardBody>
-          </Card>
         </div>
       </div>
     </RoleLayout>

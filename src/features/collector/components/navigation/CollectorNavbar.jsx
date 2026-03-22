@@ -1,4 +1,3 @@
-import { Bell } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
 import { PATHS } from "../../../../app/routes/paths.js";
@@ -77,15 +76,6 @@ export default function CollectorNavbar() {
                   />
                 </button>
             </div>
-
-            <button
-              className="p-3 text-gray-500 hover:text-emerald-700 hover:bg-gray-100 rounded-full transition relative"
-              type="button"
-              aria-label="View notifications"
-            >
-              <Bell className="h-7 w-7" aria-hidden="true" />
-              <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
-            </button>
 
             <UserMenu
               displayName={displayName}

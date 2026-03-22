@@ -5,6 +5,7 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.j
 import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { getEnterpriseCollectors } from "../../../services/enterprise.service.js";
 
@@ -13,6 +14,8 @@ export default function EnterpriseActiveCollector() {
   const [collectors, setCollectors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +46,11 @@ export default function EnterpriseActiveCollector() {
     search: "",
   };
   const [filter, setFilter] = useState(initialFilterState);
+
+  const updateFilter = (patch) => {
+    setFilter((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
 
   const allCollectors = useMemo(() => {
     const list = Array.isArray(collectors) ? collectors : [];
@@ -86,8 +94,34 @@ export default function EnterpriseActiveCollector() {
     return filtered;
   }, [allCollectors, filter]);
 
+  const totalPages = useMemo(
+    () => Math.ceil(filteredCollectors.length / itemsPerPage),
+    [filteredCollectors.length, itemsPerPage]
+  );
+
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+
+  const pagedCollectors = useMemo(() => {
+    if (!filteredCollectors.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredCollectors.slice(start, start + itemsPerPage);
+  }, [filteredCollectors, safePage, itemsPerPage]);
+
+  const pageStart = filteredCollectors.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredCollectors.length ? Math.min(safePage * itemsPerPage, filteredCollectors.length) : 0;
+
   const handleResetFilter = () => {
     setFilter(initialFilterState);
+    setCurrentPage(1);
   };
 
   return (
@@ -107,7 +141,7 @@ export default function EnterpriseActiveCollector() {
                 <select
                   className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
                   value={filter.status}
-                  onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+                  onChange={(e) => updateFilter({ status: e.target.value })}
                 >
                   <option value="All">All</option>
                   <option value="Online">Online</option>
@@ -119,7 +153,7 @@ export default function EnterpriseActiveCollector() {
                 label="Search"
                 placeholder="Search by Name or Email..."
                 value={filter.search}
-                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                onChange={(e) => updateFilter({ search: e.target.value })}
               />
             </div>
             <div className="flex justify-end gap-3 mt-6">
@@ -153,7 +187,7 @@ export default function EnterpriseActiveCollector() {
                       </td>
                     </tr>
                   ) : filteredCollectors.length ? (
-                    filteredCollectors.map((r) => (
+                    pagedCollectors.map((r) => (
                       <tr key={r.id} className="bg-white hover:bg-emerald-50/20 transition">
                         <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.name}</td>
                         <td className="px-8 py-5 text-sm text-gray-700">{r.email}</td>
@@ -173,6 +207,15 @@ export default function EnterpriseActiveCollector() {
               </table>
             </div>
           </CardBody>
+          {!loading && filteredCollectors.length > 0 ? (
+            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
+                <span className="font-bold text-gray-900">{filteredCollectors.length}</span> collectors
+              </div>
+              <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+            </div>
+          ) : null}
         </Card>
       </div>
     </EnterpriseLayout>

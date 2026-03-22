@@ -1,5 +1,5 @@
 import Container from '../ui/Container.jsx'
-import { Recycle, Share2, Globe, MessageSquare, Mail, MapPin, Info, Asterisk } from 'lucide-react'
+import { Recycle, Mail, MapPin, Info, Asterisk } from 'lucide-react'
 import { useState } from 'react'
 import PolicyTermsDialog from '../ui/PolicyTermsDialog.jsx'
 
@@ -21,21 +21,8 @@ export default function CD_Footer({ portalName = 'Citizen Portal' }) {
               Crowdsourced Waste Collection & Recycling System. Empowering sustainable communities through high-tech
               waste management solutions.
             </p>
-            <div className="mt-6 flex items-center gap-4">
-              <a href="#" aria-label="Share" className="text-slate-500 transition-colors hover:text-slate-900">
-                <Share2 className="h-5 w-5" />
-              </a>
-              <a href="#" aria-label="Website" className="text-slate-500 transition-colors hover:text-slate-900">
-                <Globe className="h-5 w-5" />
-              </a>
-              <a href="#" aria-label="Support chat" className="text-slate-500 transition-colors hover:text-slate-900">
-                <MessageSquare className="h-5 w-5" />
-              </a>
-            </div>
             <div className="mt-6 text-xs text-slate-400">© {year} {portalName}. All rights reserved.</div>
           </div>
-
-          
 
           <div>
             <h3 className="font-semibold text-slate-900">Contact & Support</h3>

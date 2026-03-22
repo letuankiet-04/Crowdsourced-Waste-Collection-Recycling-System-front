@@ -9,6 +9,7 @@ import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import { MessageSquare, ChevronRight, Clock, CheckCircle, AlertCircle, Filter } from "lucide-react";
 import { getCitizenFeedbacks } from "../../../services/feedback.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 
 export default function MyFeedback() {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export default function MyFeedback() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   const normalizeType = (item) => {
     const v = String(item?.type || "").toUpperCase();
@@ -53,6 +56,28 @@ export default function MyFeedback() {
       return typeMatch && statusMatch;
     });
   }, [filterType, filterStatus, feedbacks]);
+
+  const totalPages = useMemo(() => Math.ceil(filteredFeedback.length / itemsPerPage), [filteredFeedback.length, itemsPerPage]);
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+  const paginatedFeedback = useMemo(() => {
+    if (!filteredFeedback.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredFeedback.slice(start, start + itemsPerPage);
+  }, [filteredFeedback, safePage, itemsPerPage]);
+  const pageStart = filteredFeedback.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredFeedback.length ? Math.min(safePage * itemsPerPage, filteredFeedback.length) : 0;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, filterStatus]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -147,7 +172,7 @@ export default function MyFeedback() {
           {loading ? (
              <div className="text-center py-16">Loading...</div>
           ) : filteredFeedback.length > 0 ? (
-            filteredFeedback.map((item) => (
+            paginatedFeedback.map((item) => (
               <div 
                 key={item.id}
                 onClick={() => navigate(PATHS.citizen.feedbackDetail.replace(':feedbackId', item.id))}
@@ -196,6 +221,14 @@ export default function MyFeedback() {
               <p className="text-gray-500 mt-1">Try adjusting your filters or create a new feedback.</p>
             </div>
           )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500 font-medium">
+            Showing <span className="text-gray-900 font-bold">{pageStart}-{pageEnd}</span> of{" "}
+            <span className="text-gray-900 font-bold">{filteredFeedback.length}</span> feedbacks
+          </div>
+          <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
 
       </div>

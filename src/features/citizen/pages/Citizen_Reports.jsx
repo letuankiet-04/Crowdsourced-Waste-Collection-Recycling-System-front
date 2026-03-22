@@ -5,10 +5,11 @@ import Navbar from "../components/navigation/CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
-import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
+import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
@@ -57,6 +58,8 @@ export default function CitizenReports() {
   const notify = useNotify();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
+  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filter states
   const initialFilterState = {
@@ -98,9 +101,31 @@ export default function CitizenReports() {
     return filtered;
   }, [allMyReports, filter]);
 
+  const totalPages = useMemo(() => Math.ceil(filteredReports.length / itemsPerPage), [filteredReports.length, itemsPerPage]);
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+  const paginatedReports = useMemo(() => {
+    if (!filteredReports.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredReports.slice(start, start + itemsPerPage);
+  }, [filteredReports, safePage, itemsPerPage]);
+  const pageStart = filteredReports.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredReports.length ? Math.min(safePage * itemsPerPage, filteredReports.length) : 0;
+
   const handleResetFilter = () => {
     setFilter(initialFilterState);
   };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,7 +262,7 @@ export default function CitizenReports() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredReports.length ? (
-                    filteredReports.map((r) => (
+                    paginatedReports.map((r) => (
                       <ReportRow
                         key={r.id}
                         report={r}
@@ -256,6 +281,13 @@ export default function CitizenReports() {
               </table>
             </div>
           </CardBody>
+          <CardFooter className="px-8 py-5 bg-gray-50/30 flex items-center justify-between">
+            <div className="text-sm text-gray-500 font-medium">
+              Showing <span className="text-gray-900 font-bold">{pageStart}-{pageEnd}</span> of{" "}
+              <span className="text-gray-900 font-bold">{filteredReports.length}</span> reports
+            </div>
+            <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+          </CardFooter>
         </Card>
       </div>
     </RoleLayout>

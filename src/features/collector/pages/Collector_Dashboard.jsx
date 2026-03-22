@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { getCollectorTasks } from "../../../services/collector.service.js";
+import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 
 function getTaskAddress(t) {
   const loc = t?.location;
@@ -33,9 +34,9 @@ export default function CollectorDashboard() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
 
-  const myTasks = useMemo(() => {
+  const allTasks = useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
-    return list.slice(0, 10).map((t) => ({
+    return list.map((t) => ({
       id: t?.id != null ? String(t.id) : "",
       reportCode: t?.requestCode ?? null,
       status: t?.status ?? null,
@@ -44,6 +45,20 @@ export default function CollectorDashboard() {
       coords: getTaskCoords(t),
     }));
   }, [tasks]);
+
+  const pendingTaskCount = useMemo(() => {
+    return allTasks.filter((t) => normalizeReportStatus(t.status) !== "Completed").length;
+  }, [allTasks]);
+
+  const recentTasks = useMemo(() => {
+    const result = [...allTasks];
+    result.sort((a, b) => {
+      const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+    return result.slice(0, 10);
+  }, [allTasks]);
 
   useEffect(() => {
     let active = true;
@@ -74,7 +89,7 @@ export default function CollectorDashboard() {
           title={`Hello, ${displayName}.`}
           description={
             <>
-              You have <span className="font-bold text-emerald-700">{myTasks.length}</span> active tasks assigned to you.
+              You have <span className="font-bold text-emerald-700">{pendingTaskCount}</span> pending tasks.
             </>
           }
         />
@@ -103,7 +118,7 @@ export default function CollectorDashboard() {
 
           <Card>
             <CardHeader className="py-6 px-8">
-              <CardTitle className="text-2xl">Assigned Tasks</CardTitle>
+              <CardTitle className="text-2xl">Recently task</CardTitle>
             </CardHeader>
             <CardBody className="p-0">
               <div className="overflow-x-auto">
@@ -117,8 +132,8 @@ export default function CollectorDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {myTasks.length ? (
-                      myTasks.map((r) => (
+                    {recentTasks.length ? (
+                      recentTasks.map((r) => (
                         <ReportRow
                           key={r.id}
                           report={r}

@@ -2,8 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { 
   Search, 
   Filter, 
-  ChevronLeft, 
-  ChevronRight, 
   Calendar,
   Clock,
   Archive,
@@ -12,6 +10,7 @@ import {
 import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import { Card, CardHeader } from "../../../shared/ui/Card.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { getEnterpriseFeedbacks } from "../../../services/feedback.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import FeedbackDetailModal from "../../../shared/components/feedback/FeedbackDetailModal.jsx";
@@ -21,11 +20,15 @@ export default function Enterprise_ReviewFeedback() {
   // State
   const [activeTab, setActiveTab] = useState("All Submissions");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [dateFilter, setDateFilter] = useState("All Time");
+  const itemsPerPage = 10;
+  const [filters, setFilters] = useState({ status: "All", fromDate: "", toDate: "" });
   const [feedback, setFeedback] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
+  const updateFilters = (patch) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
 
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
@@ -69,25 +72,30 @@ export default function Enterprise_ReviewFeedback() {
       result = result.filter(item => item.sender?.role === "Collector");
     }
 
-    // Date Filter
-    if (dateFilter !== "All Time") {
-      const now = new Date();
-      const pastDate = new Date(now);
-      
-      if (dateFilter === "Last 7 Days") {
-        pastDate.setDate(now.getDate() - 7);
-      } else if (dateFilter === "Last 30 Days") {
-        pastDate.setDate(now.getDate() - 30);
-      }
-      
-      // Set to beginning of the day to ensure we include all items from that day onwards
-      pastDate.setHours(0, 0, 0, 0);
+    if (filters.status !== "All") {
+      const wanted = String(filters.status || "").toUpperCase();
+      result = result.filter((item) => String(item.status || "").toUpperCase() === wanted);
+    }
 
-      result = result.filter(item => {
-         const d = item.updatedAt || item.date || item.createdAt;
-         if (!d) return false;
-         const feedbackDate = new Date(d);
-         return feedbackDate >= pastDate;
+    if (filters.fromDate) {
+      const from = new Date(filters.fromDate);
+      from.setHours(0, 0, 0, 0);
+      result = result.filter((item) => {
+        const d = item.updatedAt || item.date || item.createdAt;
+        if (!d) return false;
+        const feedbackDate = new Date(d);
+        return feedbackDate >= from;
+      });
+    }
+
+    if (filters.toDate) {
+      const to = new Date(filters.toDate);
+      to.setHours(23, 59, 59, 999);
+      result = result.filter((item) => {
+        const d = item.updatedAt || item.date || item.createdAt;
+        if (!d) return false;
+        const feedbackDate = new Date(d);
+        return feedbackDate <= to;
       });
     }
 
@@ -97,14 +105,26 @@ export default function Enterprise_ReviewFeedback() {
       return db - da;
     });
     return sorted;
-  }, [activeTab, dateFilter, feedback]);
+  }, [activeTab, feedback, filters.fromDate, filters.status, filters.toDate]);
 
   // Pagination Logic
-  const totalPages = Math.ceil(filteredFeedback.length / itemsPerPage);
-  const paginatedFeedback = filteredFeedback.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = useMemo(() => Math.ceil(filteredFeedback.length / itemsPerPage), [filteredFeedback.length, itemsPerPage]);
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+  const paginatedFeedback = useMemo(() => {
+    if (!filteredFeedback.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredFeedback.slice(start, start + itemsPerPage);
+  }, [filteredFeedback, safePage, itemsPerPage]);
+  const pageStart = filteredFeedback.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredFeedback.length ? Math.min(safePage * itemsPerPage, filteredFeedback.length) : 0;
 
   // Helper for Status Badge
   const getStatusBadge = (status) => {
@@ -161,23 +181,48 @@ export default function Enterprise_ReviewFeedback() {
             </div>
 
             {/* Filter Controls */}
-            <div className="flex gap-3">
-              <div className="relative">
-                 <select 
-                   value={dateFilter}
-                   onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
-                   className="appearance-none pl-10 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 cursor-pointer hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                 >
-                    <option>All Time</option>
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                 </select>
-                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <div className="flex flex-wrap gap-3">
+              <div className="grid gap-1 text-left">
+                <label className="text-xs font-semibold text-gray-500">Status</label>
+                <div className="relative">
+                  <select
+                    value={filters.status}
+                    onChange={(e) => updateFilters({ status: e.target.value })}
+                    className="appearance-none pl-4 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 cursor-pointer hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  >
+                    <option value="All">All</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </select>
+                </div>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-                <Filter className="w-4 h-4" />
-                More Filters
-              </button>
+
+              <div className="grid gap-1 text-left">
+                <label className="text-xs font-semibold text-gray-500">From</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={filters.fromDate}
+                    onChange={(e) => updateFilters({ fromDate: e.target.value })}
+                    className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              <div className="grid gap-1 text-left">
+                <label className="text-xs font-semibold text-gray-500">To</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={filters.toDate}
+                    onChange={(e) => updateFilters({ toDate: e.target.value })}
+                    className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:border-gray-300 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
             </div>
           </CardHeader>
 
@@ -276,39 +321,10 @@ export default function Enterprise_ReviewFeedback() {
           {/* Pagination */}
           <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between">
              <div className="text-sm text-gray-500 font-medium">
-                Showing <span className="text-gray-900 font-bold">{Math.min(filteredFeedback.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filteredFeedback.length, currentPage * itemsPerPage)}</span> of <span className="text-gray-900 font-bold">{filteredFeedback.length}</span> submissions
+                Showing <span className="text-gray-900 font-bold">{pageStart}-{pageEnd}</span> of{" "}
+                <span className="text-gray-900 font-bold">{filteredFeedback.length}</span> submissions
              </div>
-             <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4 text-gray-600" />
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${
-                        currentPage === page 
-                          ? "bg-green-500 text-white shadow-md shadow-green-200" 
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-                <button 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronRight className="w-4 h-4 text-gray-600" />
-                </button>
-             </div>
+             <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
           </div>
         </Card>
       </div>

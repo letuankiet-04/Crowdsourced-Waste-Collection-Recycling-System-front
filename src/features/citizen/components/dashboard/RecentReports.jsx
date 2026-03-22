@@ -23,7 +23,7 @@ export default function RecentReports() {
     return list
       .slice()
       .sort((a, b) => toTime(b?.createdAt) - toTime(a?.createdAt))
-      .slice(0, 5);
+      .slice(0, 10);
   }, [reports]);
 
   useEffect(() => {

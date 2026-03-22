@@ -42,9 +42,6 @@ import enterpriseDashboardRaw from '../../../features/enterprise/pages/Enterpris
 import enterpriseActiveCollectorRaw from '../../../features/enterprise/pages/Enterprise_ActiveCollector.jsx?raw'
 import enterpriseAdminPanelRaw from '../../../features/enterprise/pages/Enterprise_AdminPanel.jsx?raw'
 
-import notificationsServiceRaw from '../../../services/notifications.js?raw'
-import notificationBellRaw from '../../../shared/ui/NotificationBell.jsx?raw'
-
 import adminServiceRaw from '../../../services/admin.service.js?raw'
 import adminUserManagementRaw from '../../../features/admin/pages/Admin_UserManagement.jsx?raw'
 
@@ -65,7 +62,6 @@ const ACTOR_LABEL = {
   collector: 'Collector',
   enterprise: 'Enterprise',
   admin: 'Admin',
-  notifications: 'Notifications',
   external: 'External',
 }
 
@@ -218,7 +214,6 @@ export default function ApiKnowledge() {
       { id: 'enterprise', label: 'Enterprise' },
       { id: 'admin', label: 'Admin' },
       { id: 'auth', label: 'Auth' },
-      { id: 'notifications', label: 'Notifications' },
       { id: 'external', label: 'External' },
     ],
     []
@@ -1378,84 +1373,6 @@ export default function ApiKnowledge() {
             from: 60,
             to: 126,
             explain: 'Form submit gọi createCollector() và báo toast/alert theo kết quả.',
-          },
-        ],
-      },
-      {
-        id: 'notifications.getNotifications',
-        group: 'Notifications',
-        title: 'Lấy danh sách notifications',
-        request: 'GET /api/notifications?userId=...',
-        actors: ['notifications', 'citizen', 'enterprise'],
-        logic: [
-          'Service bắt lỗi và trả [] để UI không crash.',
-          'UI gọi theo user.id lấy từ sessionStorage.',
-        ],
-        service: {
-          file: 'src/services/notifications.js',
-          raw: notificationsServiceRaw,
-          from: 8,
-          to: 17,
-          explain: 'getNotifications() GET list và unwrapApiResponse(data) rồi normalize về array.',
-        },
-        calls: [
-          {
-            label: 'NotificationBell.useEffect',
-            file: 'src/shared/ui/NotificationBell.jsx',
-            raw: notificationBellRaw,
-            from: 15,
-            to: 21,
-            explain: 'Dropdown load notifications khi user thay đổi.',
-          },
-        ],
-      },
-      {
-        id: 'notifications.markAsRead',
-        group: 'Notifications',
-        title: 'Đánh dấu notification đã đọc',
-        request: 'PATCH /api/notifications/{id}/read',
-        actors: ['notifications', 'citizen', 'enterprise'],
-        logic: ['UI gọi markAsRead(id) rồi update state cục bộ để UI phản hồi nhanh.'],
-        service: {
-          file: 'src/services/notifications.js',
-          raw: notificationsServiceRaw,
-          from: 19,
-          to: 27,
-          explain: 'markAsRead() PATCH endpoint và fallback { success: false } khi lỗi.',
-        },
-        calls: [
-          {
-            label: 'NotificationBell.handleNotificationClick',
-            file: 'src/shared/ui/NotificationBell.jsx',
-            raw: notificationBellRaw,
-            from: 35,
-            to: 51,
-            explain: 'Click notification sẽ gọi markAsRead() trước khi navigate.',
-          },
-        ],
-      },
-      {
-        id: 'notifications.createNotification',
-        group: 'Notifications',
-        title: 'Tạo notification',
-        request: 'POST /api/notifications',
-        actors: ['notifications', 'enterprise'],
-        logic: ['Sau khi enterprise accept/reject report, UI tạo notification cho citizen.'],
-        service: {
-          file: 'src/services/notifications.js',
-          raw: notificationsServiceRaw,
-          from: 34,
-          to: 40,
-          explain: 'createNotification() POST /api/notifications và unwrapApiResponse(data).',
-        },
-        calls: [
-          {
-            label: 'Enterprise_ReportDetail notify flow',
-            file: 'src/features/enterprise/pages/Enterprise_ReportDetail.jsx',
-            raw: enterpriseReportDetailRaw,
-            from: 262,
-            to: 294,
-            explain: 'Sau khi reject/accept, UI cố gắng gọi createNotification() (try/catch).',
           },
         ],
       },

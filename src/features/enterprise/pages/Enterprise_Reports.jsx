@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.j
 import Button from "../../../shared/ui/Button.jsx";
 import TextField from "../../../shared/ui/TextField.jsx";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
@@ -17,6 +18,8 @@ export default function EnterpriseReports() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +52,11 @@ export default function EnterpriseReports() {
     searchId: "",
   };
   const [filter, setFilter] = useState(initialFilterState);
+
+  const updateFilter = (patch) => {
+    setFilter((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
 
   const ordered = useMemo(() => {
     const list = Array.isArray(reports) ? reports : [];
@@ -87,8 +95,34 @@ export default function EnterpriseReports() {
     return filtered;
   }, [ordered, filter]);
 
+  const totalPages = useMemo(
+    () => Math.ceil(filteredReports.length / itemsPerPage),
+    [filteredReports.length, itemsPerPage]
+  );
+
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+
+  const pagedReports = useMemo(() => {
+    if (!filteredReports.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredReports.slice(start, start + itemsPerPage);
+  }, [filteredReports, safePage, itemsPerPage]);
+
+  const pageStart = filteredReports.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = filteredReports.length ? Math.min(safePage * itemsPerPage, filteredReports.length) : 0;
+
   const handleResetFilter = () => {
     setFilter(initialFilterState);
+    setCurrentPage(1);
   };
 
   return (
@@ -116,7 +150,7 @@ export default function EnterpriseReports() {
                 <select
                   className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
                   value={filter.status}
-                  onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+                  onChange={(e) => updateFilter({ status: e.target.value })}
                 >
                   <option value="All">All</option>
                   <option value="Pending">Pending</option>
@@ -131,21 +165,21 @@ export default function EnterpriseReports() {
                 label="From Date"
                 type="date"
                 value={filter.fromDate}
-                onChange={(e) => setFilter({ ...filter, fromDate: e.target.value })}
+                  onChange={(e) => updateFilter({ fromDate: e.target.value })}
               />
 
               <TextField
                 label="To Date"
                 type="date"
                 value={filter.toDate}
-                onChange={(e) => setFilter({ ...filter, toDate: e.target.value })}
+                  onChange={(e) => updateFilter({ toDate: e.target.value })}
               />
 
               <TextField
                 label="Report ID"
                 placeholder="Search by ID..."
                 value={filter.searchId}
-                onChange={(e) => setFilter({ ...filter, searchId: e.target.value })}
+                  onChange={(e) => updateFilter({ searchId: e.target.value })}
               />
             </div>
             <div className="flex justify-end gap-3 mt-6">
@@ -180,7 +214,7 @@ export default function EnterpriseReports() {
                       </td>
                     </tr>
                   ) : filteredReports.length ? (
-                    filteredReports.map((r) => (
+                    pagedReports.map((r) => (
                       <ReportRow
                         key={r?.id ?? r?.reportCode ?? r?.code}
                         report={r}
@@ -202,6 +236,15 @@ export default function EnterpriseReports() {
               </table>
             </div>
           </CardBody>
+          {!loading && filteredReports.length > 0 ? (
+            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
+                <span className="font-bold text-gray-900">{filteredReports.length}</span> reports
+              </div>
+              <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+            </div>
+          ) : null}
         </Card>
       </div>
     </EnterpriseLayout>

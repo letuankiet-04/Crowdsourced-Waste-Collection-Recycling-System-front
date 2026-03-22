@@ -6,6 +6,7 @@ import Button from "../../../shared/ui/Button.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import ValidationError from "../../../shared/ui/ValidationError.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import {
   createEnterpriseVoucher,
   deleteEnterpriseVoucher,
@@ -35,6 +36,8 @@ export default function EnterpriseRewards() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeOnly, setActiveOnly] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -66,6 +69,27 @@ export default function EnterpriseRewards() {
 
   const totalCount = vouchers.length;
   const activeCount = useMemo(() => vouchers.filter((v) => v?.active).length, [vouchers]);
+
+  const totalPages = useMemo(() => Math.ceil(vouchers.length / itemsPerPage), [vouchers.length, itemsPerPage]);
+  const safePage = useMemo(() => {
+    if (!totalPages) return 1;
+    return Math.min(Math.max(currentPage, 1), totalPages);
+  }, [currentPage, totalPages]);
+
+  const handlePageChange = (page) => {
+    if (!totalPages) return;
+    const next = Math.min(Math.max(page, 1), totalPages);
+    setCurrentPage(next);
+  };
+
+  const pagedVouchers = useMemo(() => {
+    if (!vouchers.length) return [];
+    const start = (safePage - 1) * itemsPerPage;
+    return vouchers.slice(start, start + itemsPerPage);
+  }, [vouchers, safePage, itemsPerPage]);
+
+  const pageStart = vouchers.length ? (safePage - 1) * itemsPerPage + 1 : 0;
+  const pageEnd = vouchers.length ? Math.min(safePage * itemsPerPage, vouchers.length) : 0;
 
   const refreshVouchers = async () => {
     const rows = await getEnterpriseVouchers(activeOnly ? { active: true } : undefined);
@@ -135,6 +159,7 @@ export default function EnterpriseRewards() {
                   if (loading) return;
                   setLoading(true);
                   setError("");
+                  setCurrentPage(1);
                   setActiveOnly((v) => !v);
                 }}
                 disabled={loading}
@@ -174,7 +199,7 @@ export default function EnterpriseRewards() {
                       </td>
                     </tr>
                   ) : vouchers.length ? (
-                    vouchers.map((v) => (
+                    pagedVouchers.map((v) => (
                       <tr key={v?.id ?? v?.voucherCode} className="hover:bg-gray-50/50">
                         <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] font-semibold text-gray-900">{v?.voucherCode || "-"}</td>
                         <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-900">
@@ -245,28 +270,42 @@ export default function EnterpriseRewards() {
             </div>
           </CardBody>
 
-          <CardFooter className="px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
-            <div className="text-sm text-gray-600">{loading ? "Loading..." : `${totalCount} voucher(s)`}</div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              disabled={loading}
-              onClick={() => {
-                if (loading) return;
-                setLoading(true);
-                setError("");
+          <CardFooter className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-sm text-gray-600">
+              {loading ? (
+                "Loading..."
+              ) : vouchers.length ? (
+                <>
+                  Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
+                  <span className="font-bold text-gray-900">{vouchers.length}</span> vouchers
+                </>
+              ) : (
+                `${totalCount} voucher(s)`
+              )}
+            </div>
+            <div className="flex items-center gap-3 justify-end">
+              <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                disabled={loading}
+                onClick={() => {
+                  if (loading) return;
+                  setLoading(true);
+                  setError("");
                   refreshVouchers()
-                  .catch((err) => {
-                    const message = err?.message || "Unable to load vouchers.";
-                    setError(message);
-                    notify.error("Load vouchers failed", message);
-                  })
-                  .finally(() => setLoading(false));
-              }}
-            >
-              Refresh
-            </Button>
+                    .catch((err) => {
+                      const message = err?.message || "Unable to load vouchers.";
+                      setError(message);
+                      notify.error("Load vouchers failed", message);
+                    })
+                    .finally(() => setLoading(false));
+                }}
+              >
+                Refresh
+              </Button>
+            </div>
           </CardFooter>
         </Card>
       </div>
