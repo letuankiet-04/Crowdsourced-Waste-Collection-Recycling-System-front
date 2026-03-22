@@ -62,13 +62,6 @@ export default function CollectorTasks() {
     }));
   }, [tasks]);
 
-  const activeTaskCount = useMemo(() => {
-    return allTasks.filter((r) => {
-      const status = normalizeReportStatus(r.status);
-      return ["Assigned", "Accepted", "On The Way"].includes(status);
-    }).length;
-  }, [allTasks]);
-
   const incompleteTaskCount = useMemo(() => {
     return allTasks.filter((r) => normalizeReportStatus(r.status) !== "Completed").length;
   }, [allTasks]);
