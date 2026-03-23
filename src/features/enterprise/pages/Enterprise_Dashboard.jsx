@@ -80,7 +80,7 @@ export default function EnterpriseDashboard() {
               icon={<FileText className="h-10 w-10" aria-hidden="true" />}
             />
             <ActionCard
-              to={PATHS.enterprise.reports}
+              to={PATHS.enterprise.reviewFeedback}
               title="View feedback"
               variant="blue"
               icon={<MessageSquareText className="h-10 w-10" aria-hidden="true" />}

@@ -13,6 +13,51 @@ import { getWasteCategories } from '../../services/reports.service.js'
 import { WASTE_TYPE_OPTIONS } from '../../shared/constants/wasteTypes.js'
  
 
+const normalizeLocationText = (value) => {
+  const raw = value == null ? '' : String(value)
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const inferAdminHint = (addr) => {
+  const raw = addr == null ? '' : String(addr)
+  const parts = raw
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  if (!parts.length) return ''
+  const keep = parts.filter((p) => {
+    const n = normalizeLocationText(p)
+    return n.includes('ho chi minh') || n.includes('tp hcm') || n.includes('thu duc')
+  })
+  const tail = keep.length ? keep : parts.slice(-3)
+  return tail.join(', ')
+}
+
+const scoreCandidate = ({ lat, lng, displayName }, queryNorm, queryDigits, anchor) => {
+  const la = typeof lat === 'number' ? lat : Number(lat)
+  const ln = typeof lng === 'number' ? lng : Number(lng)
+  if (!Number.isFinite(la) || !Number.isFinite(ln)) return Number.POSITIVE_INFINITY
+
+  const dn = normalizeLocationText(displayName ?? '')
+  let penalty = 0
+  if (queryDigits && dn && !dn.includes(queryDigits)) penalty += 10_000
+  if (queryNorm && dn && !dn.includes(queryNorm)) penalty += 2_000
+
+  if (anchor) {
+    const dLat = la - anchor.lat
+    const dLng = ln - anchor.lng
+    const dist2 = dLat * dLat + dLng * dLng
+    return dist2 * 1_000_000 + penalty
+  }
+
+  return penalty
+}
+
 export default function CollectReportDialog({
   open,
   onClose,
@@ -28,7 +73,6 @@ export default function CollectReportDialog({
   const [collectedImages, setCollectedImages] = useState([])
   const [collectedAddress, setCollectedAddress] = useState('')
   const [collectedCoords, setCollectedCoords] = useState(null)
-  const [verificationRate, setVerificationRate] = useState(0)
   const [collectorNote, setCollectorNote] = useState('')
   const [wasteTypes, setWasteTypes] = useState([])
   const [addrLoading, setAddrLoading] = useState(false)
@@ -78,7 +122,6 @@ export default function CollectReportDialog({
     setCollectedImages([])
     setCollectedAddress(typeof initialAddress === 'string' ? initialAddress : '')
     setCollectedCoords(initialCoords ?? null)
-    setVerificationRate(0)
     setCollectorNote('')
     setWasteTypes(Array.from(mergedInitial.values()))
     setAddrLoading(false)
@@ -163,18 +206,77 @@ export default function CollectReportDialog({
     if (!open) return
     if (sourceRef.current !== 'address') return
     if (!collectedAddress || collectedAddress.trim().length < 3) return
+
+    const initialAddr = typeof initialAddress === 'string' ? initialAddress.trim() : ''
+    const nextAddr = String(collectedAddress || '').trim()
+    const initLat = initialCoords?.lat
+    const initLng = initialCoords?.lng
+    const initLatNum = typeof initLat === 'number' ? initLat : Number(initLat)
+    const initLngNum = typeof initLng === 'number' ? initLng : Number(initLng)
+    const hasInitialCoords = Number.isFinite(initLatNum) && Number.isFinite(initLngNum)
+    const normInitial = normalizeLocationText(initialAddr)
+    const normNext = normalizeLocationText(nextAddr)
+    const textLikelySame =
+      normInitial &&
+      normNext &&
+      (normInitial === normNext ||
+        (normNext.length >= 6 && normInitial.includes(normNext)) ||
+        (normInitial.length >= 6 && normNext.includes(normInitial)))
+    if (textLikelySame && hasInitialCoords) {
+      sourceRef.current = 'system'
+      setGeoError('')
+      setCollectedCoords({ lat: initLatNum, lng: initLngNum })
+      return
+    }
+
     setAddrLoading(true)
     setGeoError('')
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(collectedAddress)}`
-        )
+        const rawQuery = String(collectedAddress || '').trim()
+        const adminHint = initialAddr ? inferAdminHint(initialAddr) : ''
+        const q = adminHint && rawQuery.length < 40 ? `${rawQuery}, ${adminHint}` : rawQuery
+
+        const params = new URLSearchParams()
+        params.set('format', 'jsonv2')
+        params.set('q', q)
+        params.set('limit', '10')
+        params.set('countrycodes', 'vn')
+        params.set('addressdetails', '1')
+
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+          headers: { Accept: 'application/json', 'Accept-Language': 'vi' },
+        })
         if (r.ok) {
           const data = await r.json()
           if (Array.isArray(data) && data.length) {
-            const first = data[0]
-            setCollectedCoords({ lat: parseFloat(first.lat), lng: parseFloat(first.lon) })
+            const anchor = hasInitialCoords ? { lat: initLatNum, lng: initLngNum } : null
+            const queryDigits = normNext ? normNext.replace(/[^\d]/g, '') : ''
+            const queryNorm = normalizeLocationText(rawQuery)
+              .split(' ')
+              .slice(0, 4)
+              .join(' ')
+              .trim()
+
+            const scored = data
+              .map((row) => ({
+                row,
+                score: scoreCandidate(
+                  { lat: row?.lat, lng: row?.lon, displayName: row?.display_name },
+                  queryNorm,
+                  queryDigits,
+                  anchor
+                ),
+              }))
+              .filter((x) => Number.isFinite(x.score))
+              .sort((a, b) => a.score - b.score)
+
+            const best = scored[0]?.row ?? data[0]
+            sourceRef.current = 'system'
+            setCollectedCoords({ lat: parseFloat(best.lat), lng: parseFloat(best.lon) })
+            if (typeof best?.display_name === 'string' && best.display_name.trim()) {
+              setCollectedAddress(best.display_name.trim())
+            }
           } else {
             setGeoError('Address not found')
           }
@@ -188,7 +290,7 @@ export default function CollectReportDialog({
       }
     }, 500)
     return () => clearTimeout(t)
-  }, [open, collectedAddress])
+  }, [open, collectedAddress, initialAddress, initialCoords])
 
   const handleConfirm = async () => {
     if (!open || submitting) return
@@ -206,12 +308,6 @@ export default function CollectReportDialog({
     }
     if (geoError) {
       setError(geoError)
-      return
-    }
-
-    const vr = Number(verificationRate)
-    if (!Number.isFinite(vr) || vr < 0 || vr > 100) {
-      setError('Please choose a verification rate between 0 and 100.')
       return
     }
 
@@ -256,7 +352,6 @@ export default function CollectReportDialog({
       images: collectedImages,
       categoryIds,
       quantities,
-      verificationRate: vr,
       collectorNote: String(collectorNote ?? '').trim(),
       latitude: collectedCoords.lat,
       longitude: collectedCoords.lng,
@@ -339,6 +434,25 @@ export default function CollectReportDialog({
               />
               <button
                 type="button"
+                onClick={() => {
+                  const addr = typeof initialAddress === 'string' ? initialAddress : ''
+                  const lat = initialCoords?.lat
+                  const lng = initialCoords?.lng
+                  const latNum = typeof lat === 'number' ? lat : Number(lat)
+                  const lngNum = typeof lng === 'number' ? lng : Number(lng)
+                  if (!addr || !addr.trim() || !Number.isFinite(latNum) || !Number.isFinite(lngNum)) return
+                  setGeoError('')
+                  sourceRef.current = 'system'
+                  setCollectedAddress(addr)
+                  setCollectedCoords({ lat: latNum, lng: lngNum })
+                  if (error) setError('')
+                }}
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-medium transition border border-gray-300 text-gray-700 hover:bg-gray-50 active:scale-[0.98]"
+              >
+                Use reported
+              </button>
+              <button
+                type="button"
                 disabled={gpsLoading}
                 onClick={async () => {
                   setGeoError('')
@@ -407,48 +521,6 @@ export default function CollectReportDialog({
                 if (error) setError('')
               }}
             />
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-sm font-semibold text-gray-900">Verification Rate</div>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={Number(verificationRate)}
-                onChange={(e) => {
-                  setVerificationRate(Number(e.target.value))
-                  if (error) setError('')
-                }}
-                className="w-full accent-green-600"
-                aria-label="Verification Rate"
-              />
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={String(verificationRate)}
-                onChange={(e) => {
-                  const raw = String(e.target.value || '').replace(/[^\d]/g, '')
-                  const n = raw ? Number(raw) : 0
-                  const clamped = Math.max(0, Math.min(100, Math.round(n)))
-                  setVerificationRate(clamped)
-                  if (error) setError('')
-                }}
-                className="min-w-[3.25rem] w-16 px-3 py-1 rounded-lg text-sm font-semibold text-white text-center outline-none"
-                style={{
-                  background:
-                    Number(verificationRate) < 33
-                      ? '#dc2626'
-                      : Number(verificationRate) < 67
-                        ? '#f59e0b'
-                        : '#16a34a',
-                }}
-                aria-label="Verification Rate Input"
-              />
-            </div>
           </div>
 
           <div className="space-y-2">

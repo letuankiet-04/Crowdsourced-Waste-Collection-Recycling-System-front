@@ -14,6 +14,7 @@ import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { getEnterpriseFeedbacks } from "../../../services/feedback.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import FeedbackDetailModal from "../../../shared/components/feedback/FeedbackDetailModal.jsx";
+import { PATHS } from "../../../app/routes/paths.js";
 
 export default function Enterprise_ReviewFeedback() {
   const notify = useNotify();
@@ -35,15 +36,37 @@ export default function Enterprise_ReviewFeedback() {
     try {
         const data = await getEnterpriseFeedbacks();
         const items = Array.isArray(data) ? data : data.items || [];
-        setFeedback(items.map((item) => ({
-          ...item,
-          type: (item.type || item.feedbackType || ""),
-          reportId: item.collectionRequestId ?? item.reportId,
-          sender: {
-            name: item.citizenName || item.senderName,
-            role: "Citizen",
-          },
-        })));
+        setFeedback(
+          items.map((item) => {
+            const wasteReportId =
+              item.wasteReportId ??
+              item.waste_report_id ??
+              item.reportId ??
+              item.report_id ??
+              null;
+            const collectionRequestId =
+              item.collectionRequestId ?? item.collection_request_id ?? item.requestId ?? null;
+            const collectorReportId =
+              item.collectorReportId ??
+              item.collector_report_id ??
+              item.collectorSubmissionId ??
+              null;
+            return {
+              ...item,
+              type: item.type || item.feedbackType || "",
+              wasteReportId,
+              collectionRequestId,
+              collectorReportId,
+              reportEntityId: wasteReportId ?? item.reportEntityId ?? null,
+              reportId:
+                wasteReportId ?? collectionRequestId ?? collectorReportId ?? item.reportId ?? null,
+              sender: {
+                name: item.citizenName || item.senderName,
+                role: "Citizen",
+              },
+            };
+          })
+        );
     } catch {
         notify.error("Failed to load feedbacks");
     } finally {
@@ -334,7 +357,17 @@ export default function Enterprise_ReviewFeedback() {
         mode="enterprise"
         onClose={() => setSelectedFeedback(null)}
         onUpdate={fetchFeedbacks}
-        onViewReport={(id) => window.open(`/enterprise/reports/${id}`, '_blank')}
+        onViewReport={(id) => {
+          if (id == null || id === "") return;
+          window.open(`/enterprise/reports/${id}`, "_blank");
+        }}
+        onViewCollectorReport={(id) => {
+          if (id == null || id === "") return;
+          window.open(
+            PATHS.enterprise.collectorReportDetail.replace(":reportId", String(id)),
+            "_blank"
+          );
+        }}
       />
     </EnterpriseLayout>
   );

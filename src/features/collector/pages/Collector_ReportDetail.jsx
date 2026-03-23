@@ -23,6 +23,60 @@ import {
   startCollectorTask,
 } from "../../../services/collector.service.js";
 
+const reverseGeocodeCache = new Map();
+
+async function reverseGeocodeAddress(coords) {
+  const lat = Number(coords?.lat);
+  const lng = Number(coords?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+  if (reverseGeocodeCache.has(key)) return reverseGeocodeCache.get(key) || null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+      lat
+    )}&lon=${encodeURIComponent(lng)}`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "vi",
+      },
+    });
+    const data = await res.json();
+    const name = typeof data?.display_name === "string" ? data.display_name.trim() : "";
+    reverseGeocodeCache.set(key, name || "");
+    return name || null;
+  } catch {
+    reverseGeocodeCache.set(key, "");
+    return null;
+  }
+}
+
+function normalizeCoords(latRaw, lngRaw) {
+  const lat = typeof latRaw === "number" ? latRaw : Number(latRaw);
+  const lng = typeof lngRaw === "number" ? lngRaw : Number(lngRaw);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const latOk = Math.abs(lat) <= 90;
+  const lngOk = Math.abs(lng) <= 180;
+  if (latOk && lngOk) return { lat, lng };
+
+  const swappedLatOk = Math.abs(lng) <= 90;
+  const swappedLngOk = Math.abs(lat) <= 180;
+  if (swappedLatOk && swappedLngOk) return { lat: lng, lng: lat };
+
+  return null;
+}
+
+function coordsClose(a, b, epsilon = 1e-5) {
+  if (!a || !b) return false;
+  const la = typeof a.lat === "number" ? a.lat : Number(a.lat);
+  const lna = typeof a.lng === "number" ? a.lng : Number(a.lng);
+  const lb = typeof b.lat === "number" ? b.lat : Number(b.lat);
+  const lnb = typeof b.lng === "number" ? b.lng : Number(b.lng);
+  if (!Number.isFinite(la) || !Number.isFinite(lna) || !Number.isFinite(lb) || !Number.isFinite(lnb)) return false;
+  return Math.abs(la - lb) <= epsilon && Math.abs(lna - lnb) <= epsilon;
+}
+
 export default function CollectorReportDetail() {
   const { reportId } = useParams();
   const location = useLocation();
@@ -47,6 +101,7 @@ export default function CollectorReportDetail() {
   const [collectorReport, setCollectorReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [collectedAddressResolved, setCollectedAddressResolved] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -91,14 +146,11 @@ export default function CollectorReportDetail() {
     if (!id) return null;
     if (!taskDetail && !collectorReport && !stateReport) return null;
     const baseCoords =
-      taskDetail?.latitude != null && taskDetail?.longitude != null
-        ? { lat: Number(taskDetail.latitude), lng: Number(taskDetail.longitude) }
-        : stateReport?.coords ?? null;
+      normalizeCoords(taskDetail?.latitude, taskDetail?.longitude) ??
+      normalizeCoords(stateReport?.coords?.lat, stateReport?.coords?.lng) ??
+      null;
 
-    const collectedCoords =
-      collectorReport?.latitude != null && collectorReport?.longitude != null
-        ? { lat: Number(collectorReport.latitude), lng: Number(collectorReport.longitude) }
-        : null;
+    const collectedCoords = normalizeCoords(collectorReport?.latitude, collectorReport?.longitude);
 
     const collectedCategories = Array.isArray(collectorReport?.categories) ? collectorReport.categories : [];
     const collectedWasteItems = collectedCategories
@@ -137,12 +189,48 @@ export default function CollectorReportDetail() {
       address: taskDetail?.address ?? stateReport?.address ?? null,
       coords: baseCoords,
       collectedCoords,
+      collectedAddress: collectedAddressResolved ?? null,
       images: Array.isArray(taskDetail?.imageUrls) ? taskDetail.imageUrls : stateReport?.images ?? stateReport?.imageUrls ?? [],
       collectedImages: Array.isArray(collectorReport?.imageUrls) ? collectorReport.imageUrls : [],
       types: taskDetail?.wasteType ? [String(taskDetail.wasteType)] : Array.isArray(stateReport?.types) ? stateReport.types : [],
       wasteItems: collectedWasteItems.length ? collectedWasteItems : suggestedWasteItems,
     };
-  }, [collectorReport, id, stateReport, task, taskDetail]);
+  }, [collectorReport, collectedAddressResolved, id, stateReport, task, taskDetail]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCollectedAddressResolved(null);
+    const lat = report?.collectedCoords?.lat ?? null;
+    const lng = report?.collectedCoords?.lng ?? null;
+    const reportedAddr = typeof report?.address === "string" ? report.address.trim() : "";
+    const reportedLat = report?.coords?.lat ?? null;
+    const reportedLng = report?.coords?.lng ?? null;
+    if (reportedAddr && coordsClose({ lat, lng }, { lat: reportedLat, lng: reportedLng })) {
+      setCollectedAddressResolved(reportedAddr);
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void (async () => {
+      const addr = await reverseGeocodeAddress({ lat, lng });
+      if (cancelled) return;
+      if (addr) setCollectedAddressResolved(addr);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    report?.address,
+    report?.coords?.lat,
+    report?.coords?.lng,
+    report?.collectedCoords?.lat,
+    report?.collectedCoords?.lng,
+  ]);
 
   const rawStatus = String(task?.status || "").trim().toLowerCase();
   const statusLabel = normalizeReportStatus(task?.status);

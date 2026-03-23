@@ -23,13 +23,37 @@ export default function useLatestFeedbackDetail({ open, feedback, mode }) {
       try {
         const data = mode === "admin" ? await getAdminFeedbackById(feedback.id) : await getEnterpriseFeedbackById(feedback.id);
         if (cancelled) return;
+        const wasteReportId =
+          data?.wasteReportId ??
+          data?.waste_report_id ??
+          data?.reportId ??
+          data?.report_id ??
+          feedback?.wasteReportId ??
+          feedback?.reportEntityId ??
+          null;
+        const collectionRequestId =
+          data?.collectionRequestId ??
+          data?.collection_request_id ??
+          data?.requestId ??
+          feedback?.collectionRequestId ??
+          null;
+        const collectorReportId =
+          data?.collectorReportId ??
+          data?.collector_report_id ??
+          data?.collectorSubmissionId ??
+          feedback?.collectorReportId ??
+          null;
+
         setDetail({
           ...feedback,
           ...data,
           sender: feedback?.sender || undefined,
-          reportId: data?.reportId ?? data?.collectionRequestId ?? feedback?.reportId,
-          reportEntityId: data?.reportId ?? feedback?.reportEntityId ?? null,
-          collectionRequestId: data?.collectionRequestId ?? feedback?.collectionRequestId ?? null,
+          wasteReportId,
+          reportEntityId: wasteReportId,
+          collectionRequestId,
+          collectorReportId,
+          reportId:
+            wasteReportId ?? collectionRequestId ?? collectorReportId ?? feedback?.reportId ?? null,
         });
       } catch {
         if (cancelled) return;

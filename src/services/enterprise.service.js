@@ -114,35 +114,75 @@ export async function getEnterpriseRequestReportDetail(requestId) {
   return unwrapApiResponse(data)
 }
 
+/** Normalize enterprise collector report payloads (camelCase + common snake_case from API). */
+export function normalizeEnterpriseCollectorReport(raw) {
+  if (raw == null || typeof raw !== 'object') return raw
+  const r = raw
+  const imageUrls =
+    r.imageUrls ??
+    r.image_urls ??
+    r.images ??
+    (Array.isArray(r.imageUrlList) ? r.imageUrlList : undefined)
+  const latitude = r.latitude ?? r.lat ?? r.location?.latitude ?? r.location?.lat
+  const longitude = r.longitude ?? r.lng ?? r.location?.longitude ?? r.location?.lng
+  return {
+    ...r,
+    id: r.id ?? r.collectorReportId ?? r.collector_report_id,
+    reportCode: r.reportCode ?? r.report_code,
+    collectionRequestId:
+      r.collectionRequestId ??
+      r.collection_request_id ??
+      r.collectionRequest?.id ??
+      r.collection_request?.id,
+    collectorId: r.collectorId ?? r.collector_id,
+    status: r.status,
+    verificationRate: r.verificationRate ?? r.verification_rate,
+    collectorNote: r.collectorNote ?? r.collector_note,
+    totalPoint: r.totalPoint ?? r.total_point,
+    collectedAt: r.collectedAt ?? r.collected_at,
+    latitude,
+    longitude,
+    createdAt: r.createdAt ?? r.created_at,
+    imageUrls: Array.isArray(imageUrls) ? imageUrls : r.imageUrls,
+  }
+}
+
 export async function getCollectorReports(params) {
   const { data } = await api.get('/api/enterprise/collector-reports', { params })
-  return unwrapApiResponse(data)
+  const unwrapped = unwrapApiResponse(data)
+  const rows = Array.isArray(unwrapped) ? unwrapped : unwrapped?.items ?? unwrapped?.content ?? []
+  if (!Array.isArray(rows)) return unwrapped
+  return rows.map((row) => normalizeEnterpriseCollectorReport(row))
 }
 
 export async function getCollectorReportDetail(reportId) {
-  // Try to fetch from API first
+  if (reportId == null || String(reportId).trim() === '') throw new Error('Report ID is required')
+  const key = String(reportId).trim()
   try {
-    const { data } = await api.get(`/api/enterprise/collector-reports/${reportId}`)
-    return unwrapApiResponse(data)
-  } catch (error) {
-    // Fallback to mock data if API fails (e.g. endpoint not implemented yet)
-    console.warn("API call failed, using mock data for report detail", error);
-    return {
-      id: reportId,
-      reportCode: `CR-${reportId}`,
-      collectionRequestId: 100 + parseInt(reportId),
-      collectorId: 200 + parseInt(reportId),
-      status: "VERIFIED",
-      collectorNote: "Mock data: Collection completed successfully.",
-      totalPoint: 150,
-      collectedAt: new Date().toISOString(),
-      latitude: 10.762622,
-      longitude: 106.660172,
-      createdAt: new Date().toISOString(),
-      imageUrls: [
-        "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=500&q=60",
-        "https://images.unsplash.com/photo-1605600659908-0ef719419d41?auto=format&fit=crop&w=500&q=60"
-      ]
-    };
+    const { data } = await api.get(`/api/enterprise/collector-reports/${encodeURIComponent(key)}`)
+    return normalizeEnterpriseCollectorReport(unwrapApiResponse(data))
+  } catch (err) {
+    try {
+      const list = await getCollectorReports()
+      const hit =
+        (Array.isArray(list) ? list : []).find((r) => String(r?.id) === key) ??
+        (Array.isArray(list) ? list : []).find((r) => String(r?.reportCode ?? '') === key)
+      if (hit) return normalizeEnterpriseCollectorReport(hit)
+    } catch {
+      void 0
+    }
+    throw err
   }
+}
+
+export async function rewardCollectorReport({ reportId, verificationRate }) {
+  if (reportId == null || String(reportId).trim() === '') throw new Error('Report ID is required')
+  const rateNum = typeof verificationRate === 'number' ? verificationRate : Number(verificationRate)
+  if (!Number.isFinite(rateNum)) throw new Error('verificationRate is required')
+  const key = String(reportId).trim()
+  const { data } = await api.post(
+    `/api/enterprise/collector-reports/${encodeURIComponent(key)}/reward`,
+    { verificationRate: rateNum }
+  )
+  return unwrapApiResponse(data)
 }

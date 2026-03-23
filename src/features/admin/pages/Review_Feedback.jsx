@@ -36,15 +36,30 @@ export default function Review_Feedback() {
         // Request only SYSTEM feedback from API
         const data = await getAdminFeedbacks({ type: 'SYSTEM' });
         const items = Array.isArray(data) ? data : data.items || [];
-        setFeedback(items.map((item) => ({
-          ...item,
-          type: (item.type || item.feedbackType || ""),
-          reportId: item.collectionRequestId ?? item.reportId,
-          sender: {
-            name: item.citizenName,
-            role: "Citizen",
-          },
-        })));
+        setFeedback(
+          items.map((item) => {
+            const wasteReportId =
+              item.wasteReportId ?? item.waste_report_id ?? item.reportId ?? item.report_id ?? null;
+            const collectionRequestId =
+              item.collectionRequestId ?? item.collection_request_id ?? item.requestId ?? null;
+            const collectorReportId =
+              item.collectorReportId ?? item.collector_report_id ?? item.collectorSubmissionId ?? null;
+            return {
+              ...item,
+              type: item.type || item.feedbackType || "",
+              wasteReportId,
+              collectionRequestId,
+              collectorReportId,
+              reportEntityId: wasteReportId ?? item.reportEntityId ?? null,
+              reportId:
+                wasteReportId ?? collectionRequestId ?? collectorReportId ?? item.reportId ?? null,
+              sender: {
+                name: item.citizenName,
+                role: "Citizen",
+              },
+            };
+          })
+        );
     } catch {
         notify.error("Failed to load feedbacks");
     } finally {

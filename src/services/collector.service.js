@@ -60,7 +60,7 @@ export async function getCollectorCreateReport(requestId) {
 
 export async function completeCollectorTask(
   requestId,
-  { images, categoryIds, quantities, verificationRate, collectorNote, latitude, longitude } = {}
+  { images, categoryIds, quantities, collectorNote, latitude, longitude } = {}
 ) {
   const formData = new FormData()
 
@@ -73,7 +73,6 @@ export async function completeCollectorTask(
   const qtyList = Array.isArray(quantities) ? quantities : []
   qtyList.forEach((q) => formData.append('quantities', String(q)))
 
-  formData.append('verificationRate', String(verificationRate ?? ''))
   formData.append('collectorNote', collectorNote ?? '')
   formData.append('latitude', String(latitude ?? ''))
   formData.append('longitude', String(longitude ?? ''))
