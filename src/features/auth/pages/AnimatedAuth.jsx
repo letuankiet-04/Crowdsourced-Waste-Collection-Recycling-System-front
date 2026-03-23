@@ -163,10 +163,14 @@ export default function AnimatedAuth() {
       <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10">
         <div className="w-full">
           <div className="mb-6 flex items-center justify-between text-white">
-            <div className="flex items-center gap-2">
+            <Link
+              to={PATHS.home}
+              className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-white/90 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-200/40 focus:ring-offset-2 focus:ring-offset-slate-950"
+              aria-label="Go to home"
+            >
               <Leaf className="h-4 w-4 text-emerald-300" aria-hidden="true" />
               <div className="text-sm font-semibold">{APP_NAME}</div>
-            </div>
+            </Link>
           </div>
 
           <div className="relative mx-auto w-full overflow-hidden rounded-3xl bg-white/90 shadow-2xl ring-1 ring-white/15 backdrop-blur">

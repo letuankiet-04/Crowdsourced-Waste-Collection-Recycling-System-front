@@ -6,7 +6,7 @@ import PolicyTermsDialog from '../../../shared/ui/PolicyTermsDialog.jsx'
 export default function HomeFooter() {
   const [open, setOpen] = useState(false)
   return (
-    <footer className="mt-12 md:mt-14 border-t border-slate-200 bg-white text-slate-600">
+    <footer id="contact" className="mt-12 md:mt-14 border-t border-slate-200 bg-white text-slate-600 scroll-mt-24">
       <Container className="py-16">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           <div>
@@ -14,23 +14,13 @@ export default function HomeFooter() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600">
                 <Recycle className="h-6 w-6 text-white" />
               </div>
-              <div className="text-2xl font-semibold leading-tight text-slate-900">Eco-Stream Portal</div>
+              <div className="text-2xl font-semibold leading-tight text-slate-900">RacDay</div>
             </div>
             <p className="mt-4">
               Crowdsourced Waste Collection & Recycling System. Empowering sustainable communities through high-tech
               waste management solutions.
             </p>
-            <div className="mt-6 flex items-center gap-4">
-              <a href="#" aria-label="Share" className="text-slate-500 transition-colors hover:text-slate-900">
-                <Share2 className="h-5 w-5" />
-              </a>
-              <a href="#" aria-label="Website" className="text-slate-500 transition-colors hover:text-slate-900">
-                <Globe className="h-5 w-5" />
-              </a>
-              <a href="#" aria-label="Support chat" className="text-slate-500 transition-colors hover:text-slate-900">
-                <MessageSquare className="h-5 w-5" />
-              </a>
-            </div>
+
           </div>
 
           

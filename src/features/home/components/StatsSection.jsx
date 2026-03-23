@@ -1,9 +1,9 @@
 import Container from '../../../shared/ui/Container.jsx'
 
 const STATS = [
-  { value: '5K+', label: 'TONS COLLECTED' },
-  { value: '1K+', label: 'ACTIVE USERS' },
-  { value: '570+', label: 'ACIVE COLLECTORS' },
+  { value: '50+', label: 'KILOGRAMS COLLECTED' },
+  { value: '20+', label: 'ACTIVE USERS' },
+  { value: '5+', label: 'ACTIVE COLLECTORS' },
 ]
 
 export default function StatsSection() {
