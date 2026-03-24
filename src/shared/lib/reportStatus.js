@@ -18,8 +18,11 @@ export function normalizeReportStatus(status) {
 
 export function reportStatusToPillVariant(status) {
   const s = String(status).toLowerCase();
-  if (s === "accepted" || s === "accepted_enterprise" || s === "accepted_collector" || s === "collected" || s === "resolved" || s === "assigned" || s === "completed") return "green";
+  if (s === "accepted" || s === "accepted_enterprise" || s === "accepted_collector") return "blue";
+  if (s === "assigned") return "orange";
+  if (s === "completed") return "emerald";
+  if (s === "collected" || s === "resolved") return "green";
   if (s === "rejected") return "red";
-  if (s === "on the way" || s === "ontheway" || s === "on_the_way") return "blue";
+  if (s === "on the way" || s === "ontheway" || s === "on_the_way") return "cyan";
   return "yellow";
 }

@@ -112,7 +112,7 @@ export default function EnterpriseCollectorReports() {
 
   const getStatusVariant = (status) => {
     switch (status) {
-      case "COMPLETED": return "green";
+      case "COMPLETED": return "emerald";
       case "FAILED": return "red";
       default: return "yellow"; // PENDING
     }

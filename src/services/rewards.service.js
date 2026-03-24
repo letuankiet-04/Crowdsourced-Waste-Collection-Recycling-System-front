@@ -2,6 +2,7 @@ import api from './http/client.js'
 import unwrapApiResponse from './http/unwrapApiResponse.js'
 
 const REWARDS_BASE = '/api/citizen/rewards'
+const POINTS_SUMMARY_PATH = '/api/citizen/points/summary'
 
 export async function getCitizenPointsHistory(params) {
   const { data } = await api.get(`${REWARDS_BASE}/history`, { params })
@@ -13,23 +14,20 @@ export async function getCitizenRewardHistory(params) {
 }
 
 export async function getCitizenPoints() {
-  const { data } = await api.get(`${REWARDS_BASE}/history`)
-  const history = unwrapApiResponse(data) || []
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth() + 1
 
-  const totalPoints = history.reduce((sum, item) => sum + (item.point || 0), 0)
+  const { data } = await api.get(POINTS_SUMMARY_PATH, { params: { year, month } })
+  const summary = unwrapApiResponse(data) || {}
 
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
+  const totalPoints = Number(summary.totalPoints)
+  const monthlyPoints = Number(summary.earnedPoints)
 
-  const monthlyPoints = history.reduce((sum, item) => {
-    const date = new Date(item.createdAt)
-    if (date.getMonth() === currentMonth && date.getFullYear() === currentYear && item.point > 0) {
-      return sum + item.point
-    }
-    return sum
-  }, 0)
-
-  return { totalPoints, monthlyPoints }
+  return {
+    totalPoints: Number.isFinite(totalPoints) ? totalPoints : 0,
+    monthlyPoints: Number.isFinite(monthlyPoints) ? monthlyPoints : 0
+  }
 }
 
 export async function getCitizenPointsSummary() {

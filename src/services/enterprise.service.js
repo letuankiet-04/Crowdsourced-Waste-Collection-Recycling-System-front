@@ -186,3 +186,43 @@ export async function rewardCollectorReport({ reportId, verificationRate }) {
   )
   return unwrapApiResponse(data)
 }
+
+export async function createEnterprisePointAdjustment({
+  collectionRequestId,
+  citizenId,
+  points,
+  description,
+}) {
+  if (collectionRequestId == null || String(collectionRequestId).trim() === '') {
+    throw new Error('collectionRequestId is required')
+  }
+  const pts = typeof points === 'number' ? points : Number(points)
+  if (!Number.isFinite(pts)) throw new Error('points is required')
+  const body = {
+    collectionRequestId: Number(collectionRequestId),
+    points: Math.trunc(pts),
+    description: description ? String(description) : undefined,
+    citizenId: citizenId != null && String(citizenId).trim() !== '' ? Number(citizenId) : undefined,
+  }
+  const { data } = await api.post('/api/enterprise/points/adjustments', body)
+  return unwrapApiResponse(data)
+}
+
+export async function updateEnterprisePointAdjustment(id, { points, description }) {
+  if (id == null || String(id).trim() === '') throw new Error('Adjustment ID is required')
+  const pts = typeof points === 'number' ? points : Number(points)
+  if (!Number.isFinite(pts)) throw new Error('points is required')
+  const { data } = await api.put(`/api/enterprise/points/adjustments/${encodeURIComponent(String(id).trim())}`, {
+    points: Math.trunc(pts),
+    description: description ? String(description) : undefined,
+  })
+  return unwrapApiResponse(data)
+}
+
+export async function deleteEnterprisePointAdjustment(id) {
+  if (id == null || String(id).trim() === '') throw new Error('Adjustment ID is required')
+  const { data } = await api.delete(
+    `/api/enterprise/points/adjustments/${encodeURIComponent(String(id).trim())}`
+  )
+  return unwrapApiResponse(data)
+}

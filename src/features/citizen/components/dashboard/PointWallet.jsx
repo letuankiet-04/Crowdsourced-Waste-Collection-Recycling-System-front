@@ -10,18 +10,40 @@ export default function PointWallet() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
+    let cancelled = false;
+
+    async function fetchData(showLoading = false) {
       try {
+        if (showLoading) setLoading(true);
         const data = await getCitizenPoints();
-        setPoints(data?.totalPoints ?? 0);
+        if (!cancelled) setPoints(data?.totalPoints ?? 0);
       } catch (error) {
         console.error("Failed to fetch citizen dashboard data:", error);
-        setPoints(0);
+        if (!cancelled) setPoints(0);
       } finally {
-        setLoading(false);
+        if (showLoading && !cancelled) setLoading(false);
       }
     }
-    fetchData();
+    fetchData(true);
+
+    const handleFocus = () => fetchData(false);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchData(false);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData(false);
+    }, 20000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -58,7 +80,7 @@ export default function PointWallet() {
       </div>
 
       <button 
-        onClick={() => navigate(PATHS.citizen.rewards)}
+        onClick={() => navigate(PATHS.citizen.pointsHistory)}
         className={`relative w-full bg-gray-900 text-white py-3.5 px-6 rounded-xl font-medium text-lg hover:bg-gray-800 transition-all duration-200 active:scale-95 flex items-center justify-center gap-3 overflow-hidden group/btn ${loading ? 'opacity-40 filter blur-[1px] pointer-events-none' : ''}`}
       >
         <div className="absolute inset-0 -translate-x-full group-hover/btn:animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent" />

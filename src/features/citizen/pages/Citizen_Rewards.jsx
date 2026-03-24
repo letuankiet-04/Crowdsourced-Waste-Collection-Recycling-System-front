@@ -18,20 +18,52 @@ export default function CitizenRewards() {
   const notify = useNotify();
 
   useEffect(() => {
-    async function fetchData() {
+    let cancelled = false;
+
+    async function fetchPoints() {
       try {
         const data = await getCitizenPoints();
         if (data) {
-          setPointsData(data);
+          if (!cancelled) setPointsData(data);
         }
-        const [my, redeemable] = await Promise.all([getMyVouchers(), getRedeemableVouchers()]);
-        setMyVouchers(my || []);
-        setRedeemableVouchers(redeemable || []);
       } catch (error) {
         console.error("Failed to fetch points:", error);
       }
     }
-    fetchData();
+
+    async function fetchVouchers() {
+      try {
+        const [my, redeemable] = await Promise.all([getMyVouchers(), getRedeemableVouchers()]);
+        if (!cancelled) {
+          setMyVouchers(my || []);
+          setRedeemableVouchers(redeemable || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch vouchers:", error);
+      }
+    }
+
+    fetchPoints();
+    fetchVouchers();
+
+    const handleFocus = () => fetchPoints();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchPoints();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') fetchPoints();
+    }, 20000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const handleRedeem = async (voucher) => {

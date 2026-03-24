@@ -4,6 +4,11 @@ const variants = {
         glowBg: "bg-gradient-to-br from-white to-green-500",
         hoverShadow: "group-hover:shadow-green-500/50",
     },
+    emerald: {
+        bgColor: "bg-emerald-500",
+        glowBg: "bg-gradient-to-br from-white to-emerald-500",
+        hoverShadow: "group-hover:shadow-emerald-500/50",
+    },
     red: {
         bgColor: "bg-red-500",
         glowBg: "bg-gradient-to-br from-white to-red-500",
@@ -18,6 +23,11 @@ const variants = {
         bgColor: "bg-blue-500",
         glowBg: "bg-gradient-to-br from-white to-blue-500",
         hoverShadow: "group-hover:shadow-blue-500/50",
+    },
+    cyan: {
+        bgColor: "bg-cyan-500",
+        glowBg: "bg-gradient-to-br from-white to-cyan-500",
+        hoverShadow: "group-hover:shadow-cyan-500/50",
     },
     orange: {
         bgColor: "bg-orange-500",

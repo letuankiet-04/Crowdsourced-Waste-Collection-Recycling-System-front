@@ -10,6 +10,9 @@ export function mapWasteCategoryOptions(cats) {
 
 export function buildCitizenReportDetail(apiReport, reportId) {
   if (!apiReport) return null;
+  const reportCodeRaw = apiReport?.reportCode ?? apiReport?.code ?? apiReport?.report_code ?? null;
+  const reportCode =
+    reportCodeRaw != null && String(reportCodeRaw).trim() !== "" ? String(reportCodeRaw).trim() : null;
   const categories = Array.isArray(apiReport?.categories) ? apiReport.categories : [];
   const images = Array.isArray(apiReport?.images) ? apiReport.images : [];
   const description =
@@ -40,6 +43,7 @@ export function buildCitizenReportDetail(apiReport, reportId) {
 
   return {
     id: apiReport?.id ?? reportId,
+    reportCode,
     status: apiReport?.status ?? null,
     createdAt: apiReport?.createdAt ?? null,
     description,

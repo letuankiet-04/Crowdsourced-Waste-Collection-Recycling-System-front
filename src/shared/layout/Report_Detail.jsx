@@ -137,7 +137,7 @@ export default function ReportDetail({
             </CardHeader>
             <CardBody className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label="Report Code" value={displayReportCode || displayReportId || '-'} />
+                <Field label="Report Code" value={displayReportCode || '-'} />
                 <div>
                   <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Status</div>
                   <div className="mt-2">

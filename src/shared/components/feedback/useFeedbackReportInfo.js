@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
 import {
+  getEnterpriseReports,
   getEnterpriseWasteReportById,
+  getEnterpriseRequestReportDetail,
   getCollectorReportDetail,
   getCollectorReports,
+  normalizeEnterpriseCollectorReport,
 } from "../../../services/enterprise.service.js";
 
 function uniqueIds(values) {
   const seen = new Set();
   const out = [];
   for (const v of values) {
-    if (v == null || v === "") continue;
-    const key = String(v);
+    if (v == null) continue;
+    if (typeof v === "string" && v.trim() === "") continue;
+    if (v === "") continue;
+    const key = String(v).trim();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(v);
+    out.push(typeof v === "string" ? key : v);
   }
   return out;
 }
@@ -36,6 +41,67 @@ function collectionRequestIdFromSources(citizenReport, detailCollectionRequestId
     fallbackCollectionRequestId ??
     null
   );
+}
+
+async function resolveCitizenByCollectionRequest({
+  detailCollectionRequestId,
+  fallbackCollectionRequestId,
+}) {
+  const requestId = collectionRequestIdFromSources(
+    null,
+    detailCollectionRequestId,
+    fallbackCollectionRequestId
+  );
+  if (requestId == null || String(requestId).trim() === "") return null;
+  try {
+    const raw = await getEnterpriseRequestReportDetail(requestId);
+    if (!raw) return null;
+    if (raw?.id != null) return raw;
+    const nested =
+      raw?.report ??
+      raw?.wasteReport ??
+      raw?.waste_report ??
+      raw?.reportDetail ??
+      raw?.report_detail ??
+      null;
+    if (nested && typeof nested === "object" && nested.id != null) return nested;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveCitizenByCollectionRequestFromList({
+  detailCollectionRequestId,
+  fallbackCollectionRequestId,
+}) {
+  const requestId = collectionRequestIdFromSources(
+    null,
+    detailCollectionRequestId,
+    fallbackCollectionRequestId
+  );
+  if (requestId == null || String(requestId).trim() === "") return null;
+  let rows = [];
+  try {
+    const raw = await getEnterpriseReports();
+    rows = Array.isArray(raw) ? raw : raw?.items ?? raw?.content ?? [];
+  } catch {
+    rows = [];
+  }
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const hit =
+    rows.find((r) => Number(r?.collectionRequestId) === Number(requestId)) ??
+    rows.find((r) => Number(r?.requestId) === Number(requestId)) ??
+    rows.find((r) => String(r?.collectionRequestId) === String(requestId)) ??
+    rows.find((r) => String(r?.requestId) === String(requestId));
+  if (!hit) return null;
+  const id = hit?.id ?? null;
+  if (id == null || String(id).trim() === "") return hit;
+  try {
+    return await getEnterpriseWasteReportById(id);
+  } catch {
+    return hit;
+  }
 }
 
 async function resolveCollectorByCollectionRequest({
@@ -91,8 +157,10 @@ export default function useFeedbackReportInfo({ open, mode, detail, fallback }) 
     const wasteCandidates = uniqueIds([
       detail?.wasteReportId,
       detail?.reportEntityId,
+      detail?.reportId,
       fallback?.wasteReportId,
       fallback?.reportEntityId,
+      fallback?.reportId,
     ]);
 
     const hasAnyLink =
@@ -120,8 +188,21 @@ export default function useFeedbackReportInfo({ open, mode, detail, fallback }) 
 
     void (async () => {
       let citizen = null;
+      citizen = await resolveCitizenByCollectionRequest({
+        detailCollectionRequestId: detail?.collectionRequestId ?? null,
+        fallbackCollectionRequestId: fallback?.collectionRequestId ?? null,
+      });
+
+      if (!citizen && !cancelled) {
+        citizen = await resolveCitizenByCollectionRequestFromList({
+          detailCollectionRequestId: detail?.collectionRequestId ?? null,
+          fallbackCollectionRequestId: fallback?.collectionRequestId ?? null,
+        });
+      }
+
       for (const c of wasteCandidates) {
         if (cancelled) break;
+        if (citizen) break;
         try {
           const data = await getEnterpriseWasteReportById(c);
           if (data) {
@@ -140,6 +221,20 @@ export default function useFeedbackReportInfo({ open, mode, detail, fallback }) 
           collector = await getCollectorReportDetail(String(explicitCollector));
         } catch {
           collector = null;
+        }
+      }
+
+      if (!collector && !cancelled) {
+        const embedded =
+          detail?.collectorRequestReport ??
+          detail?.collectorReport ??
+          detail?.collector_report ??
+          fallback?.collectorRequestReport ??
+          fallback?.collectorReport ??
+          fallback?.collector_report ??
+          null;
+        if (embedded && typeof embedded === "object") {
+          collector = normalizeEnterpriseCollectorReport(embedded);
         }
       }
 
@@ -180,12 +275,20 @@ export default function useFeedbackReportInfo({ open, mode, detail, fallback }) 
     mode,
     detail?.wasteReportId,
     detail?.reportEntityId,
+    detail?.reportId,
     detail?.collectionRequestId,
     detail?.collectorReportId,
+    detail?.collectorRequestReport,
+    detail?.collectorReport,
+    detail?.collector_report,
     fallback?.wasteReportId,
     fallback?.reportEntityId,
+    fallback?.reportId,
     fallback?.collectionRequestId,
     fallback?.collectorReportId,
+    fallback?.collectorRequestReport,
+    fallback?.collectorReport,
+    fallback?.collector_report,
   ]);
 
   return { citizenReportInfo, collectorReportInfo, loadingReports };

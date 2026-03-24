@@ -23,7 +23,15 @@ export default function useLatestFeedbackDetail({ open, feedback, mode }) {
       try {
         const data = mode === "admin" ? await getAdminFeedbackById(feedback.id) : await getEnterpriseFeedbackById(feedback.id);
         if (cancelled) return;
+        const rawType = data?.type ?? data?.feedbackType ?? feedback?.type ?? feedback?.feedbackType ?? "";
+        const typeUpper = String(rawType).toUpperCase();
+        const preferReportIdAsWaste =
+          typeUpper === "COMPLAINT_REWARD" ||
+          typeUpper === "COMPLAINT_COLLECTION" ||
+          typeUpper.endsWith("_REWARD") ||
+          typeUpper.endsWith("_COLLECTION");
         const wasteReportId =
+          (preferReportIdAsWaste ? data?.reportId ?? data?.report_id : null) ??
           data?.wasteReportId ??
           data?.waste_report_id ??
           data?.reportId ??
@@ -41,6 +49,10 @@ export default function useLatestFeedbackDetail({ open, feedback, mode }) {
           data?.collectorReportId ??
           data?.collector_report_id ??
           data?.collectorSubmissionId ??
+          data?.collectorReport?.id ??
+          data?.collector_request_report?.id ??
+          data?.collectorRequestReport?.id ??
+          data?.collector_report?.id ??
           feedback?.collectorReportId ??
           null;
 
@@ -48,6 +60,7 @@ export default function useLatestFeedbackDetail({ open, feedback, mode }) {
           ...feedback,
           ...data,
           sender: feedback?.sender || undefined,
+          type: rawType || undefined,
           wasteReportId,
           reportEntityId: wasteReportId,
           collectionRequestId,

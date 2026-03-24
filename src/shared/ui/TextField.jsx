@@ -7,6 +7,7 @@ export default function TextField({
   autoComplete,
   value,
   onChange,
+  onBlur,
   placeholder,
   disabled,
   leftIcon: LeftIcon,
@@ -40,6 +41,7 @@ export default function TextField({
           autoComplete={autoComplete}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           placeholder={placeholder}
           disabled={disabled}
           className={cn(

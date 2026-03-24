@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from "../components/navigation/Sidebar";
 import Navbar from "../components/navigation/CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card } from "../../../shared/ui/Card.jsx";
 import { getCitizenPoints, getCitizenPointsHistory } from "../../../services/citizen.service.js";
+import { PATHS } from "../../../app/routes/paths.js";
+
 
 export default function PointHistory() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('All Activities');
   const [historyData, setHistoryData] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
@@ -105,22 +109,45 @@ export default function PointHistory() {
   });
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchData() {
       try {
-        setError(null);
+        if (!cancelled) setError(null);
         const [points, history] = await Promise.all([
           getCitizenPoints(),
           getCitizenPointsHistory()
         ]);
-        if (points) setPointsData(points);
-        if (history && Array.isArray(history)) setHistoryData(history);
-        setError('');
+        if (!cancelled) {
+          if (points) setPointsData(points);
+          if (history && Array.isArray(history)) setHistoryData(history);
+          setError('');
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
-        setError('Unable to load points history. Please try again.')
+        if (!cancelled) setError('Unable to load points history. Please try again.')
       }
     }
     fetchData();
+
+    const handleFocus = () => fetchData();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData();
+    }, 20000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -143,12 +170,6 @@ export default function PointHistory() {
             <h1 className="text-3xl font-bold text-gray-900">Points History</h1>
             <p className="text-gray-500 mt-2">Track your contributions and rewards earned</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export PDF
-          </button>
         </div>
 
         {/* Current Balance Card */}
@@ -184,7 +205,9 @@ export default function PointHistory() {
               </div>
             </div>
 
-            <button className="w-full md:w-auto px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95">
+            <button className="w-full md:w-auto px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
+              onClick={() => navigate(PATHS.citizen.rewards)}
+              >
               Redeem Rewards
             </button>
           </div>

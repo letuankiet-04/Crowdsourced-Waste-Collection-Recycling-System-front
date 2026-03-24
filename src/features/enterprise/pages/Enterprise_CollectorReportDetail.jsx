@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import EnterpriseLayout from "../layouts/EnterpriseLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
@@ -149,6 +149,7 @@ export default function EnterpriseCollectorReportDetail() {
 
       const collector = await getCollectorReportDetail(id);
       setReport(collector);
+      let collectorForRate = collector;
 
       const requestId = collector?.collectionRequestId;
       if (requestId != null && String(requestId).trim() !== "") {
@@ -157,7 +158,10 @@ export default function EnterpriseCollectorReportDetail() {
           const reqDetail = await getEnterpriseRequestReportDetail(requestId);
           const cr = reqDetail?.collectorReport ? normalizeEnterpriseCollectorReport(reqDetail.collectorReport) : null;
           wr = reqDetail?.wasteReport ?? null;
-          if (cr) setReport(cr);
+          if (cr) {
+            collectorForRate = cr;
+            setReport(cr);
+          }
           if (wr) setWasteReport(wr);
         } catch {
           void 0;
@@ -175,6 +179,11 @@ export default function EnterpriseCollectorReportDetail() {
           }
         }
       }
+
+      const vr = collectorForRate?.verificationRate;
+      if (vr != null && String(vr).trim() !== "") {
+        setVerificationRateInput(String(vr));
+      }
     } catch (err) {
       console.error("Failed to fetch report detail:", err);
       setError("Failed to load report details.");
@@ -186,7 +195,7 @@ export default function EnterpriseCollectorReportDetail() {
   const getStatusVariant = (status) => {
     const s = String(status).toUpperCase();
     switch (s) {
-      case "COMPLETED": return "green";
+      case "COMPLETED": return "emerald";
       case "FAILED": return "red";
       default: return "yellow";
     }
@@ -206,6 +215,14 @@ export default function EnterpriseCollectorReportDetail() {
   const rateNum = Number(verificationRateInput);
   const rateSafe = Number.isFinite(rateNum) ? Math.min(Math.max(rateNum, 0), 100) : null;
   const estimatedAwardPoints = computeEstimatedAwardPoints(categories, rateSafe);
+  const reportVerificationRate = useMemo(() => {
+    const raw = report?.verificationRate;
+    if (raw == null || raw === "") return null;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)));
+    const s = String(raw).trim();
+    return s ? s : null;
+  }, [report?.verificationRate]);
   const reportedRawAddress =
     wasteReport?.address ??
     wasteReport?.reportedAddress ??
@@ -381,6 +398,16 @@ export default function EnterpriseCollectorReportDetail() {
                     <div>
                       <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Points</div>
                       <div className="mt-1 text-gray-900 font-medium">{totalPoints}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Verification Rate</div>
+                      <div className="mt-1 text-gray-900 font-medium">
+                        {reportVerificationRate != null
+                          ? typeof reportVerificationRate === "number"
+                            ? `${reportVerificationRate}%`
+                            : reportVerificationRate
+                          : "-"}
+                      </div>
                     </div>
                   </div>
                   <div>

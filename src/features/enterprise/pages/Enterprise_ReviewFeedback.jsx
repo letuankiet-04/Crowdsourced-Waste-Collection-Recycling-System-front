@@ -38,7 +38,15 @@ export default function Enterprise_ReviewFeedback() {
         const items = Array.isArray(data) ? data : data.items || [];
         setFeedback(
           items.map((item) => {
+            const rawType = item.type || item.feedbackType || "";
+            const typeUpper = String(rawType).toUpperCase();
+            const preferReportIdAsWaste =
+              typeUpper === "COMPLAINT_REWARD" ||
+              typeUpper === "COMPLAINT_COLLECTION" ||
+              typeUpper.endsWith("_REWARD") ||
+              typeUpper.endsWith("_COLLECTION");
             const wasteReportId =
+              (preferReportIdAsWaste ? item.reportId ?? item.report_id : null) ??
               item.wasteReportId ??
               item.waste_report_id ??
               item.reportId ??
@@ -53,7 +61,7 @@ export default function Enterprise_ReviewFeedback() {
               null;
             return {
               ...item,
-              type: item.type || item.feedbackType || "",
+              type: rawType,
               wasteReportId,
               collectionRequestId,
               collectorReportId,

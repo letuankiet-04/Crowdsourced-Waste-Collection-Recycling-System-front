@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from 'react-dom';
 import { X, Clock, FileText } from 'lucide-react';
 import Button from '../../ui/Button.jsx';
 import StatusPill from '../../ui/StatusPill.jsx';
 import { resolveAdminFeedback, resolveEnterpriseFeedback } from '../../../services/feedback.service.js';
+import { createEnterprisePointAdjustment } from "../../../services/enterprise.service.js";
 import useNotify from '../../hooks/useNotify.js';
 import useBodyScrollLock from "../../hooks/useBodyScrollLock.js";
 import useLatestFeedbackDetail from "./useLatestFeedbackDetail.js";
 import useFeedbackReportInfo from "./useFeedbackReportInfo.js";
 import EnterpriseAttachedReports from "./EnterpriseAttachedReports.jsx";
+import EnterpriseRewardSection from "./EnterpriseRewardSection.jsx";
 
 export default function FeedbackDetailModal({
   open,
@@ -24,6 +26,10 @@ export default function FeedbackDetailModal({
   const [response, setResponse] = useState("");
   const [decision, setDecision] = useState("RESOLVED");
   const [submitting, setSubmitting] = useState(false);
+  const [savingReward, setSavingReward] = useState(false);
+  const [rewardRateInput, setRewardRateInput] = useState("100");
+  const [collectorOverride, setCollectorOverride] = useState(null);
+  const lastNegativeRateWarnAtRef = useRef(0);
   const { detail, loadingDetail } = useLatestFeedbackDetail({ open, feedback, mode });
   const { citizenReportInfo, collectorReportInfo, loadingReports } = useFeedbackReportInfo({
     open,
@@ -37,10 +43,11 @@ export default function FeedbackDetailModal({
       setResponse("");
       setDecision("RESOLVED");
       setSubmitting(false);
+      setRewardRateInput("100");
+      setCollectorOverride(null);
     }
   }, [open, feedback, mode]);
-
-  if (!open || !feedback) return null;
+  const isReady = Boolean(open && feedback);
 
   const resolveFeedback = async (id, payload) => {
     if (mode === "admin") {
@@ -49,13 +56,103 @@ export default function FeedbackDetailModal({
     return resolveEnterpriseFeedback(id, payload);
   };
 
+  function estimatePointsFromCollector(report, bonusPoints) {
+    const bonus = typeof bonusPoints === "number" ? bonusPoints : Number(bonusPoints);
+    return Number.isFinite(bonus) ? Math.trunc(bonus) : 0;
+  }
+
+  async function saveRewardRate(rateSafe) {
+    if (mode !== "enterprise") return null;
+    if (!canUpdatePoints) return null;
+
+    const requestId = collectionRequestIdForAdjustment;
+    if (requestId == null) {
+      notify.error("Missing collection request ID", "Unable to identify the collection request for point adjustment.");
+      return { failed: true };
+    }
+
+    const points = estimatePointsFromCollector(effectiveCollector, rateSafe);
+    if (!Number.isFinite(points) || points === 0) {
+      notify.error("Points must be non-zero", "Unable to create an adjustment with 0 points.");
+      return { failed: true };
+    }
+
+    setSavingReward(true);
+    const toastId = notify.loading(
+      "Saving point adjustment...",
+      "Adjusting citizen points for this collection request."
+    );
+    try {
+      const res = await createEnterprisePointAdjustment({
+        collectionRequestId: requestId,
+        points,
+        description: response.trim() ? `Feedback #${view?.id ?? ""}: ${response.trim()}` : `Feedback #${view?.id ?? ""}`,
+        citizenId: citizenIdForAdjustment ?? undefined,
+      });
+
+      notify.update(toastId, {
+        variant: "success",
+        title: "Saved",
+        message: `Adjusted ${res?.points ?? points} pts. Balance: ${res?.balanceAfter ?? "N/A"}.`,
+      });
+      setTimeout(() => notify.dismiss(toastId), 3500);
+
+      setCollectorOverride((prev) => {
+        const base = prev || effectiveCollector || {};
+        return {
+          ...base,
+          verificationRate: rateSafe,
+          status: base.status ?? "COMPLETED",
+        };
+      });
+
+      return { ok: true, res: res || null };
+    } catch (err) {
+      const message = err?.message || "Unable to adjust points for this collection request.";
+      if (err?.status === 409) {
+        notify.update(toastId, { variant: "warning", title: "Conflict", message });
+        setTimeout(() => notify.dismiss(toastId), 3500);
+        return { conflict: true, message };
+      }
+      notify.update(toastId, { variant: "error", title: "Save failed", message });
+      setTimeout(() => notify.dismiss(toastId), 3500);
+      return { failed: true, message };
+    } finally {
+      setSavingReward(false);
+    }
+  }
+
   const handleRespond = async () => {
     if (!response.trim()) {
       notify.error("Response cannot be empty");
       return;
     }
+    const n = Number(rewardRateInput);
+    if (Number.isFinite(n) && n < 0) {
+      notify.error("Verification rate cannot be negative.");
+      return;
+    }
+    const decisionUpper = String(decision || "").toUpperCase();
+    const wantsReward = mode === "enterprise" && decisionUpper === "RESOLVED";
+    if (wantsReward && (loadingDetail || loadingReports)) {
+      notify.error("Please wait", "Loading linked report information...");
+      return;
+    }
     setSubmitting(true);
     try {
+      if (wantsReward) {
+        if (!canUpdatePoints) {
+          notify.error(
+            "Missing collector report",
+            "This feedback is not linked to a collector report, so points cannot be awarded."
+          );
+          return;
+        }
+        if (!Number.isFinite(n)) throw new Error("Invalid verification rate.");
+        const rateSafe = Math.max(0, Math.min(100, Math.round(n)));
+        const rewardState = await saveRewardRate(rateSafe);
+        if (rewardState?.failed) return;
+      }
       await resolveFeedback(feedback.id, {
         resolution: response.trim(),
         status: decision,
@@ -63,29 +160,8 @@ export default function FeedbackDetailModal({
       notify.success("Feedback updated successfully");
       onUpdate?.();
       onClose();
-    } catch {
-      notify.error("Failed to update feedback");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleResolve = async () => {
-    if (!response.trim()) {
-      notify.error("Response cannot be empty");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await resolveFeedback(feedback.id, {
-        resolution: response.trim(),
-        status: "RESOLVED",
-      });
-      notify.success("Feedback resolved");
-      onUpdate?.();
-      onClose();
-    } catch {
-      notify.error("Failed to resolve feedback");
+    } catch (err) {
+      notify.error(err?.message || "Failed to update feedback");
     } finally {
       setSubmitting(false);
     }
@@ -96,6 +172,124 @@ export default function FeedbackDetailModal({
   };
 
   const view = detail || feedback;
+  const effectiveCollector = collectorOverride || collectorReportInfo;
+  const effectiveCitizen = citizenReportInfo;
+  const collectionRequestIdForAdjustment = (() => {
+    const raw =
+      effectiveCollector?.collectionRequestId ??
+      effectiveCollector?.collection_request_id ??
+      effectiveCitizen?.collectionRequestId ??
+      effectiveCitizen?.requestId ??
+      effectiveCitizen?.collection_request_id ??
+      view?.collectionRequestId ??
+      feedback?.collectionRequestId ??
+      detail?.collectionRequestId ??
+      null;
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    return s ? raw : null;
+  })();
+  const citizenIdForAdjustment = (() => {
+    const raw =
+      effectiveCitizen?.citizenId ??
+      effectiveCitizen?.citizen_id ??
+      effectiveCitizen?.citizen?.id ??
+      effectiveCitizen?.citizen?.citizenId ??
+      effectiveCitizen?.citizen?.citizen_id ??
+      null;
+    if (raw == null) return null;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(n) ? n : null;
+  })();
+  const collectorReportIdForReward = (() => {
+    const raw =
+      effectiveCollector?.id ??
+      view?.collectorReport?.id ??
+      view?.collectorReportId ??
+      null;
+    if (raw == null) return null;
+    const s = String(raw).trim();
+    return s ? raw : null;
+  })();
+  const canUpdatePoints =
+    mode === "enterprise" && collectorReportIdForReward != null && collectionRequestIdForAdjustment != null;
+
+  const inferredRate = useMemo(() => {
+    const categories = Array.isArray(effectiveCollector?.categories) ? effectiveCollector.categories : [];
+    const ptsRaw = effectiveCollector?.totalPoint ?? effectiveCollector?.totalPoints ?? effectiveCollector?.points ?? null;
+    const pts = typeof ptsRaw === "number" ? ptsRaw : Number(ptsRaw);
+    if (!Number.isFinite(pts) || pts <= 0) return null;
+    let base = 0;
+    for (const c of categories) {
+      const p = c?.pointPerUnit ?? c?.point_per_unit ?? c?.point ?? null;
+      const q = c?.quantity ?? c?.qty ?? c?.weight ?? c?.actualWeight ?? c?.actual_weight ?? null;
+      const pn = typeof p === "number" ? p : Number(p);
+      const qn = typeof q === "number" ? q : Number(q);
+      if (!Number.isFinite(pn) || !Number.isFinite(qn)) continue;
+      base += pn * qn;
+    }
+    if (!Number.isFinite(base) || base <= 0) return null;
+    const r = (pts / base) * 100;
+    if (!Number.isFinite(r)) return null;
+    return Math.max(0, Math.min(100, Math.round(r)));
+  }, [effectiveCollector]);
+
+  const rewardRateNum = Number(rewardRateInput);
+  const rewardRateSafe = Number.isFinite(rewardRateNum) ? Math.max(0, Math.min(100, Math.round(rewardRateNum))) : null;
+  const handleRewardRateChange = (nextValue) => {
+    const s = nextValue == null ? "" : String(nextValue);
+    const trimmed = s.trim();
+    if (!trimmed) {
+      setRewardRateInput("");
+      return;
+    }
+    if (trimmed.startsWith("-")) {
+      const now = Date.now();
+      if (now - lastNegativeRateWarnAtRef.current > 800) {
+        notify.error("Verification rate cannot be negative.");
+        lastNegativeRateWarnAtRef.current = now;
+      }
+      setRewardRateInput("0");
+      return;
+    }
+    const num = Number(trimmed);
+    if (Number.isFinite(num) && num < 0) {
+      const now = Date.now();
+      if (now - lastNegativeRateWarnAtRef.current > 800) {
+        notify.error("Verification rate cannot be negative.");
+        lastNegativeRateWarnAtRef.current = now;
+      }
+      setRewardRateInput("0");
+      return;
+    }
+    setRewardRateInput(s);
+  };
+  const handleRewardRateBlur = () => {
+    if (!canUpdatePoints) return;
+    const n = Number(rewardRateInput);
+    if (!Number.isFinite(n)) return;
+    if (n < 0) {
+      notify.error("Verification rate cannot be negative.");
+      return;
+    }
+    const rateSafe = Math.max(0, Math.min(100, Math.round(n)));
+    setRewardRateInput(String(rateSafe));
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const raw = effectiveCollector?.verificationRate ?? effectiveCollector?.verification_rate ?? null;
+    const num = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(num)) {
+      setRewardRateInput(String(Math.max(0, Math.min(100, Math.round(num)))));
+      return;
+    }
+    if (inferredRate != null) {
+      setRewardRateInput(String(inferredRate));
+      return;
+    }
+    setRewardRateInput("100");
+  }, [effectiveCollector, inferredRate, open]);
   const hasAttached = Boolean(
     view?.wasteReportId ||
       view?.reportEntityId ||
@@ -122,6 +316,8 @@ export default function FeedbackDetailModal({
   };
 
   const linkedImages = extractImages(view);
+
+  if (!isReady) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
@@ -333,14 +529,16 @@ export default function FeedbackDetailModal({
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Attached Report</h3>
                   {mode === "enterprise" ? (
-                    <EnterpriseAttachedReports
-                      citizen={citizenReportInfo}
-                      collector={collectorReportInfo}
-                      loading={loadingReports}
-                      fallbackWasteId={view?.wasteReportId ?? view?.reportEntityId ?? view?.reportId}
-                      onViewCitizen={(id) => onViewReport?.(id)}
-                      onViewCollector={onViewCollectorReport}
-                    />
+                    <div className="space-y-6">
+                      <EnterpriseAttachedReports
+                        citizen={effectiveCitizen}
+                        collector={effectiveCollector}
+                        loading={loadingReports}
+                        fallbackWasteId={view?.wasteReportId ?? view?.reportEntityId ?? view?.reportId}
+                        onViewCitizen={(id) => onViewReport?.(id)}
+                        onViewCollector={onViewCollectorReport}
+                      />
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -353,6 +551,16 @@ export default function FeedbackDetailModal({
                 </div>
               </div>
             )}
+
+            {canUpdatePoints ? (
+              <EnterpriseRewardSection
+                collector={effectiveCollector}
+                rateInput={rewardRateInput}
+                onRateChange={handleRewardRateChange}
+                onRateBlur={handleRewardRateBlur}
+                disabled={submitting}
+              />
+            ) : null}
 
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Response</h3>
@@ -396,15 +604,20 @@ export default function FeedbackDetailModal({
                     className="w-full min-h-[120px] p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-y"
                   />
                   <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleResolve} disabled={submitting}>
-                      Mark as Resolved
-                    </Button>
                     <Button
                       onClick={handleRespond}
-                      disabled={!response.trim() || submitting}
+                      disabled={
+                        !response.trim() ||
+                        submitting ||
+                        savingReward ||
+                        (mode === "enterprise" &&
+                          String(decision || "").toUpperCase() === "RESOLVED" &&
+                          (loadingDetail || loadingReports)) ||
+                        (canUpdatePoints && decision === "RESOLVED" && rewardRateSafe == null)
+                      }
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
-                      {submitting ? "Submitting..." : "Submit Decision"}
+                      {submitting ? "Submitting..." : decision === "REJECTED" ? "Reject" : "Resolve"}
                     </Button>
                   </div>
                 </div>

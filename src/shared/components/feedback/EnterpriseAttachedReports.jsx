@@ -1,21 +1,65 @@
+import { useEffect, useMemo, useState } from "react";
 import { MapPin, Image } from "lucide-react";
 import StatusPill from "../../ui/StatusPill.jsx";
 import { normalizeReportStatus, reportStatusToPillVariant } from "../../lib/reportStatus.js";
 
-function reportAddress(report) {
-  if (!report) return "—";
+const reverseGeocodeCache = new Map();
+
+function toCoords(lat, lng) {
+  const la = typeof lat === "number" ? lat : Number(lat);
+  const ln = typeof lng === "number" ? lng : Number(lng);
+  if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+  return { lat: la, lng: ln };
+}
+
+function coordsFromReport(report) {
+  if (!report || typeof report !== "object") return null;
+  const lat = report.latitude ?? report.lat ?? report.coords?.lat ?? report.location?.latitude ?? report.location?.lat ?? null;
+  const lng = report.longitude ?? report.lng ?? report.coords?.lng ?? report.location?.longitude ?? report.location?.lng ?? null;
+  return toCoords(lat, lng);
+}
+
+function formatCoords(coords) {
+  const lat = coords?.lat ?? null;
+  const lng = coords?.lng ?? null;
+  if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return "";
+  return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+}
+
+function reportAddressCandidate(report) {
+  if (!report || typeof report !== "object") return null;
   const a =
     (typeof report.address === "string" && report.address.trim()) ||
     (typeof report.reportedAddress === "string" && report.reportedAddress.trim()) ||
     (typeof report.location?.address === "string" && report.location.address.trim()) ||
     "";
-  if (a) return a;
-  const lat = report.latitude ?? report.lat;
-  const lng = report.longitude ?? report.lng;
-  if (lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
-    return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+  return a ? a : null;
+}
+
+async function reverseGeocodeAddress(coords) {
+  const lat = Number(coords?.lat);
+  const lng = Number(coords?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+  if (reverseGeocodeCache.has(key)) return reverseGeocodeCache.get(key) || null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+      lat
+    )}&lon=${encodeURIComponent(lng)}`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "vi",
+      },
+    });
+    const data = await res.json();
+    const name = typeof data?.display_name === "string" ? data.display_name.trim() : "";
+    reverseGeocodeCache.set(key, name || "");
+    return name || null;
+  } catch {
+    reverseGeocodeCache.set(key, "");
+    return null;
   }
-  return "—";
 }
 
 function reportImages(report) {
@@ -31,9 +75,30 @@ function reportCreatedAt(report) {
 
 function reportCodeLabel(report) {
   if (!report) return "—";
-  const c = report.reportCode ?? report.code;
+  const c =
+    report.reportCode ??
+    report.code ??
+    report.report_code ??
+    report.wasteReportCode ??
+    report.waste_report_code ??
+    report.collectorReportCode ??
+    report.collector_report_code ??
+    null;
   if (c != null && String(c).trim()) return String(c).trim();
-  if (report.id != null) return `WR${String(report.id).padStart(3, "0")}`;
+  const id = report.id ?? report.reportId ?? report.wasteReportId ?? report.collectorReportId ?? null;
+  if (id != null && String(id).trim()) {
+    const isCollector =
+      report.verificationRate != null ||
+      report.verification_rate != null ||
+      report.collectorId != null ||
+      report.collector_id != null ||
+      report.collectorNote != null ||
+      report.collector_note != null;
+    const prefix = isCollector ? "CRR" : "WR";
+    const key = String(id).trim();
+    if (/^\d+$/.test(key)) return `${prefix}${key.padStart(6, "0")}`;
+    return key;
+  }
   return "—";
 }
 
@@ -92,37 +157,11 @@ function wasteTypeLabelsFallback(base) {
   return wasteType ? [wasteType] : [];
 }
 
-function classificationRateFromReport(report) {
-  if (!report || typeof report !== "object") return null;
-  const raw =
-    report.verificationRate ??
-    report.verification_rate ??
-    report.classificationRate ??
-    report.classification_rate ??
-    report.sortingRate ??
-    report.sorting_rate ??
-    null;
-  if (raw == null || raw === "") return null;
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) {
-    const s = String(raw).trim();
-    return s || null;
-  }
-  return n;
-}
-
-function formatClassificationLevel(rate) {
-  if (rate == null) return "—";
-  if (typeof rate === "string") return rate;
-  const n = Math.max(0, Math.min(100, Math.round(Number(rate))));
-  const level = n < 33 ? "Thấp" : n < 67 ? "Trung bình" : "Cao";
-  return `${n}% — ${level}`;
-}
-
 function collectorStatusVariant(status) {
   const u = String(status || "").toUpperCase();
   if (u === "FAILED" || u === "REJECTED") return "red";
-  if (u === "COMPLETED" || u === "VERIFIED" || u === "COLLECTED") return "green";
+  if (u === "COMPLETED") return "emerald";
+  if (u === "VERIFIED" || u === "COLLECTED") return "green";
   return "yellow";
 }
 
@@ -162,19 +201,19 @@ function PhotoStrip({ urls, label }) {
   );
 }
 
-function WasteTypesBlock({ report }) {
+function WasteTypesBlock({ report, weightHeader = "Estimated Weight" }) {
   const rows = wasteItemRowsFromReport(report);
   const typeOnly = wasteTypeLabelsFallback(report);
   return (
     <div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Loại rác</div>
+      <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Waste Types</div>
       {rows.length > 0 ? (
         <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full text-xs">
             <thead className="bg-gray-50 text-left text-gray-600">
               <tr>
-                <th className="px-2 py-1.5 font-semibold">Tên loại</th>
-                <th className="px-2 py-1.5 font-semibold">KL ước tính</th>
+                <th className="px-2 py-1.5 font-semibold">Type</th>
+                <th className="px-2 py-1.5 font-semibold">{weightHeader}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
@@ -225,31 +264,96 @@ export default function EnterpriseAttachedReports({
   onViewCitizen,
   onViewCollector,
 }) {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-        <div className="h-[320px] animate-pulse rounded-2xl border border-gray-100 bg-gradient-to-br from-violet-50/80 to-gray-50" />
-        <div className="h-[320px] animate-pulse rounded-2xl border border-gray-100 bg-gradient-to-br from-violet-50/80 to-gray-50" />
-      </div>
-    );
-  }
-
   const citizenId = citizen?.id ?? fallbackWasteId;
   const citizenCode = reportCodeLabel(citizen);
   const citizenTs = formatCardTimestamp(reportCreatedAt(citizen));
-  const citizenAddr = reportAddress(citizen);
+  const citizenAddrRaw = reportAddressCandidate(citizen);
+  const citizenCoords = useMemo(() => coordsFromReport(citizen), [citizen]);
+  const citizenCoordsKey = citizenCoords ? `${citizenCoords.lat.toFixed(6)},${citizenCoords.lng.toFixed(6)}` : "";
+  const [citizenAddrResolved, setCitizenAddrResolved] = useState({ key: "", value: null });
+  useEffect(() => {
+    let cancelled = false;
+    if (loading) return () => void (cancelled = true);
+    if (citizenAddrRaw) return () => void (cancelled = true);
+    if (!citizenCoordsKey) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void (async () => {
+      const [latStr, lngStr] = citizenCoordsKey.split(",");
+      const addr = await reverseGeocodeAddress({ lat: Number(latStr), lng: Number(lngStr) });
+      if (cancelled) return;
+      if (addr) setCitizenAddrResolved({ key: citizenCoordsKey, value: addr });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [citizenAddrRaw, citizenCoordsKey, loading]);
+  const citizenResolvedHit = citizenAddrResolved?.key === citizenCoordsKey ? citizenAddrResolved.value : null;
+  const citizenAddrFallback = citizenAddrRaw || (citizenCoords ? formatCoords(citizenCoords) : "—");
+  const citizenAddr = citizenAddrRaw || citizenResolvedHit || citizenAddrFallback;
   const citizenPhotos = reportImages(citizen);
+  const citizenNoteText = useMemo(() => {
+    const raw =
+      citizen?.note ??
+      citizen?.notes ??
+      citizen?.description ??
+      citizen?.content ??
+      citizen?.detail ??
+      citizen?.message ??
+      null;
+    if (raw == null) return "";
+    const s = String(raw).trim();
+    return s ? s : "";
+  }, [citizen]);
 
   const collectorId = collector?.id;
   const collectorCode = reportCodeLabel(collector);
   const collectorTs = formatCardTimestamp(reportCreatedAt(collector));
-  const collectionPoint =
+  const collectorCoords = useMemo(() => coordsFromReport(collector), [collector]);
+  const collectorAddrRaw = reportAddressCandidate(collector);
+  const collectorCoordsKey = collectorCoords ? `${collectorCoords.lat.toFixed(6)},${collectorCoords.lng.toFixed(6)}` : "";
+  const collectionPointBase =
     collector?.collectionPoint ??
     collector?.stationName ??
     collector?.collectionStation ??
     collector?.enterpriseName ??
-    reportAddress(collector);
+    collectorAddrRaw ??
+    null;
+  const [collectionPointResolved, setCollectionPointResolved] = useState({ key: "", value: null });
+  useEffect(() => {
+    let cancelled = false;
+    if (loading) return () => void (cancelled = true);
+    const baseText = typeof collectionPointBase === "string" ? collectionPointBase.trim() : "";
+    if (baseText) return () => void (cancelled = true);
+    if (!collectorCoordsKey) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void (async () => {
+      const [latStr, lngStr] = collectorCoordsKey.split(",");
+      const addr = await reverseGeocodeAddress({ lat: Number(latStr), lng: Number(lngStr) });
+      if (cancelled) return;
+      if (addr) setCollectionPointResolved({ key: collectorCoordsKey, value: addr });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionPointBase, collectorCoordsKey, loading]);
+  const collectionResolvedHit = collectionPointResolved?.key === collectorCoordsKey ? collectionPointResolved.value : null;
+  const collectionPointFallback = collectionPointBase || (collectorCoords ? formatCoords(collectorCoords) : "—");
+  const collectionPoint = (typeof collectionPointBase === "string" && collectionPointBase.trim())
+    ? collectionPointBase.trim()
+    : collectionResolvedHit || collectionPointFallback;
   const collectorPhotos = reportImages(collector);
+  const collectorNoteText = useMemo(() => {
+    const raw = collector?.collectorNote ?? collector?.collector_note ?? collector?.note ?? collector?.notes ?? null;
+    if (raw == null) return "";
+    const s = String(raw).trim();
+    return s ? s : "";
+  }, [collector]);
 
   const citizenStatusPill = citizen ? (
     <StatusPill variant={reportStatusToPillVariant(citizen.status)}>
@@ -267,9 +371,17 @@ export default function EnterpriseAttachedReports({
     <StatusPill variant="gray">—</StatusPill>
   );
 
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+        <div className="h-[320px] animate-pulse rounded-2xl border border-gray-100 bg-gradient-to-br from-violet-50/80 to-gray-50" />
+        <div className="h-[320px] animate-pulse rounded-2xl border border-gray-100 bg-gradient-to-br from-violet-50/80 to-gray-50" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-      {/* Citizen */}
       <div className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm">
         <div className="border-b border-violet-100/90 bg-violet-50/80 pl-1">
           <div className="border-l-4 border-l-emerald-500 px-4 py-3.5">
@@ -277,41 +389,41 @@ export default function EnterpriseAttachedReports({
           </div>
         </div>
         <div className="relative p-5">
-              <div className="absolute right-5 top-5">{citizenStatusPill}</div>
-              <div className="pr-24">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Report code</div>
-                <div className="mt-1 text-2xl font-bold tracking-tight text-emerald-600">{citizenCode}</div>
+          <div className="absolute right-5 top-5">{citizenStatusPill}</div>
+          <div className="pr-24">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Report code</div>
+            <div className="mt-1 text-2xl font-bold tracking-tight text-emerald-600">{citizenCode}</div>
+          </div>
+          <div className="mt-4 space-y-4">
+            <InfoPair idLabel="ID" idValue={citizenId != null ? `Report #${citizenId}` : "—"} timeLabel="Timestamp" timeValue={citizenTs} />
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Location</div>
+              <div className="mt-1.5 flex gap-2 text-sm leading-snug text-gray-800">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+                <span>{citizenAddr}</span>
               </div>
-              <div className="mt-4 space-y-4">
-                <InfoPair
-                  idLabel="ID"
-                  idValue={citizenId != null ? `Report #${citizenId}` : "—"}
-                  timeLabel="Timestamp"
-                  timeValue={citizenTs}
-                />
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Location</div>
-                  <div className="mt-1.5 flex gap-2 text-sm leading-snug text-gray-800">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
-                    <span>{citizenAddr}</span>
-                  </div>
-                </div>
-                <PhotoStrip urls={citizenPhotos} label="Attached photos" />
-                <WasteTypesBlock report={citizen} />
+            </div>
+            <PhotoStrip urls={citizenPhotos} label="Attached photos" />
+            <WasteTypesBlock report={citizen} />
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Citizen Note</div>
+              <div className="mt-1 min-h-[1.25rem] whitespace-pre-wrap text-sm text-gray-800">
+                {citizenNoteText || "No notes provided."}
               </div>
-              {citizenId != null && onViewCitizen ? (
-                <button
-                  type="button"
-                  onClick={() => onViewCitizen(citizenId)}
-                  className="mt-4 text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
-                >
-                  Xem chi tiết waste report
-                </button>
-              ) : null}
+            </div>
+          </div>
+          {citizenId != null && onViewCitizen ? (
+            <button
+              type="button"
+              onClick={() => onViewCitizen(citizenId)}
+              className="mt-4 text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
+            >
+              View waste report details
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Collector */}
       <div className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm">
         <div className="border-b border-violet-100/90 bg-violet-50/80 pl-1">
           <div className="border-l-4 border-l-amber-800 px-4 py-3.5">
@@ -319,55 +431,38 @@ export default function EnterpriseAttachedReports({
           </div>
         </div>
         <div className="relative p-5">
-              <div className="absolute right-5 top-5">{collectorStatusPill}</div>
-              <div className="pr-24">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Report code</div>
-                <div className="mt-1 text-2xl font-bold tracking-tight text-amber-800">{collectorCode}</div>
+          <div className="absolute right-5 top-5">{collectorStatusPill}</div>
+          <div className="pr-24">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Report code</div>
+            <div className="mt-1 text-2xl font-bold tracking-tight text-amber-800">{collectorCode}</div>
+          </div>
+          <div className="mt-4 space-y-4">
+            <InfoPair idLabel="ID" idValue={collectorId != null ? `Report #${collectorId}` : "—"} timeLabel="Timestamp" timeValue={collectorTs} />
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Collection point</div>
+              <div className="mt-1.5 flex gap-2 text-sm leading-snug text-gray-800">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" aria-hidden />
+                <span>{collectionPoint || "—"}</span>
               </div>
-              <div className="mt-4 space-y-4">
-                <InfoPair
-                  idLabel="ID"
-                  idValue={collectorId != null ? `Report #${collectorId}` : "—"}
-                  timeLabel="Timestamp"
-                  timeValue={collectorTs}
-                />
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    Collection point
-                  </div>
-                  <div className="mt-1.5 flex gap-2 text-sm leading-snug text-gray-800">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" aria-hidden />
-                    <span>{collectionPoint || "—"}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    Mức độ phân loại
-                  </div>
-                  <div className="mt-1 text-sm text-gray-900">
-                    {formatClassificationLevel(classificationRateFromReport(collector))}
-                  </div>
-                </div>
-                <PhotoStrip urls={collectorPhotos} label="Proof of work" />
-                <WasteTypesBlock report={collector} />
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    Ghi chú collector
-                  </div>
-                  <div className="mt-1 min-h-[1.25rem] whitespace-pre-wrap text-sm text-gray-800">
-                    {typeof collector?.collectorNote === "string" ? collector.collectorNote : ""}
-                  </div>
-                </div>
+            </div>
+            <PhotoStrip urls={collectorPhotos} label="Proof of work" />
+            <WasteTypesBlock report={collector} weightHeader="Actual Weight" />
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Collector Note</div>
+              <div className="mt-1 min-h-[1.25rem] whitespace-pre-wrap text-sm text-gray-800">
+                {collectorNoteText || "No notes provided."}
               </div>
-              {collectorId != null && onViewCollector ? (
-                <button
-                  type="button"
-                  onClick={() => onViewCollector(collectorId)}
-                  className="mt-4 text-xs font-semibold text-amber-900 underline-offset-2 hover:underline"
-                >
-                  Xem chi tiết collector report
-                </button>
-              ) : null}
+            </div>
+          </div>
+          {collectorId != null && onViewCollector ? (
+            <button
+              type="button"
+              onClick={() => onViewCollector(collectorId)}
+              className="mt-4 text-xs font-semibold text-amber-900 underline-offset-2 hover:underline"
+            >
+              View collector report details
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
