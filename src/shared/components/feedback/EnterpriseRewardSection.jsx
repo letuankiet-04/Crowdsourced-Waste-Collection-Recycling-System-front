@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import TextField from "../../ui/TextField.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../ui/Card.jsx";
 
-function estimatedAwardPointsFromCollector(report, bonusPoints) {
+function estimatedAwardPointsFromCollector(_collector, bonusPoints) {
   const rateNum = typeof bonusPoints === "number" ? bonusPoints : Number(bonusPoints);
 
-  return Number.isFinite(bonusPoints) && bonusPoints > 0 ? bonusPoints : 0;
+  return Number.isFinite(rateNum) && rateNum > 0 ? rateNum : 0;
 }
 
 export default function EnterpriseRewardSection({
@@ -41,6 +41,12 @@ export default function EnterpriseRewardSection({
               inputClassName="text-gray-900"
             />
           </div>
+          {estimatedAwardPoints != null ? (
+            <div className="text-sm text-gray-600">
+              Estimated points to award:{" "}
+              <span className="font-semibold text-gray-900">{estimatedAwardPoints}</span>
+            </div>
+          ) : null}
         </div>
       </CardBody>
     </Card>
