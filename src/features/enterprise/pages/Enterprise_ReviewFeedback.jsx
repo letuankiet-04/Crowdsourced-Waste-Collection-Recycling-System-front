@@ -158,9 +158,6 @@ export default function Enterprise_ReviewFeedback() {
     const start = (safePage - 1) * itemsPerPage;
     return filteredFeedback.slice(start, start + itemsPerPage);
   }, [filteredFeedback, safePage, itemsPerPage]);
-  const pageStart = filteredFeedback.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredFeedback.length ? Math.min(safePage * itemsPerPage, filteredFeedback.length) : 0;
-
   // Helper for Status Badge
   const getStatusBadge = (status) => {
     switch (status) {
@@ -354,11 +351,7 @@ export default function Enterprise_ReviewFeedback() {
           </div>
 
           {/* Pagination */}
-          <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between">
-             <div className="text-sm text-gray-500 font-medium">
-                Showing <span className="text-gray-900 font-bold">{pageStart}-{pageEnd}</span> of{" "}
-                <span className="text-gray-900 font-bold">{filteredFeedback.length}</span> submissions
-             </div>
+          <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/30 flex items-center justify-center">
              <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
           </div>
         </Card>

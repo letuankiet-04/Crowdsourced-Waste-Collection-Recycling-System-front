@@ -1,4 +1,6 @@
 import { cloneElement, isValidElement } from "react";
+import { Link } from "react-router-dom";
+import { PATHS } from "../../app/routes/paths.js";
 import { cn } from "../lib/cn.js";
 import SidebarNavItem from "./sidebar/SidebarNavItem";
 
@@ -19,7 +21,9 @@ export default function AppSidebar({
       )}
     >
       {brand ? (
-        <div
+        <Link
+          to={PATHS.home}
+          aria-label={brand.title ? `${brand.title} Home` : "Home"}
           className={cn(
             "h-20 flex items-center border-b border-gray-200",
             collapsed ? "px-4 justify-center" : "px-6 gap-3"
@@ -37,7 +41,7 @@ export default function AppSidebar({
               {brand.title}
             </span>
           ) : null}
-        </div>
+        </Link>
       ) : null}
 
       <nav className={cn("flex-1 py-8 space-y-2 overflow-y-auto", collapsed ? "px-3" : "px-4", navClassName)}>

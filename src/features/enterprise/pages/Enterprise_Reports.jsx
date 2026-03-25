@@ -117,9 +117,6 @@ export default function EnterpriseReports() {
     return filteredReports.slice(start, start + itemsPerPage);
   }, [filteredReports, safePage, itemsPerPage]);
 
-  const pageStart = filteredReports.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredReports.length ? Math.min(safePage * itemsPerPage, filteredReports.length) : 0;
-
   const handleResetFilter = () => {
     setFilter(initialFilterState);
     setCurrentPage(1);
@@ -155,6 +152,7 @@ export default function EnterpriseReports() {
                   <option value="All">All</option>
                   <option value="Pending">Pending</option>
                   <option value="Accepted">Accepted</option>
+                  <option value="Reassign">Reassign</option>
                   <option value="Rejected">Rejected</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
@@ -237,11 +235,7 @@ export default function EnterpriseReports() {
             </div>
           </CardBody>
           {!loading && filteredReports.length > 0 ? (
-            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                <span className="font-bold text-gray-900">{filteredReports.length}</span> reports
-              </div>
+            <div className="p-6 border-t border-gray-100 flex items-center justify-center">
               <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           ) : null}

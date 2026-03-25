@@ -11,13 +11,28 @@ const api = axios.create({
   },
 })
 
+function readStoredToken() {
+  if (typeof window === 'undefined') return null
+  const raw = window.sessionStorage.getItem('token') || window.localStorage.getItem('token')
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  if (trimmed.toLowerCase() === 'undefined' || trimmed.toLowerCase() === 'null') return null
+  return trimmed
+}
+
+function clearStoredAuth() {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem('token')
+  window.sessionStorage.removeItem('user')
+  window.localStorage.removeItem('token')
+  window.localStorage.removeItem('user')
+}
+
 api.interceptors.request.use((config) => {
   const url = String(config?.url || '')
   const isTokenlessAuthRequest = url.includes('/api/auth/login') || url.includes('/api/auth/register')
-  const token =
-    typeof window !== 'undefined'
-      ? window.sessionStorage.getItem('token') || window.localStorage.getItem('token')
-      : null
+  const token = readStoredToken()
 
   if (typeof FormData !== 'undefined' && config?.data instanceof FormData) {
     config.headers = config.headers ?? {}
@@ -43,6 +58,17 @@ api.interceptors.response.use(
     const requestUrl = String(error?.config?.url || '')
     const isNetworkError = !error?.response && String(error?.message).toLowerCase().includes('network')
     const isLoginRequest = requestUrl.includes('/api/auth/login')
+    const isRegisterRequest = requestUrl.includes('/api/auth/register')
+
+    if (status === 401 && !isLoginRequest && !isRegisterRequest && typeof window !== 'undefined') {
+      const pathname = String(window.location?.pathname || '')
+      const isOnAuthPage = pathname.startsWith('/auth/')
+      clearStoredAuth()
+      if (!isOnAuthPage) {
+        window.location.assign('/auth/login')
+      }
+    }
+
     const message =
       data?.message ||
       data?.error ||

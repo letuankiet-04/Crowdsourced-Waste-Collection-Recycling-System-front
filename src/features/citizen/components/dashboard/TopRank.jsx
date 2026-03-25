@@ -37,7 +37,7 @@ export default function TopRank() {
       <CardBody>
         <div className="flex justify-between items-center mb-8">
           <CardTitle as="h4">Top rank</CardTitle>
-          <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-full">Month</span>
+          <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-full">All time</span>
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-12">

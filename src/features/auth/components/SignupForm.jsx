@@ -5,7 +5,7 @@ import TextField from '../../../shared/ui/TextField.jsx'
 import LoadingButton from '../../../shared/ui/LoadingButton.jsx'
 import usePasswordVisibility from '../../../shared/hooks/usePasswordVisibility.js'
 
-export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin }) {
+export default function SignupForm({ mode, pending, onSignup }) {
   const [values, setValues] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' })
   const passwordVisibility = usePasswordVisibility(false)
   const confirmVisibility = usePasswordVisibility(false)
@@ -176,16 +176,6 @@ export default function SignupForm({ mode, pending, onSignup, onSwitchToLogin })
             .
           </span>
         </label>
-        {onSwitchToLogin ? (
-          <button
-            type="button"
-            onClick={onSwitchToLogin}
-            className="font-semibold text-slate-700 underline-offset-4 transition hover:text-slate-900 hover:underline"
-            disabled={pending}
-          >
-            Login instead
-          </button>
-        ) : null}
       </div>
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>

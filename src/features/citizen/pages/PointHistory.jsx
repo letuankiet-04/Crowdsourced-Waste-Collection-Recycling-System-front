@@ -306,10 +306,7 @@ export default function PointHistory() {
 
           {/* Pagination */}
           {historyData.length > 0 && (
-            <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-medium">1</span> to <span className="font-medium">{historyData.length}</span> of <span className="font-medium">{historyData.length}</span> entries
-              </div>
+            <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-center">
               <div className="flex gap-2">
                 <button className="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-700 disabled:opacity-50" disabled>Previous</button>
                 <button className="px-3 py-1 text-sm font-bold bg-green-500 text-white rounded-lg shadow-sm">1</button>

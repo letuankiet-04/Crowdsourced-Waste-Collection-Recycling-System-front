@@ -116,9 +116,6 @@ export default function EnterpriseActiveCollector() {
     return filteredCollectors.slice(start, start + itemsPerPage);
   }, [filteredCollectors, safePage, itemsPerPage]);
 
-  const pageStart = filteredCollectors.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredCollectors.length ? Math.min(safePage * itemsPerPage, filteredCollectors.length) : 0;
-
   const handleResetFilter = () => {
     setFilter(initialFilterState);
     setCurrentPage(1);
@@ -208,11 +205,7 @@ export default function EnterpriseActiveCollector() {
             </div>
           </CardBody>
           {!loading && filteredCollectors.length > 0 ? (
-            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                <span className="font-bold text-gray-900">{filteredCollectors.length}</span> collectors
-              </div>
+            <div className="p-6 border-t border-gray-100 flex items-center justify-center">
               <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           ) : null}

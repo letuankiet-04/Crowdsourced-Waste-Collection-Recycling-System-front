@@ -116,9 +116,6 @@ export default function CitizenReports() {
     const start = (safePage - 1) * itemsPerPage;
     return filteredReports.slice(start, start + itemsPerPage);
   }, [filteredReports, safePage, itemsPerPage]);
-  const pageStart = filteredReports.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredReports.length ? Math.min(safePage * itemsPerPage, filteredReports.length) : 0;
-
   const handleResetFilter = () => {
     setFilter(initialFilterState);
   };
@@ -210,6 +207,7 @@ export default function CitizenReports() {
                   <option value="All">All</option>
                   <option value="Pending">Pending</option>
                   <option value="Accepted">Accepted</option>
+                  <option value="Reassign">Reassign</option>
                   <option value="Rejected">Rejected</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
@@ -281,11 +279,7 @@ export default function CitizenReports() {
               </table>
             </div>
           </CardBody>
-          <CardFooter className="px-8 py-5 bg-gray-50/30 flex items-center justify-between">
-            <div className="text-sm text-gray-500 font-medium">
-              Showing <span className="text-gray-900 font-bold">{pageStart}-{pageEnd}</span> of{" "}
-              <span className="text-gray-900 font-bold">{filteredReports.length}</span> reports
-            </div>
+          <CardFooter className="px-8 py-5 bg-gray-50/30 flex items-center justify-center">
             <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
           </CardFooter>
         </Card>

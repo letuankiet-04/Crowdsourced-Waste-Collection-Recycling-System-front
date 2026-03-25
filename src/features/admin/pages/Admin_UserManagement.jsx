@@ -149,9 +149,6 @@ export default function AdminUserManagement() {
     [filteredUsers]
   );
 
-  const pageStart = filteredUsers.length ? (currentPage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = Math.min(filteredUsers.length, currentPage * itemsPerPage);
-
   const refreshUsers = async () => {
     const data = await getAdminAccounts(listParams);
     setAllUsers(Array.isArray(data) ? data : []);
@@ -413,11 +410,7 @@ export default function AdminUserManagement() {
 
           {/* Pagination Controls */}
           {!loading && filteredUsers.length > 0 && (
-            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-               <div className="text-sm text-gray-500">
-                  Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                  <span className="font-bold text-gray-900">{filteredUsers.length}</span> users
-               </div>
+            <div className="p-6 border-t border-gray-100 flex items-center justify-center">
                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           )}

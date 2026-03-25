@@ -1,5 +1,7 @@
 
+import { Link } from "react-router-dom";
 import useStoredUser from "../../../../shared/hooks/useStoredUser.js";
+import { PATHS } from "../../../../app/routes/paths.js";
 
 export default function CD_Navbar({ brandTitle = "" }) {
   const { displayName, roleLabel, user } = useStoredUser();
@@ -12,7 +14,9 @@ export default function CD_Navbar({ brandTitle = "" }) {
       <div className="w-full pl-6 pr-6 sm:pr-8 lg:pr-12">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center gap-3">
-            <div className="text-lg font-extrabold text-gray-900 tracking-tight">{brandTitle}</div>
+            <Link to={PATHS.home} aria-label="Home" className="text-lg font-extrabold text-gray-900 tracking-tight">
+              {brandTitle}
+            </Link>
           </div>
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4 pl-8 border-l border-gray-200">

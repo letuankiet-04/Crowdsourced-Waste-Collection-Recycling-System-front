@@ -8,7 +8,7 @@ import SignupForm from '../components/SignupForm.jsx'
 import { cn } from '../../../shared/lib/cn.js'
 import { PATHS } from '../../../app/routes/paths.js'
 
-const APP_NAME = 'CrowdRecycle'
+const APP_NAME = 'RacDay Recycling'
 
 function DesktopOverlay({ mode, onGoLogin, onGoSignup }) {
   return (

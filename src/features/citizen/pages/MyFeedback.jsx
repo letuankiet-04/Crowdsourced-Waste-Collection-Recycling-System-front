@@ -93,9 +93,6 @@ export default function MyFeedback() {
     const start = (safePage - 1) * itemsPerPage;
     return filteredFeedback.slice(start, start + itemsPerPage);
   }, [filteredFeedback, safePage, itemsPerPage]);
-  const pageStart = filteredFeedback.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredFeedback.length ? Math.min(safePage * itemsPerPage, filteredFeedback.length) : 0;
-
   useEffect(() => {
     setCurrentPage(1);
   }, [filterType, filterStatus]);
@@ -240,11 +237,7 @@ export default function MyFeedback() {
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500 font-medium">
-            Showing <span className="text-gray-900 font-bold">{pageStart}-{pageEnd}</span> of{" "}
-            <span className="text-gray-900 font-bold">{filteredFeedback.length}</span> feedbacks
-          </div>
+        <div className="flex items-center justify-center">
           <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
         </div>
 

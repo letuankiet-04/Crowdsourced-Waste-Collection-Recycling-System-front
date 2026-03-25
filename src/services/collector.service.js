@@ -8,6 +8,15 @@ export async function getCollectorDashboard() {
   return unwrapApiResponse(data)
 }
 
+export async function getCollectorLeaderboard({ month, year } = {}) {
+  const params = {}
+  if (Number.isFinite(Number(month))) params.month = Number(month)
+  if (Number.isFinite(Number(year))) params.year = Number(year)
+  const { data } = await api.get('/api/collector/leaderboard', { params })
+  const unwrapped = unwrapApiResponse(data)
+  return Array.isArray(unwrapped) ? unwrapped : []
+}
+
 export async function getCollectorTasks({ status, all } = {}) {
   const params = {}
   if (status) params.status = status

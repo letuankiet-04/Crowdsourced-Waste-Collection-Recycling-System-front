@@ -88,9 +88,6 @@ export default function EnterpriseRewards() {
     return vouchers.slice(start, start + itemsPerPage);
   }, [vouchers, safePage, itemsPerPage]);
 
-  const pageStart = vouchers.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = vouchers.length ? Math.min(safePage * itemsPerPage, vouchers.length) : 0;
-
   const refreshVouchers = async () => {
     const rows = await getEnterpriseVouchers(activeOnly ? { active: true } : undefined);
     setVouchers(Array.isArray(rows) ? rows : []);
@@ -270,21 +267,12 @@ export default function EnterpriseRewards() {
             </div>
           </CardBody>
 
-          <CardFooter className="px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="text-sm text-gray-600">
-              {loading ? (
-                "Loading..."
-              ) : vouchers.length ? (
-                <>
-                  Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                  <span className="font-bold text-gray-900">{vouchers.length}</span> vouchers
-                </>
-              ) : (
-                `${totalCount} voucher(s)`
-              )}
-            </div>
-            <div className="flex items-center gap-3 justify-end">
+          <CardFooter className="px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
+            <div className="hidden sm:block" />
+            <div className="flex justify-center">
               <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
+            </div>
+            <div className="flex items-center justify-center sm:justify-end">
               <Button
                 variant="outline"
                 size="sm"

@@ -2,8 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { 
   Search, 
   Filter, 
-  ChevronLeft, 
-  ChevronRight, 
   Calendar,
   Clock,
   Archive,
@@ -14,6 +12,7 @@ import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card, CardHeader } from "../../../shared/ui/Card.jsx";
+import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
 import { getAdminFeedbacks } from "../../../services/feedback.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
@@ -305,41 +304,8 @@ export default function Review_Feedback() {
           </div>
 
           {/* Pagination */}
-          <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between">
-             <div className="text-sm text-gray-500 font-medium">
-                Showing <span className="text-gray-900 font-bold">{Math.min(filteredFeedback.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filteredFeedback.length, currentPage * itemsPerPage)}</span> of <span className="text-gray-900 font-bold">{filteredFeedback.length}</span> submissions
-             </div>
-             <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4 text-gray-600" />
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${
-                        currentPage === page 
-                          ? "bg-green-500 text-white shadow-md shadow-green-200" 
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-                <button 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronRight className="w-4 h-4 text-gray-600" />
-                </button>
-             </div>
+          <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/30 flex items-center justify-center">
+            <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
         </Card>
       </div>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import banner from '../../../assets/banner2.png'
+import banner from '../../../assets/home_banner.png'
 import Button from '../../../shared/ui/Button.jsx'
 import Container from '../../../shared/ui/Container.jsx'
 import { PATHS } from '../../../app/routes/paths.js'

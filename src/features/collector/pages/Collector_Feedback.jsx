@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import PageHeader from "../../../shared/ui/PageHeader.jsx";
+import StarRating from "../../../shared/ui/StarRating.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import { createCollectorFeedback } from "../../../services/feedback.service.js";
@@ -39,10 +40,11 @@ export default function Collector_Feedback() {
     try {
       const requestId =
         preselectedRequestId != null ? Number(preselectedRequestId) : null;
+      const normalizedRating = Math.min(5, Math.max(1, Number(rating) || 5));
       await createCollectorFeedback({
         type: type === "System" ? "SYSTEM" : "COLLECTION",
         content: content.trim(),
-        rating: Number(rating) || 5,
+        rating: normalizedRating,
         collectionRequestId:
           type === "Collection" && Number.isFinite(requestId) ? requestId : undefined,
       });
@@ -127,21 +129,7 @@ export default function Collector_Feedback() {
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <label className="block text-sm font-semibold text-gray-700 mb-3">RATING</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((r) => (
-                <label key={r} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="rating"
-                    value={r}
-                    checked={Number(rating) === r}
-                    onChange={(e) => setRating(Number(e.target.value))}
-                    className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="text-gray-900">{r}</span>
-                </label>
-              ))}
-            </div>
+            <StarRating value={rating} onChange={setRating} name="rating" />
             <div className="text-xs text-gray-500 mt-2">1 = very dissatisfied, 5 = very satisfied</div>
           </div>
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Voucher } from '../../pages/Voucher.jsx';
+import PaginationControls from '../../../../shared/ui/PaginationControls.jsx';
 export function RedeemSection({ onRedeem, vouchers = [] }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -27,18 +28,6 @@ export function RedeemSection({ onRedeem, vouchers = [] }) {
       setCurrentPage(pageNumber);
       setIsAnimating(false);
     }, 300); // Matches CSS transition duration
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1 && !isAnimating) {
-      handlePageChange(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages && !isAnimating) {
-      handlePageChange(currentPage + 1);
-    }
   };
 
   const handleRedeemClick = (voucher) => {
@@ -76,47 +65,13 @@ export function RedeemSection({ onRedeem, vouchers = [] }) {
 
        {/* Pagination Controls */}
        {totalPages > 1 && (
-         <div className="flex flex-wrap justify-center items-center gap-2 mt-8">
-           <button
-             onClick={handlePrevPage}
-             disabled={currentPage === 1 || isAnimating}
-             className={`px-3 py-1 rounded-md border text-sm font-medium transition-colors
-               ${currentPage === 1 || isAnimating
-                 ? 'border-gray-200 text-gray-300 cursor-not-allowed' 
-                 : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-green-600'
-               }`}
-           >
-             Previous
-           </button>
-
-           <div className="flex flex-wrap justify-center gap-1">
-             {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-               <button
-                 key={number}
-                 onClick={() => handlePageChange(number)}
-                 disabled={isAnimating}
-                 className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-colors
-                   ${currentPage === number
-                     ? 'bg-green-600 text-white shadow-sm'
-                     : 'text-gray-600 hover:bg-green-50 hover:text-green-600'
-                   } ${isAnimating ? 'cursor-not-allowed' : ''}`}
-               >
-                 {number}
-               </button>
-             ))}
-           </div>
-
-           <button
-             onClick={handleNextPage}
-             disabled={currentPage === totalPages || isAnimating}
-             className={`px-3 py-1 rounded-md border text-sm font-medium transition-colors
-               ${currentPage === totalPages || isAnimating
-                 ? 'border-gray-200 text-gray-300 cursor-not-allowed' 
-                 : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-green-600'
-               }`}
-           >
-             Next
-           </button>
+         <div className="mt-8">
+           <PaginationControls
+             currentPage={currentPage}
+             totalPages={totalPages}
+             onPageChange={handlePageChange}
+             disabled={isAnimating}
+           />
          </div>
        )}
     </div>

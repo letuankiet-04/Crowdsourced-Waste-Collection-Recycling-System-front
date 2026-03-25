@@ -23,7 +23,7 @@ export default function UserProfileSecuritySettingsCard() {
 
   const validatePwd = () => {
     if (!pwdForm.current || !pwdForm.next || !pwdForm.confirm) return "Please fill in all password fields.";
-    if (pwdForm.next.length < 8) return "New password must be at least 8 characters.";
+    if (pwdForm.next.length < 8) return "New password must be at least 6 characters.";
     if (pwdForm.next !== pwdForm.confirm) return "New password and confirmation do not match.";
     if (pwdForm.current === pwdForm.next) return "New password must be different from current password.";
     return "";
@@ -61,7 +61,7 @@ export default function UserProfileSecuritySettingsCard() {
       </div>
       <div className="text-base font-semibold text-gray-900 mb-2">Change Password</div>
       <p className="text-sm text-gray-600">
-        Updating your password regularly helps keep your account secure. Ensure your new password is at least 8 characters long and includes a
+        Updating your password regularly helps keep your account secure. Ensure your new password is at least 6 characters long and includes a
         mix of letters, numbers, and symbols.
       </p>
       <div className="my-4 h-px w-full bg-gray-200" />

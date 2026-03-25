@@ -141,9 +141,6 @@ export default function CollectorTasks() {
     return filteredTasks.slice(start, start + itemsPerPage);
   }, [filteredTasks, safePage, itemsPerPage]);
 
-  const pageStart = filteredTasks.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredTasks.length ? Math.min(safePage * itemsPerPage, filteredTasks.length) : 0;
-
   const handleResetFilter = () => {
     setFilter(initialFilterState);
     setCurrentPage(1);
@@ -200,6 +197,7 @@ export default function CollectorTasks() {
                   <option value="All">All</option>
                   <option value="Assigned">Assigned</option>
                   <option value="Accepted">Accepted</option>
+                  <option value="Reassign">Reassign</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
                   <option value="Rejected">Rejected</option>
@@ -280,11 +278,7 @@ export default function CollectorTasks() {
             </div>
           </CardBody>
           {filteredTasks.length ? (
-            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                <span className="font-bold text-gray-900">{filteredTasks.length}</span> tasks
-              </div>
+            <div className="p-6 border-t border-gray-100 flex items-center justify-center">
               <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           ) : null}

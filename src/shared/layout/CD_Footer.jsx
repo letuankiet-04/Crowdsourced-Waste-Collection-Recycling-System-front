@@ -3,7 +3,7 @@ import { Recycle, Mail, MapPin, Info, Asterisk } from 'lucide-react'
 import { useState } from 'react'
 import PolicyTermsDialog from '../ui/PolicyTermsDialog.jsx'
 
-export default function CD_Footer({ portalName = 'Citizen Portal' }) {
+export default function CD_Footer({ portalName = 'RacDay Recycling' }) {
   const year = new Date().getFullYear()
   const [open, setOpen] = useState(false)
   return (

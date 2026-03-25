@@ -77,7 +77,7 @@ export default function CollectorLayout({ children }) {
       showBackgroundEffects={false}
       footer={
         <div className="mt-10">
-          <CD_Footer portalName="Collector Portal" />
+          <CD_Footer />
         </div>
       }
     >

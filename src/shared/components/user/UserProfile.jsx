@@ -103,17 +103,6 @@ export default function UserProfile({ user: propUser, className }) {
     return user.status.charAt(0).toUpperCase() + user.status.slice(1).toLowerCase();
   }, [user?.status]);
   const isVerified = useMemo(() => status.toLowerCase() === 'active', [status]);
-  const membership = useMemo(() => {
-    const totalPoints = user?.totalPoints;
-    if (totalPoints) {
-      if (totalPoints > 5000) return "Platinum Guardian";
-      if (totalPoints > 1000) return "Gold Tier Guardian";
-      return "Silver Collector";
-    }
-    if (role.includes("ADMIN")) return "System Administrator";
-    if (role.includes("ENTERPRISE")) return "Enterprise Partner";
-    return "Standard Member";
-  }, [user?.totalPoints, role]);
 
   if (!user) {
       return (
@@ -198,7 +187,6 @@ export default function UserProfile({ user: propUser, className }) {
           status={status}
           enterpriseId={enterpriseId}
           enterpriseName={enterpriseName}
-          membership={membership}
         />
         <UserProfileSecuritySettingsCard />
       </div>

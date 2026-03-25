@@ -8,7 +8,6 @@ const UserProfileSystemInfoCard = memo(function UserProfileSystemInfoCard({
   status,
   enterpriseId,
   enterpriseName,
-  membership,
 }) {
   return (
     <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 h-full flex flex-col">
@@ -26,7 +25,6 @@ const UserProfileSystemInfoCard = memo(function UserProfileSystemInfoCard({
         </div>
         {enterpriseId != null ? <UserProfileDetailRow label="Enterprise ID" value={String(enterpriseId)} /> : null}
         {enterpriseName ? <UserProfileDetailRow label="Enterprise Name" value={enterpriseName} /> : null}
-        <UserProfileDetailRow label="Membership Class" value={membership} />
       </div>
     </div>
   );

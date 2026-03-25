@@ -9,13 +9,68 @@ import { ClipboardList, History, MessageSquare, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
-import { getCollectorTasks } from "../../../services/collector.service.js";
+import { getCollectorLeaderboard, getCollectorTasks } from "../../../services/collector.service.js";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 
 function getTaskAddress(t) {
   const loc = t?.location;
   if (typeof loc === "string") return loc;
   return loc?.address ?? t?.address ?? t?.collectedAddress ?? null;
+}
+
+function getLeaderboardItems(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.content)) return payload.content;
+  if (Array.isArray(payload?.collectors)) return payload.collectors;
+  if (Array.isArray(payload?.leaderboard)) return payload.leaderboard;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+}
+
+function getCollectorName(entry) {
+  const nested = entry?.collector ?? entry?.user ?? entry?.account ?? entry?.profile ?? null;
+  return (
+    entry?.collectorName ??
+    entry?.fullName ??
+    entry?.name ??
+    entry?.username ??
+    nested?.fullName ??
+    nested?.name ??
+    nested?.username ??
+    nested?.email ??
+    entry?.email ??
+    null
+  );
+}
+
+function getCollectorWeightKg(entry) {
+  const candidates = [
+    entry?.totalWeightCollected,
+    entry?.totalWeightKg,
+    entry?.totalCollectedWeight,
+    entry?.weightKg,
+    entry?.totalWeight,
+    entry?.weight,
+  ];
+  for (const c of candidates) {
+    const n = Number(c);
+    if (Number.isFinite(n)) return n;
+  }
+  const nested = entry?.stats ?? entry?.summary ?? null;
+  const nestedCandidates = [
+    nested?.totalWeightCollected,
+    nested?.totalWeightKg,
+    nested?.totalCollectedWeight,
+    nested?.weightKg,
+    nested?.totalWeight,
+    nested?.weight,
+  ];
+  for (const c of nestedCandidates) {
+    const n = Number(c);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
 }
 
 function getTaskCoords(t) {
@@ -33,6 +88,8 @@ export default function CollectorDashboard() {
   const notify = useNotify();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
   const allTasks = useMemo(() => {
     const list = Array.isArray(tasks) ? tasks : [];
@@ -51,34 +108,88 @@ export default function CollectorDashboard() {
   }, [allTasks]);
 
   const recentTasks = useMemo(() => {
-    const result = [...allTasks];
+    const result = allTasks.filter((t) => normalizeReportStatus(t.status) !== "Completed");
     result.sort((a, b) => {
       const ta = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
       const tb = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
       return tb - ta;
     });
-    return result.slice(0, 10);
+    return result.slice(0, 5);
   }, [allTasks]);
+
+  const leaderboardTop5 = useMemo(() => {
+    const items = getLeaderboardItems(leaderboard);
+    const normalized = items
+      .map((entry) => ({
+        id: entry?.collectorId ?? entry?.id ?? entry?.userId ?? entry?.accountId ?? null,
+        name: getCollectorName(entry),
+        weightKg: getCollectorWeightKg(entry),
+      }))
+      .filter((x) => x.name);
+
+    normalized.sort((a, b) => b.weightKg - a.weightKg);
+    return normalized.slice(0, 5);
+  }, [leaderboard]);
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
+    let leaderboardInFlight = false;
+
+    const loadTasks = async () => {
       try {
-        const data = await getCollectorTasks();
+        const tasksData = await getCollectorTasks();
         if (!active) return;
-        setTasks(Array.isArray(data) ? data : []);
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
       } catch (e) {
         if (!active) return;
         setTasks([]);
-        notify.error(
-          "Không thể tải danh sách nhiệm vụ",
-          e?.message || "Dịch vụ cho người thu gom hiện đang gặp sự cố. Vui lòng thử lại sau."
-        );
+        notify.error("Unable to load tasks", e?.message || "Task services are currently unavailable. Please try again later.");
       }
     };
+
+    const loadLeaderboard = async () => {
+      if (leaderboardInFlight) return;
+      leaderboardInFlight = true;
+      try {
+        setLeaderboardLoading(true);
+        const now = new Date();
+        const leaderboardData = await getCollectorLeaderboard({
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        });
+        if (!active) return;
+        setLeaderboard(leaderboardData ?? []);
+      } catch (e) {
+        if (!active) return;
+        setLeaderboard([]);
+        notify.error(
+          "Unable to load leaderboard",
+          e?.message || "Leaderboard services are currently unavailable. Please try again later."
+        );
+      } finally {
+        leaderboardInFlight = false;
+        if (active) setLeaderboardLoading(false);
+      }
+    };
+
+    const load = async () => {
+      await loadTasks();
+      await loadLeaderboard();
+    };
+
+    const refreshLeaderboardIfVisible = () => {
+      if (!user) return;
+      if (document.hidden) return;
+      loadLeaderboard();
+    };
+
     if (user) load();
+    window.addEventListener("focus", refreshLeaderboardIfVisible);
+    document.addEventListener("visibilitychange", refreshLeaderboardIfVisible);
     return () => {
       active = false;
+      window.removeEventListener("focus", refreshLeaderboardIfVisible);
+      document.removeEventListener("visibilitychange", refreshLeaderboardIfVisible);
     };
   }, [notify, user]);
 
@@ -94,71 +205,117 @@ export default function CollectorDashboard() {
           }
         />
 
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
-            <ActionCard
-              to={PATHS.collector.tasks}
-              title="My Tasks"
-              variant="green"
-              icon={<ClipboardList className="h-10 w-10" aria-hidden="true" />}
-            />
-            <ActionCard
-              to={PATHS.collector.history}
-              title="Work History"
-              variant="blue"
-              icon={<History className="h-10 w-10" aria-hidden="true" />}
-            />
-            <ActionCard
-              to={PATHS.collector.profile}
-              title="My Profile"
-              variant="orange"
-              icon={<User className="h-10 w-10" aria-hidden="true" />}
-            />
-            <ActionCard
-              to={PATHS.collector.feedback}
-              title="Feedback"
-              variant="purple"
-              icon={<MessageSquare className="h-10 w-10" aria-hidden="true" />}
-            />
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="space-y-8 xl:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
+              <ActionCard
+                to={PATHS.collector.tasks}
+                title="My Tasks"
+                variant="green"
+                icon={<ClipboardList className="h-10 w-10" aria-hidden="true" />}
+              />
+              <ActionCard
+                to={PATHS.collector.history}
+                title="Work History"
+                variant="blue"
+                icon={<History className="h-10 w-10" aria-hidden="true" />}
+              />
+              <ActionCard
+                to={PATHS.collector.profile}
+                title="My Profile"
+                variant="orange"
+                icon={<User className="h-10 w-10" aria-hidden="true" />}
+              />
+              <ActionCard
+                to={PATHS.collector.feedback}
+                title="Feedback"
+                variant="purple"
+                icon={<MessageSquare className="h-10 w-10" aria-hidden="true" />}
+              />
+            </div>
+
+            <Card>
+              <CardHeader className="py-6 px-8">
+                <CardTitle className="text-2xl">Recent Tasks</CardTitle>
+              </CardHeader>
+              <CardBody className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left">
+                    <thead className="bg-gray-50/60">
+                      <tr className="text-xs uppercase tracking-wider text-gray-500">
+                        <th className="px-8 py-4 font-bold">Report ID</th>
+                        <th className="px-8 py-4 font-bold">Location</th>
+                        <th className="px-8 py-4 font-bold">Date</th>
+                        <th className="px-8 py-4 font-bold text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {recentTasks.length ? (
+                        recentTasks.map((r) => (
+                          <ReportRow
+                            key={r.id}
+                            report={r}
+                            showLocation
+                            onClick={() => navigate(PATHS.collector.reportDetail.replace(":reportId", r.id), { state: { report: r } })}
+                          />
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
+                            No tasks assigned yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardBody>
+            </Card>
           </div>
 
-          <Card>
-            <CardHeader className="py-6 px-8">
-              <CardTitle className="text-2xl">Recently task</CardTitle>
-            </CardHeader>
-            <CardBody className="p-0">
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left">
-                  <thead className="bg-gray-50/60">
-                    <tr className="text-xs uppercase tracking-wider text-gray-500">
-                      <th className="px-8 py-4 font-bold">Report ID</th>
-                      <th className="px-8 py-4 font-bold">Location</th>
-                      <th className="px-8 py-4 font-bold">Date</th>
-                      <th className="px-8 py-4 font-bold text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {recentTasks.length ? (
-                      recentTasks.map((r) => (
-                        <ReportRow
-                          key={r.id}
-                          report={r}
-                          showLocation
-                          onClick={() => navigate(PATHS.collector.reportDetail.replace(":reportId", r.id), { state: { report: r } })}
-                        />
-                      ))
-                    ) : (
-                      <tr>
-                        <td className="px-8 py-8 text-sm text-gray-600" colSpan={4}>
-                          No tasks assigned yet.
-                        </td>
+          <div className="space-y-8">
+            <Card>
+              <CardHeader className="py-6 px-8">
+                <CardTitle className="text-2xl">Top 5 Collectors</CardTitle>
+              </CardHeader>
+              <CardBody className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left">
+                    <thead className="bg-gray-50/60">
+                      <tr className="text-xs uppercase tracking-wider text-gray-500">
+                        <th className="px-8 py-4 font-bold">Rank</th>
+                        <th className="px-8 py-4 font-bold">Collector</th>
+                        <th className="px-8 py-4 font-bold text-right">Weight (KG)</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {leaderboardLoading ? (
+                        <tr>
+                          <td className="px-8 py-8 text-sm text-gray-600" colSpan={3}>
+                            Loading leaderboard...
+                          </td>
+                        </tr>
+                      ) : leaderboardTop5.length ? (
+                        leaderboardTop5.map((row, idx) => (
+                          <tr key={row.id ?? row.name ?? idx} className="hover:bg-gray-50/60">
+                            <td className="px-8 py-4 text-sm text-gray-700 font-semibold">{idx + 1}</td>
+                            <td className="px-8 py-4 text-sm text-gray-900 font-medium">{row.name}</td>
+                            <td className="px-8 py-4 text-sm text-gray-900 font-semibold text-right">{row.weightKg.toLocaleString()}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="px-8 py-8 text-sm text-gray-600" colSpan={3}>
+                            No leaderboard data available.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardBody>
+            </Card>
+          </div>
         </div>
       </div>
     </CollectorLayout>

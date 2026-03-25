@@ -109,9 +109,6 @@ export default function CollectorHistory() {
     return filteredHistory.slice(start, start + itemsPerPage);
   }, [filteredHistory, safePage, itemsPerPage]);
 
-  const pageStart = filteredHistory.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredHistory.length ? Math.min(safePage * itemsPerPage, filteredHistory.length) : 0;
-
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -155,6 +152,7 @@ export default function CollectorHistory() {
                   <option value="All">All</option>
                   <option value="Assigned">Assigned</option>
                   <option value="Accepted">Accepted</option>
+                  <option value="Reassign">Reassign</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
                   <option value="Rejected">Rejected</option>
@@ -231,11 +229,7 @@ export default function CollectorHistory() {
             </div>
           </CardBody>
           {filteredHistory.length ? (
-            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                <span className="font-bold text-gray-900">{filteredHistory.length}</span> records
-              </div>
+            <div className="p-6 border-t border-gray-100 flex items-center justify-center">
               <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           ) : null}

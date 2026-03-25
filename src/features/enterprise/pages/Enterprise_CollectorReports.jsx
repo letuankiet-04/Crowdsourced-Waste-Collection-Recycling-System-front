@@ -102,9 +102,6 @@ export default function EnterpriseCollectorReports() {
     return filteredReports.slice(start, start + itemsPerPage);
   }, [filteredReports, safePage, itemsPerPage]);
 
-  const pageStart = filteredReports.length ? (safePage - 1) * itemsPerPage + 1 : 0;
-  const pageEnd = filteredReports.length ? Math.min(safePage * itemsPerPage, filteredReports.length) : 0;
-
   const handleResetFilter = () => {
     setFilter(initialFilterState);
     setCurrentPage(1);
@@ -210,11 +207,7 @@ export default function EnterpriseCollectorReports() {
             </div>
           </CardBody>
           {!loading && filteredReports.length > 0 ? (
-            <div className="p-6 border-t border-gray-100 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing <span className="font-bold text-gray-900">{pageStart}-{pageEnd}</span> of{" "}
-                <span className="font-bold text-gray-900">{filteredReports.length}</span> reports
-              </div>
+            <div className="p-6 border-t border-gray-100 flex items-center justify-center">
               <PaginationControls currentPage={safePage} totalPages={totalPages} onPageChange={handlePageChange} />
             </div>
           ) : null}

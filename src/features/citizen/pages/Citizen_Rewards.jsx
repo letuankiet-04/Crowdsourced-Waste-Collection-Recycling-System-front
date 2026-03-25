@@ -40,6 +40,7 @@ export default function CitizenRewards() {
         }
       } catch (error) {
         console.error("Failed to fetch vouchers:", error);
+        notify.error("Failed to load vouchers", "Unable to load vouchers right now. Please try again later.");
       }
     }
 
@@ -64,7 +65,7 @@ export default function CitizenRewards() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [notify]);
 
   const handleRedeem = async (voucher) => {
     try {

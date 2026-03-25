@@ -8,6 +8,7 @@ import TopRank from "../components/dashboard/TopRank";
 import QuickTips from "../components/dashboard/QuickTips";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
 import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
+import banner02 from "../../../assets/banner02.png";
 
 export default function CitizenDashboard() {
   return (
@@ -22,6 +23,10 @@ export default function CitizenDashboard() {
         </div>
       }
     >
+      <section className="animate-fade-in-up mb-10 -mx-6 sm:-mx-8 lg:-mx-12">
+        <img src={banner02} alt="Welcome banner" className="w-full h-auto block" />
+      </section>
+
       <div className="animate-fade-in-up">
         <Header />
       </div>

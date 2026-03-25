@@ -24,7 +24,7 @@ export default function EnterpriseLayout({ children }) {
       showBackgroundEffects={false}
       footer={
         <div className="mt-10">
-          <CD_Footer portalName="Enterprise Portal" />
+          <CD_Footer />
         </div>
       }
     >
