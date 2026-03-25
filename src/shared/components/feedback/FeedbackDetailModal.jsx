@@ -133,7 +133,12 @@ export default function FeedbackDetailModal({
       return;
     }
     const decisionUpper = String(decision || "").toUpperCase();
-    const wantsReward = mode === "enterprise" && decisionUpper === "RESOLVED";
+    const isFeedbackFromCollector = 
+      feedback?.sender?.role === "Collector" || 
+      Number(feedback?.id) < 0 || 
+      String(feedback?.feedbackCode || feedback?.feedback_code || "").toUpperCase().startsWith("CF");
+    const wantsReward = mode === "enterprise" && decisionUpper === "RESOLVED" && !isFeedbackFromCollector;
+    
     if (wantsReward && (loadingDetail || loadingReports)) {
       notify.error("Please wait", "Loading linked report information...");
       return;
@@ -172,6 +177,12 @@ export default function FeedbackDetailModal({
   };
 
   const view = detail || feedback;
+  const isCollectorFeedback =
+    view?.sender?.role === "Collector" ||
+    Number(view?.id) < 0 ||
+    String(view?.feedbackCode || view?.feedback_code || "")
+      .toUpperCase()
+      .startsWith("CF");
   const effectiveCollector = collectorOverride || collectorReportInfo;
   const effectiveCitizen = citizenReportInfo;
   const collectionRequestIdForAdjustment = (() => {
@@ -212,7 +223,10 @@ export default function FeedbackDetailModal({
     return s ? raw : null;
   })();
   const canUpdatePoints =
-    mode === "enterprise" && collectorReportIdForReward != null && collectionRequestIdForAdjustment != null;
+    mode === "enterprise" && 
+    collectorReportIdForReward != null && 
+    collectionRequestIdForAdjustment != null && 
+    !isCollectorFeedback;
 
   const inferredRate = useMemo(() => {
     const categories = Array.isArray(effectiveCollector?.categories) ? effectiveCollector.categories : [];
@@ -297,12 +311,23 @@ export default function FeedbackDetailModal({
       view?.collectorReportId ||
       (view?.reportId != null && String(view.reportId).trim() !== "")
   );
+  const isSystemFeedback = 
+    String(view?.type || view?.feedbackType || "").toUpperCase().includes("SYSTEM") ||
+    (!hasAttached && view?.collectionRequestId == null);
   const isAdmin = mode === "admin";
 
   const complaintTitle =
     view?.subject ||
     view?.title ||
     `Complaint #${view?.id ?? ""}`;
+
+  const identifierLine = isAdmin
+    ? complaintTitle
+    : isCollectorFeedback
+      ? view?.feedbackCode || view?.feedback_code
+        ? `Feedback Code: ${view?.feedbackCode || view?.feedback_code}`
+        : `ID: ${view?.id ?? "-"}`
+      : `ID: ${view?.id ?? "-"}`;
 
   const safeSenderName = view?.sender?.name || "Anonymous";
   const linkedEntityId =
@@ -330,7 +355,7 @@ export default function FeedbackDetailModal({
               {isAdmin ? `Complaint Details #${view?.id ?? ""}` : "Feedback Details"}
             </h2>
             <div className="text-sm text-gray-500 mt-1 truncate">
-              {isAdmin ? complaintTitle : `ID: ${view?.id ?? "-"}`}
+              {identifierLine}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -364,7 +389,7 @@ export default function FeedbackDetailModal({
                   </div>
                 </div>
 
-                {linkedEntityId != null ? (
+                {linkedEntityId != null && !isSystemFeedback ? (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-900 w-full md:w-auto">
                     <div className="flex items-center gap-2 min-w-0">
                       <FileText className="w-5 h-5 text-blue-600" />
@@ -393,80 +418,82 @@ export default function FeedbackDetailModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                  <div className="text-sm font-bold text-gray-900">Citizen&apos;s Report</div>
-                </div>
-                <div className="p-6 space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Report ID</div>
-                      <div className="mt-1 text-gray-900 font-medium">{linkedEntityId != null ? `#${linkedEntityId}` : "-"}</div>
+            {!isSystemFeedback && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+                    <div className="text-sm font-bold text-gray-900">Citizen&apos;s Report</div>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Report ID</div>
+                        <div className="mt-1 text-gray-900 font-medium">{linkedEntityId != null ? `#${linkedEntityId}` : "-"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Timestamp</div>
+                        <div className="mt-1 text-gray-900">{view?.date || view?.createdAt ? formatDate(view?.date || view?.createdAt) : "-"}</div>
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Timestamp</div>
-                      <div className="mt-1 text-gray-900">{view?.date || view?.createdAt ? formatDate(view?.date || view?.createdAt) : "-"}</div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Location</div>
+                      <div className="mt-1 text-gray-900">{view?.address || view?.reportedAddress || "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Attached Photos</div>
+                      {linkedImages.length ? (
+                        <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 gap-3">
+                          {linkedImages.slice(0, 4).map((url, idx) => (
+                            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="group block">
+                              <img
+                                src={url}
+                                alt={`Attachment ${idx + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border border-gray-200 group-hover:opacity-90"
+                                loading="lazy"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-2 h-24 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400">
+                          No photos
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Location</div>
-                    <div className="mt-1 text-gray-900">{view?.address || view?.reportedAddress || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Attached Photos</div>
-                    {linkedImages.length ? (
-                      <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 gap-3">
-                        {linkedImages.slice(0, 4).map((url, idx) => (
-                          <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="group block">
-                            <img
-                              src={url}
-                              alt={`Attachment ${idx + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-gray-200 group-hover:opacity-90"
-                              loading="lazy"
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="mt-2 h-24 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400">
-                        No photos
-                      </div>
-                    )}
-                  </div>
                 </div>
-              </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
-                <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                  <div className="text-sm font-bold text-gray-900">Collector&apos;s Report</div>
-                </div>
-                <div className="p-6 space-y-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collector</div>
-                      <div className="mt-1 text-gray-900">{view?.collectorName || view?.collector?.name || "-"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collection Point</div>
-                      <div className="mt-1 text-gray-900">
-                        {view?.collectionPoint || view?.stationName || view?.collectionStation || "-"}
+                <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+                    <div className="text-sm font-bold text-gray-900">Collector&apos;s Report</div>
+                  </div>
+                  <div className="p-6 space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collector</div>
+                        <div className="mt-1 text-gray-900">{view?.collectorName || view?.collector?.name || "-"}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collection Point</div>
+                        <div className="mt-1 text-gray-900">
+                          {view?.collectionPoint || view?.stationName || view?.collectionStation || "-"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collector Note</div>
-                    <div className="mt-1 text-gray-900 whitespace-pre-wrap">{view?.collectorNote || view?.note || "-"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Proof of Work</div>
-                    <div className="mt-2 h-24 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400">
-                      No proof provided
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collector Note</div>
+                      <div className="mt-1 text-gray-900 whitespace-pre-wrap">{view?.collectorNote || view?.note || "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Proof of Work</div>
+                      <div className="mt-2 h-24 rounded-xl border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-400">
+                        No proof provided
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
               <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
@@ -482,12 +509,43 @@ export default function FeedbackDetailModal({
                     </div>
                     <div className="text-gray-900 whitespace-pre-wrap">{view?.resolution}</div>
                   </div>
-                ) : (
+                ) : view?.status === "RESOLVED" || view?.status === "REJECTED" ? (
                   <div className="p-5 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-gray-500">
-                    {String(view?.status || "").toUpperCase() === "RESOLVED" ||
-                    String(view?.status || "").toUpperCase() === "REJECTED"
-                      ? "This complaint is closed but no response note was provided."
-                      : "No response from admin yet."}
+                    This complaint is closed but no response note was provided.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDecision("RESOLVED")}
+                        className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${decision === "RESOLVED" ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        Resolve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDecision("REJECTED")}
+                        className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${decision === "REJECTED" ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                    <textarea
+                      value={response}
+                      onChange={(e) => setResponse(e.target.value)}
+                      placeholder="Type resolution note..."
+                      className="w-full min-h-[120px] p-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-y"
+                    />
+                    <div className="flex justify-end gap-3">
+                      <Button
+                        onClick={handleRespond}
+                        disabled={!response.trim() || submitting}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        {submitting ? "Submitting..." : decision === "REJECTED" ? "Reject" : "Resolve"}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

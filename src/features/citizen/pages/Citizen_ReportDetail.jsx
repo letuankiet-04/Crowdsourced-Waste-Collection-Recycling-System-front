@@ -251,15 +251,6 @@ export default function CitizenReportDetail() {
                       Report Issue / Complaint
                     </Button>
                   )}
-                  {status === "Accepted" && (
-                     <Button
-                      variant="outline"
-                      className="w-full rounded-xl border-orange-500 text-orange-600 hover:bg-orange-50"
-                      onClick={() => navigate(PATHS.citizen.feedback, { state: { reportId: report.id } })}
-                    >
-                      Report Issue / Complaint
-                    </Button>
-                  )}
                   <Button
                     className="w-full rounded-xl"
                     disabled={!report || !canManage}

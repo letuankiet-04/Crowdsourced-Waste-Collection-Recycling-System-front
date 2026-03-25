@@ -12,6 +12,11 @@ const variants = {
     glowBg: "bg-gradient-to-br from-white to-blue-500",
     hoverShadow: "group-hover:shadow-blue-500/50",
   },
+  purple: {
+    bgColor: "bg-purple-500",
+    glowBg: "bg-gradient-to-br from-white to-purple-500",
+    hoverShadow: "group-hover:shadow-purple-500/50",
+  },
   orange: {
     bgColor: "bg-orange-500",
     glowBg: "bg-gradient-to-br from-white to-orange-500",

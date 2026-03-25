@@ -38,6 +38,7 @@ export default function Review_Feedback() {
         const items = Array.isArray(data) ? data : data.items || [];
         setFeedback(
           items.map((item) => {
+            const isCollectorComplaint = Number(item?.id) < 0;
             const wasteReportId =
               item.wasteReportId ?? item.waste_report_id ?? item.reportId ?? item.report_id ?? null;
             const collectionRequestId =
@@ -55,7 +56,7 @@ export default function Review_Feedback() {
                 wasteReportId ?? collectionRequestId ?? collectorReportId ?? item.reportId ?? null,
               sender: {
                 name: item.citizenName,
-                role: "Citizen",
+                role: isCollectorComplaint ? "Collector" : "Citizen",
               },
             };
           })
@@ -77,11 +78,14 @@ export default function Review_Feedback() {
 
     // Xác định khiếu nại SYSTEM:
     // - Ưu tiên theo type trả về (nếu backend có cung cấp)
-    // - Fallback: không gắn với collectionRequestId => khiếu nại hệ thống
+    // - Bỏ qua các khiếu nại liên quan đến collection
     result = result.filter(item => {
       const t = String(item.type || item.feedbackType || "").toUpperCase();
+      if (t === "COMPLAINT_COLLECTION" || t.includes("COLLECTION")) {
+        return false;
+      }
       const hasSystemType = t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM");
-      const looksSystemByLinkage = item.collectionRequestId == null;
+      const looksSystemByLinkage = !t && item.collectionRequestId == null;
       return hasSystemType || looksSystemByLinkage;
     });
 

@@ -7,6 +7,7 @@ import { PATHS } from "../../app/routes/paths.js"
 import { createFeedback } from "../../services/feedback.service.js"
 import { getMyReports } from "../../services/reports.service.js"
 import useNotify from "../../shared/hooks/useNotify.js"
+import { normalizeReportStatus } from "../../shared/lib/reportStatus.js"
 
 export default function FeedbackForm() {
   const navigate = useNavigate()
@@ -37,8 +38,8 @@ export default function FeedbackForm() {
 
   const filteredReports = useMemo(() => {
     const all = Array.isArray(reports) ? reports : []
-    if (type === "Reward") {
-      return all.filter(r => String(r.status) === "Collected")
+    if (type === "Reward" || type === "Collection") {
+      return all.filter(r => normalizeReportStatus(r.status) === "Collected")
     }
     return all
   }, [reports, type])
@@ -201,7 +202,7 @@ export default function FeedbackForm() {
               )}
               {!loadingReports && type === "Collection" && filteredReports.length === 0 && (
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
-                  Attach a related report to your collection complaint for evaluation.
+                  You can only submit collection-related complaints for collected reports.
                 </div>
               )}
             </div>

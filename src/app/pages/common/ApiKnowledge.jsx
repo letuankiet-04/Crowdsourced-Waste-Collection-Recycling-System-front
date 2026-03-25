@@ -444,7 +444,7 @@ export default function ApiKnowledge() {
             raw: reportsServiceRaw,
             from: 4,
             to: 32,
-            explain: 'appendMany() append nhiều lần cùng key; buildReprotFormData() đóng gói toàn bộ payload.',
+            explain: 'appendMany() append nhiều lần cùng key; buildReportFormData() đóng gói toàn bộ payload.',
           },
           {
             label: 'Citizen edit flow: map categories → wasteItems (Update Details)',

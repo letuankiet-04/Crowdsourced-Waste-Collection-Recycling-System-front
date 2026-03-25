@@ -30,6 +30,9 @@ export const PATHS = {
     history: '/collector/history',
     profile: '/collector/profile',
     reportDetail: '/collector/reports/:reportId',
+    feedback: '/collector/feedback',
+    myFeedback: '/collector/my-feedback',
+    feedbackDetail: '/collector/feedback/:feedbackId',
   },
   enterprise: {
     dashboard: '/enterprise/dashboard',

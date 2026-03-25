@@ -11,10 +11,13 @@ import {
   CitizenMyFeedback,
   CitizenFeedbackDetails,
   CollectorDashboard,
+  CollectorFeedback,
   CollectorHistory,
   CollectorProfile,
   CollectorReportDetail,
   CollectorTasks,
+  CollectorMyFeedback,
+  CollectorFeedbackDetails,
   CreateReport,
   EnterpriseAdminPanel,
   EnterpriseReviewFeedback,
@@ -170,6 +173,30 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute role={['collector']}>
             <CollectorProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.feedback}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.myFeedback}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorMyFeedback />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={PATHS.collector.feedbackDetail}
+        element={
+          <ProtectedRoute role={['collector']}>
+            <CollectorFeedbackDetails />
           </ProtectedRoute>
         }
       />

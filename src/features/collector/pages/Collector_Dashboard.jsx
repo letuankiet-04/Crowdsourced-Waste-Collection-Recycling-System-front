@@ -5,7 +5,7 @@ import ActionCard from "../../../shared/ui/ActionCard.jsx";
 import { Card, CardBody, CardHeader, CardTitle } from "../../../shared/ui/Card.jsx";
 import useStoredUser from "../../../shared/hooks/useStoredUser.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
-import { ClipboardList, History, User } from "lucide-react";
+import { ClipboardList, History, MessageSquare, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
@@ -95,7 +95,7 @@ export default function CollectorDashboard() {
         />
 
         <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8">
             <ActionCard
               to={PATHS.collector.tasks}
               title="My Tasks"
@@ -113,6 +113,12 @@ export default function CollectorDashboard() {
               title="My Profile"
               variant="orange"
               icon={<User className="h-10 w-10" aria-hidden="true" />}
+            />
+            <ActionCard
+              to={PATHS.collector.feedback}
+              title="Feedback"
+              variant="purple"
+              icon={<MessageSquare className="h-10 w-10" aria-hidden="true" />}
             />
           </div>
 

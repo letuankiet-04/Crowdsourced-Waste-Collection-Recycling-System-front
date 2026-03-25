@@ -212,7 +212,7 @@ export default function CreateReportForm() {
         .filter(Boolean);
       const payload = {
         images: images.length ? images : undefined,
-        latude: coords?.lat,
+        latitude: coords?.lat,
         longitude: coords?.lng,
         address: address.trim(),
         description: String(notes ?? "").trim(),

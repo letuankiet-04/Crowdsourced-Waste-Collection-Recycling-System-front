@@ -31,6 +31,28 @@ export default function FeedbackDetails() {
     return v || "UNKNOWN";
   };
 
+  const getDisplayType = (itemOrType) => {
+    const t = typeof itemOrType === "string" ? itemOrType : itemOrType?.type;
+    const v = String(t || "").toUpperCase();
+    if (v === "COMPLAINT_SYSTEM") return "COMPLAINT_SYSTEM";
+    if (v === "COMPLAINT_COLLECTION") return "COMPLAINT_COLLECTION";
+    if (v === "COMPLAINT_REWARD") return "COMPLAINT_REWARD";
+    if (v === "SERVICE") return "COLLECTION";
+    if (v === "SYSTEM") return "SYSTEM";
+    if (v === "COLLECTION") return "COLLECTION";
+    if (v === "REWARD") return "REWARD";
+    return v || "UNKNOWN";
+  };
+
+  const getTypeBadgeClass = (itemOrType) => {
+    const t = getDisplayType(itemOrType);
+    if (t === "SYSTEM" || t === "COMPLAINT_SYSTEM") return "bg-purple-50 text-purple-700 border-purple-100";
+    if (t === "COLLECTION") return "bg-blue-50 text-blue-700 border-blue-100";
+    if (t === "COMPLAINT_COLLECTION") return "bg-cyan-50 text-cyan-700 border-cyan-100";
+    if (t === "REWARD" || t === "COMPLAINT_REWARD") return "bg-orange-50 text-orange-700 border-orange-100";
+    return "bg-gray-50 text-gray-700 border-gray-200";
+  };
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -168,12 +190,8 @@ export default function FeedbackDetails() {
               </div>
               
               <div className="flex flex-col items-end justify-center">
-                <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg border ${
-                  normalizeType(feedback) === 'SYSTEM' ? 'bg-purple-50 text-purple-700 border-purple-100'
-                  : normalizeType(feedback) === 'COLLECTION' ? 'bg-blue-50 text-blue-700 border-blue-100'
-                  : 'bg-orange-50 text-orange-700 border-orange-100'
-                }`}>
-                  {normalizeType(feedback)}
+                <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg border ${getTypeBadgeClass(feedback)}`}>
+                  {getDisplayType(feedback)}
                 </span>
               </div>
             </div>

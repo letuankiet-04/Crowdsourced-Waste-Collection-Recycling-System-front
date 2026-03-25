@@ -2,7 +2,8 @@ import api from './http/client.js'
 import unwrapApiResponse from './http/unwrapApiResponse.js'
 
 function appendMany(from, key, value) {
-  const list = Array.isArray(value) ? value : []
+  if (value === null || value === undefined) return
+  const list = Array.isArray(value) ? value : [value]
   list.forEach((v) => {
     if(v === null || v === undefined) return
     const s = String(v).trim()
@@ -11,18 +12,20 @@ function appendMany(from, key, value) {
   })
 }
 
-function buildReprotFormData({
-  images, wasteType, categoryIds, quantities, latude, longitude, address, description
+function buildReportFormData({
+  images, wasteType, categoryIds, quantities, latitude, longitude, address, description
 } = {}) {
   const formData = new FormData()
 
-  const files = Array.isArray(images) ? images : []
-  files.forEach((file) => {
-    if(file) formData.append('images', file)
-  })
+  if (images != null) {
+    const files = Array.isArray(images) ? images : [images]
+    files.forEach((file) => {
+      if(file) formData.append('images', file)
+    })
+  }
  
   if(wasteType != null && String(wasteType).trim()) formData.append('wasteType', String(wasteType).trim())
-  if(latude != null) formData.append('latitude', String(latude))
+  if(latitude != null) formData.append('latitude', String(latitude))
   if(longitude != null) formData.append('longitude', String(longitude))
   if(address != null && String(address).trim()) formData.append('address', String(address).trim())
   if(description != null && String(description).trim()) formData.append('description', String(description).trim())
@@ -53,13 +56,13 @@ export async function getMyReportResult(id) {
 }
 
 export async function createReport(reportData) {
-  const formData = buildReprotFormData(reportData)
+  const formData = buildReportFormData(reportData)
   const { data } = await api.post('/api/citizen/reports', formData)
   return unwrapApiResponse(data)
 }
 
 export async function updateReport(id, reportData) {
-  const formData = buildReprotFormData(reportData)
+  const formData = buildReportFormData(reportData)
   const { data } = await api.put(`/api/citizen/reports/${id}`, formData)
   return unwrapApiResponse(data)
 }

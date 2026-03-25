@@ -1,4 +1,4 @@
-import { ClipboardList, History, LayoutDashboard, User } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, MessageCircle, User } from "lucide-react";
 import { PATHS } from "../../../../app/routes/paths.js";
 
 export const collectorNavItems = [
@@ -21,10 +21,17 @@ export const collectorNavItems = [
     icon: <History className="h-5 w-5" />,
     name: "History",
   },
+   {
+    key: "myFeedback",
+    to: PATHS.collector.myFeedback,
+    icon: <MessageCircle className="h-5 w-5" />,
+    name: "My Feedback",
+  },
   {
     key: "profile",
     to: PATHS.collector.profile,
     icon: <User className="h-5 w-5" />,
     name: "Profile",
   },
+ 
 ];

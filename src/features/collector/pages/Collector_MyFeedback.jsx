@@ -2,16 +2,13 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "../../../shared/ui/Card.jsx";
 import { PATHS } from "../../../app/routes/paths.js";
-import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
-import Sidebar from "../components/navigation/Sidebar.jsx";
-import Navbar from "../components/navigation/CD_Navbar.jsx";
-import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
+import CollectorLayout from "../layouts/CollectorLayout.jsx";
 import { MessageSquare, ChevronRight, Clock, CheckCircle, AlertCircle, Filter } from "lucide-react";
-import { getCitizenFeedbacks } from "../../../services/feedback.service.js";
+import { getCollectorFeedbacks } from "../../../services/feedback.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 
-export default function MyFeedback() {
+export default function Collector_MyFeedback() {
   const navigate = useNavigate();
   const notify = useNotify();
   const [filterType, setFilterType] = useState("All");
@@ -23,41 +20,29 @@ export default function MyFeedback() {
 
   const normalizeType = (item) => {
     const v = String(item?.type || "").toUpperCase();
-    const noReport = item?.reportId == null;
-    if (v === "COMPLAINT_SYSTEM" || v === "SYSTEM") return "SYSTEM";
-    if (v === "COMPLAINT_REWARD" || v === "REWARD") return "REWARD";
-    if (v === "COMPLAINT_COLLECTION" || v === "COLLECTION" || v === "SERVICE") {
-      return noReport ? "SYSTEM" : "COLLECTION";
-    }
-    return v || "UNKNOWN";
-  };
-
-  const getDisplayType = (item) => {
-    const v = String(item?.type || "").toUpperCase();
     if (v === "COMPLAINT_SYSTEM") return "COMPLAINT_SYSTEM";
     if (v === "COMPLAINT_COLLECTION") return "COMPLAINT_COLLECTION";
-    if (v === "COMPLAINT_REWARD") return "COMPLAINT_REWARD";
-    if (v === "SERVICE") return "COLLECTION";
     if (v === "SYSTEM") return "SYSTEM";
     if (v === "COLLECTION") return "COLLECTION";
-    if (v === "REWARD") return "REWARD";
     return v || "UNKNOWN";
   };
 
   const getTypeBadgeClass = (item) => {
-    const t = getDisplayType(item);
+    const t = normalizeType(item);
     if (t === "SYSTEM" || t === "COMPLAINT_SYSTEM") return "bg-purple-50 text-purple-700 border-purple-100";
     if (t === "COLLECTION") return "bg-blue-50 text-blue-700 border-blue-100";
     if (t === "COMPLAINT_COLLECTION") return "bg-cyan-50 text-cyan-700 border-cyan-100";
-    if (t === "REWARD" || t === "COMPLAINT_REWARD") return "bg-orange-50 text-orange-700 border-orange-100";
     return "bg-gray-50 text-gray-700 border-gray-200";
   };
 
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
     try {
-        const data = await getCitizenFeedbacks();
-        setFeedbacks(Array.isArray(data) ? data : data.items || []);
+        const data = await getCollectorFeedbacks();
+        const feedbackList = Array.isArray(data) ? data : data.items || [];
+        // Sort by id descending (latest first)
+        feedbackList.sort((a, b) => (b.id || 0) - (a.id || 0));
+        setFeedbacks(feedbackList);
     } catch {
         notify.error("Failed to load feedbacks");
     } finally {
@@ -83,16 +68,19 @@ export default function MyFeedback() {
     if (!totalPages) return 1;
     return Math.min(Math.max(currentPage, 1), totalPages);
   }, [currentPage, totalPages]);
+  
   const handlePageChange = (page) => {
     if (!totalPages) return;
     const next = Math.min(Math.max(page, 1), totalPages);
     setCurrentPage(next);
   };
+
   const paginatedFeedback = useMemo(() => {
     if (!filteredFeedback.length) return [];
     const start = (safePage - 1) * itemsPerPage;
     return filteredFeedback.slice(start, start + itemsPerPage);
   }, [filteredFeedback, safePage, itemsPerPage]);
+
   const pageStart = filteredFeedback.length ? (safePage - 1) * itemsPerPage + 1 : 0;
   const pageEnd = filteredFeedback.length ? Math.min(safePage * itemsPerPage, filteredFeedback.length) : 0;
 
@@ -119,17 +107,8 @@ export default function MyFeedback() {
   };
 
   return (
-    <RoleLayout
-      sidebar={<Sidebar />}
-      navbar={<Navbar />}
-      footer={
-        <div className="animate-fade-in-up" style={{ animationDelay: "240ms" }}>
-          <CD_Footer />
-        </div>
-      }
-      showBackgroundEffects
-    >
-      <div className="animate-fade-in-up max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <CollectorLayout>
+      <div className="animate-fade-in-up space-y-8">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -141,7 +120,7 @@ export default function MyFeedback() {
             <p className="text-gray-500 mt-2">Track the status of your submitted feedback and reports.</p>
           </div>
           <Link 
-            to={PATHS.citizen.feedback} 
+            to={PATHS.collector.feedback} 
             className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-xl shadow-md hover:bg-emerald-700 transition-all active:scale-95"
           >
             + New Feedback
@@ -166,8 +145,9 @@ export default function MyFeedback() {
                 >
                   <option value="All">All Types</option>
                   <option value="SYSTEM">System</option>
+                  <option value="COMPLAINT_SYSTEM">Complaint System</option>
                   <option value="COLLECTION">Collection</option>
-                  <option value="REWARD">Reward</option>
+                  <option value="COMPLAINT_COLLECTION">Complaint Collection</option>
                 </select>
               </div>
 
@@ -196,7 +176,7 @@ export default function MyFeedback() {
             paginatedFeedback.map((item) => (
               <div 
                 key={item.id}
-                onClick={() => navigate(PATHS.citizen.feedbackDetail.replace(':feedbackId', item.id))}
+                onClick={() => navigate(PATHS.collector.feedbackDetail.replace(':feedbackId', item.id))}
                 className="group bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer relative overflow-hidden"
               >
                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gray-200 group-hover:bg-emerald-500 transition-colors"></div>
@@ -205,14 +185,14 @@ export default function MyFeedback() {
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-3 mb-1">
                       <span className={`px-2.5 py-0.5 text-xs font-bold uppercase rounded-md border ${getTypeBadgeClass(item)}`}>
-                        {getDisplayType(item)}
+                        {normalizeType(item)}
                       </span>
                       <span className="text-xs text-gray-400 font-medium flex items-center gap-1">
                         {new Date(item.date || item.createdAt).toLocaleDateString()} • {new Date(item.date || item.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                      {item.subject || item.title || `Complaint #${item.id}`}
+                      {item.subject || item.title || `Feedback #${item.id}`}
                     </h3>
                     <p className="text-gray-600 text-sm line-clamp-1">
                       {item.content || item.description || "-"}
@@ -249,6 +229,6 @@ export default function MyFeedback() {
         </div>
 
       </div>
-    </RoleLayout>
+    </CollectorLayout>
   );
 }
