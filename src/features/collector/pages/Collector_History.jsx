@@ -12,6 +12,7 @@ import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { getCollectorWorkHistory } from "../../../services/collector.service.js";
+import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
 
 export default function CollectorHistory() {
   const { user } = useStoredUser();
@@ -120,8 +121,8 @@ export default function CollectorHistory() {
         if (!active) return;
         setItems([]);
         notify.error(
-          "Không thể tải lịch sử công việc",
-          e?.message || "Dịch vụ cho người thu gom hiện đang gặp sự cố. Vui lòng thử lại sau."
+          "Unable to load work history",
+          translateErrorMessage(e?.message) || "The collector service is currently experiencing issues. Please try again later."
         );
       }
     };

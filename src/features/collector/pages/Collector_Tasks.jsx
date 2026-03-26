@@ -12,6 +12,7 @@ import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 import { getCollectorTasks } from "../../../services/collector.service.js";
+import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
 
 function getTaskAddress(t) {
   const loc = t?.location;
@@ -157,8 +158,8 @@ export default function CollectorTasks() {
         if (!active) return;
         setTasks([]);
         notify.error(
-          "Không thể tải danh sách nhiệm vụ",
-          e?.message || "Dịch vụ cho người thu gom hiện đang gặp sự cố. Vui lòng thử lại sau."
+          "Unable to load task list",
+          translateErrorMessage(e?.message) || "The collector service is currently experiencing issues. Please try again later."
         );
       }
     };

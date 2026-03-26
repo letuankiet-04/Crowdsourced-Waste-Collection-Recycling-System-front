@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { PATHS } from "../../../app/routes/paths.js";
 import ReportRow from "../../../shared/ui/ReportRow.jsx";
 import { getCollectorLeaderboard, getCollectorTasks } from "../../../services/collector.service.js";
+import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
 import { normalizeReportStatus } from "../../../shared/lib/reportStatus.js";
 
 function getTaskAddress(t) {
@@ -144,7 +145,7 @@ export default function CollectorDashboard() {
       } catch (e) {
         if (!active) return;
         setTasks([]);
-        notify.error("Unable to load tasks", e?.message || "Task services are currently unavailable. Please try again later.");
+        notify.error("Unable to load tasks", translateErrorMessage(e?.message) || "Task services are currently unavailable. Please try again later.");
       }
     };
 
@@ -165,7 +166,7 @@ export default function CollectorDashboard() {
         setLeaderboard([]);
         notify.error(
           "Unable to load leaderboard",
-          e?.message || "Leaderboard services are currently unavailable. Please try again later."
+          translateErrorMessage(e?.message) || "Leaderboard services are currently unavailable. Please try again later."
         );
       } finally {
         leaderboardInFlight = false;

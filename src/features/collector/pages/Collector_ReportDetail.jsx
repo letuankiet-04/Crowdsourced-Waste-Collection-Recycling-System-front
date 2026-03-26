@@ -13,6 +13,7 @@ import { PATHS } from "../../../app/routes/paths.js";
 import { CheckCircle2, Truck, X, XCircle } from "lucide-react";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import CollectReportDialog from "../../../components/collector/CollectReportDialog.jsx";
+import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
 import {
   acceptCollectorTask,
   completeCollectorTask,
@@ -130,7 +131,7 @@ export default function CollectorReportDetail() {
         setCollectorReport(reportData);
       } catch (e) {
         if (!active) return;
-        setReportError(e?.message || "Request failed");
+        setReportError(translateErrorMessage(e?.message) || "Request failed");
       } finally {
         if (active) setLoading(false);
       }
@@ -269,7 +270,7 @@ export default function CollectorReportDetail() {
       setTaskDetail(nextDetail);
       notify.success("Collected", "Task marked as collected.");
     } catch (e) {
-      notify.error("Unable to mark collected", e?.message || "Request failed");
+      notify.error("Unable to mark collected", translateErrorMessage(e?.message) || "Request failed");
     }
   }
 
@@ -294,7 +295,7 @@ export default function CollectorReportDetail() {
       navigate(PATHS.collector.history, { replace: true });
       return true;
     } catch (e) {
-      notify.error("Unable to submit report", e?.message || "Request failed");
+      notify.error("Unable to submit report", translateErrorMessage(e?.message) || "Request failed");
       return false;
     }
   }
@@ -423,7 +424,7 @@ export default function CollectorReportDetail() {
                               setTaskDetail(nextDetail);
                               notify.success("Accepted", "Task accepted successfully.");
                             } catch (e) {
-                              notify.error("Unable to accept task", e?.message || "Request failed");
+                              notify.error("Unable to accept task", translateErrorMessage(e?.message) || "Request failed");
                             }
                           },
                         });
@@ -461,7 +462,7 @@ export default function CollectorReportDetail() {
                             setTaskDetail(nextDetail);
                             notify.success("Started", "Task started successfully.");
                           } catch (e) {
-                            notify.error("Unable to start task", e?.message || "Request failed");
+                            notify.error("Unable to start task", translateErrorMessage(e?.message) || "Request failed");
                           }
                         },
                       });
@@ -625,7 +626,7 @@ export default function CollectorReportDetail() {
                           notify.success("Rejected", "Task rejected. The enterprise can reassign it.");
                         } catch (e) {
                           setRejectSubmitting(false);
-                          setRejectReasonError(e?.message || "Request failed");
+                          setRejectReasonError(translateErrorMessage(e?.message) || "Request failed");
                         }
                       }}
                     >

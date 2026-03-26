@@ -17,6 +17,7 @@ import {
 } from "../../../services/enterprise.service.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import GoongMapView from "../../../shared/components/maps/GoongMapView.jsx";
+import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
 
 const reverseGeocodeCache = new Map();
 
@@ -351,7 +352,7 @@ export default function EnterpriseCollectorReportDetail() {
         void 0;
       }
     } catch (e) {
-      notify.error("Reward failed", e?.message || "Unable to reward points for this report.");
+      notify.error("Reward failed", translateErrorMessage(e?.message) || "Unable to reward points for this report.");
     } finally {
       setRewardSubmitting(false);
       setRewardConfirmOpen(false);

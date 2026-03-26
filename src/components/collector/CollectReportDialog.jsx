@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, X } from 'lucide-react'
+import { translateErrorMessage } from '../../shared/lib/errorTranslator.js'
 import { createPortal } from 'react-dom'
 import Button from '../../shared/ui/Button.jsx'
 import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
@@ -371,7 +372,7 @@ export default function CollectReportDialog({
       const ok = await onSubmit?.(payload)
       if (ok) onClose?.()
     } catch (e) {
-      setError(e?.message || 'Unable to save collected info.')
+      setError(translateErrorMessage(e?.message) || 'Unable to save collected info.')
     } finally {
       setSubmitting(false)
     }

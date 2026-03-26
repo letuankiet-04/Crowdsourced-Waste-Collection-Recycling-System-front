@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCollectorCreateReport, getCollectorTasks, getCollectorWorkHistory } from "../../../services/collector.service.js";
 import { buildSyntheticCollectorTask } from "../pages/collectorReportDetail.utils.js";
+import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
 
 export default function useCollectorReportDetail({ id, notify }) {
   const [task, setTask] = useState(null);
@@ -28,7 +29,7 @@ export default function useCollectorReportDetail({ id, notify }) {
         if (!active) return;
         setTask(null);
         setCreateReport(null);
-        notify?.error("Unable to load task", e?.message || "Request failed");
+        notify?.error("Unable to load task", translateErrorMessage(e?.message) || "Request failed");
       } finally {
         if (active) setLoading(false);
       }
