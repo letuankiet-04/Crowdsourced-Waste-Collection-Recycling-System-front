@@ -21,6 +21,12 @@ export default function Collector_FeedbackDetails() {
     return v || "UNKNOWN";
   };
 
+  const isEnterpriseHandled = (itemOrType) => {
+    const t = typeof itemOrType === "string" ? itemOrType : itemOrType?.type;
+    const v = String(t || "").toUpperCase();
+    return v === "COLLECTION" || v === "COMPLAINT_COLLECTION";
+  };
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -169,7 +175,7 @@ export default function Collector_FeedbackDetails() {
                 <div className="flex-1 space-y-2">
                   <div className="flex justify-between items-center">
                     <h3 className="font-bold text-gray-900">
-                      {normalizeType(feedback) === 'COLLECTION' ? 'Enterprise Response' : 'Admin Response'}
+                      {isEnterpriseHandled(feedback) ? 'Enterprise Response' : 'Admin Response'}
                     </h3>
                     {(function() {
                       const ts = feedback.updatedAt || feedback.date || feedback.createdAt;
@@ -197,7 +203,7 @@ export default function Collector_FeedbackDetails() {
                   <User className="w-5 h-5 text-gray-500" />
                 </div>
                 <h3 className="font-bold text-gray-900">
-                  {normalizeType(feedback) === 'COLLECTION' ? 'Enterprise Response' : 'Admin Response'}
+                  {isEnterpriseHandled(feedback) ? 'Enterprise Response' : 'Admin Response'}
                 </h3>
               </div>
               <div className="p-6 rounded-xl bg-gray-50 border border-dashed border-gray-300 text-center">
@@ -208,7 +214,7 @@ export default function Collector_FeedbackDetails() {
                 ) : (
                   <>
                     <p className="text-gray-600 font-medium">
-                      {normalizeType(feedback) === 'COLLECTION' 
+                      {isEnterpriseHandled(feedback)
                         ? 'No response from enterprise yet.' 
                         : 'No response from admin yet.'}
                     </p>
