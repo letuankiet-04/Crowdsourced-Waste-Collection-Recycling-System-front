@@ -1,10 +1,12 @@
 import { Leaf, Recycle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { buildStoredUserFromToken, login, register } from '../../../services/auth.service.js'
+import { runEkycCccdFlow } from '../../../services/ekyc.service.js'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import foliageBackground from '../../../assets/foliage-bg.svg'
 import LoginForm from '../components/LoginForm.jsx'
 import SignupForm from '../components/SignupForm.jsx'
+import CccdUploadDialog from '../components/CccdUploadDialog.jsx'
 import { cn } from '../../../shared/lib/cn.js'
 import { PATHS } from '../../../app/routes/paths.js'
 
@@ -72,6 +74,9 @@ export default function AnimatedAuth() {
 
   const mode = location.pathname.includes(PATHS.auth.signup) ? 'signup' : 'login'
   const [pending, setPending] = useState(false)
+  const [signupDraft, setSignupDraft] = useState(null)
+  const [cccdDialogOpen, setCccdDialogOpen] = useState(false)
+  const [cccdDialogKey, setCccdDialogKey] = useState(0)
   const imageSrc = useMemo(() => foliageBackground, [])
 
   function goLogin() {
@@ -120,8 +125,24 @@ export default function AnimatedAuth() {
   }
 
   async function handleSignup({ name, email, phone, password }) {
+    if (pending) return
+    setSignupDraft({ name, email, phone, password })
+    setCccdDialogKey((prev) => prev + 1)
+    setCccdDialogOpen(true)
+  }
+
+  async function handleExtract({ frontFile, backFile }) {
+    if (!signupDraft) throw new Error('Missing signup information')
+    const res = await runEkycCccdFlow({ frontFile, backFile })
+    if (!res?.profile) throw new Error('Could not extract profile information from the provided images.')
+    return res.profile
+  }
+
+  async function handleConfirmSignup() {
+    if (!signupDraft) throw new Error('Missing signup information')
     setPending(true)
     try {
+      const { name, email, phone, password } = signupDraft
       const res = await register({ name, email, phone, password })
       sessionStorage.setItem('token', res.token)
       localStorage.removeItem('token')
@@ -131,6 +152,9 @@ export default function AnimatedAuth() {
       const userToStore = { ...restRes, ...tokenData }
       sessionStorage.setItem('user', JSON.stringify(userToStore))
       localStorage.removeItem('user')
+
+      setCccdDialogOpen(false)
+      setSignupDraft(null)
 
       switch (userToStore.role) {
         case 'citizen':
@@ -237,6 +261,16 @@ export default function AnimatedAuth() {
                       <LoginForm mode={mode} pending={pending} onLogin={handleLogin} onSwitchToSignup={goSignup} />
                       <SignupForm mode={mode} pending={pending} onSignup={handleSignup} onSwitchToLogin={goLogin} />
                     </div>
+                    <CccdUploadDialog
+                      key={cccdDialogKey}
+                      open={cccdDialogOpen}
+                      onClose={() => {
+                        setCccdDialogOpen(false)
+                        setSignupDraft(null)
+                      }}
+                      onExtract={handleExtract}
+                      onConfirm={handleConfirmSignup}
+                    />
 
                     <div className="mt-8 text-xs text-slate-500" />
                   </div>
