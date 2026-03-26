@@ -524,7 +524,10 @@ export default function CollectReportDialog({
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-semibold text-gray-900">Collector Note</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-900">Collector Note</div>
+              <div className="text-xs text-gray-500">{collectorNote.length} / 500</div>
+            </div>
             <textarea
               value={collectorNote}
               onChange={(e) => {
@@ -532,6 +535,7 @@ export default function CollectReportDialog({
                 if (error) setError('')
               }}
               rows={4}
+              maxLength={500}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200"
               placeholder="Describe what you collected and any observations..."
             />

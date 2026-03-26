@@ -123,6 +123,7 @@ export default function CollectorDashboard() {
       .map((entry) => ({
         id: entry?.collectorId ?? entry?.id ?? entry?.userId ?? entry?.accountId ?? null,
         name: getCollectorName(entry),
+        address: entry?.address ?? entry?.location ?? entry?.collector?.address ?? entry?.user?.address ?? null,
         weightKg: getCollectorWeightKg(entry),
       }))
       .filter((x) => x.name);
@@ -275,43 +276,36 @@ export default function CollectorDashboard() {
 
           <div className="space-y-8">
             <Card>
-              <CardHeader className="py-6 px-8">
-                <CardTitle className="text-2xl">Top 5 Collectors</CardTitle>
+              <CardHeader className="py-6 px-8 flex items-center justify-between border-b-0">
+                <CardTitle className="text-2xl font-bold text-gray-900">Top rank</CardTitle>
+                <div className="bg-green-50 text-green-600 font-semibold px-4 py-1.5 rounded-full text-sm">
+                  All time
+                </div>
               </CardHeader>
               <CardBody className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left">
-                    <thead className="bg-gray-50/60">
-                      <tr className="text-xs uppercase tracking-wider text-gray-500">
-                        <th className="px-8 py-4 font-bold">Rank</th>
-                        <th className="px-8 py-4 font-bold">Collector</th>
-                        <th className="px-8 py-4 font-bold text-right">Weight (KG)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {leaderboardLoading ? (
-                        <tr>
-                          <td className="px-8 py-8 text-sm text-gray-600" colSpan={3}>
-                            Loading leaderboard...
-                          </td>
-                        </tr>
-                      ) : leaderboardTop5.length ? (
-                        leaderboardTop5.map((row, idx) => (
-                          <tr key={row.id ?? row.name ?? idx} className="hover:bg-gray-50/60">
-                            <td className="px-8 py-4 text-sm text-gray-700 font-semibold">{idx + 1}</td>
-                            <td className="px-8 py-4 text-sm text-gray-900 font-medium">{row.name}</td>
-                            <td className="px-8 py-4 text-sm text-gray-900 font-semibold text-right">{row.weightKg.toLocaleString()}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td className="px-8 py-8 text-sm text-gray-600" colSpan={3}>
-                            No leaderboard data available.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="px-8 pb-8 pt-2 space-y-6">
+                  {leaderboardLoading ? (
+                    <div className="text-sm text-gray-600">Loading leaderboard...</div>
+                  ) : leaderboardTop5.length ? (
+                    leaderboardTop5.map((row, idx) => (
+                      <div key={row.id ?? row.name ?? idx} className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm font-bold text-gray-400">#{idx + 1}</span>
+                          <div>
+                            <div className="text-sm font-bold text-gray-900 text-base">{row.name}</div>
+                            {row.address && (
+                              <div className="text-sm text-gray-500">{row.address}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-base font-bold text-gray-900">
+                          {row.weightKg.toLocaleString()}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-gray-600">No leaderboard data available.</div>
+                  )}
                 </div>
               </CardBody>
             </Card>
