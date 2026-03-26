@@ -8,7 +8,8 @@ import TextField from "../../../shared/ui/TextField.jsx";
 import WaitApiPlaceholder from "../../../shared/ui/WaitApiPlaceholder.jsx";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import { PATHS } from "../../../app/routes/paths.js";
-import { ClipboardList, Medal, Scale, Users } from "lucide-react";
+import { ClipboardList, Medal, Scale, Users, Database, Wine } from "lucide-react";
+import { WASTE_TYPE_OPTIONS } from "../../../shared/constants/wasteTypes.js";
 import {
   Bar,
   BarChart,
@@ -198,10 +199,6 @@ export default function EnterpriseReportsAnalytics() {
       return generalWasteRows.reduce((sum, r) => sum + (toFiniteNumber(r.value) ?? 0), 0);
     }, [generalWasteRows]);
 
-    const generalWasteMax = useMemo(() => {
-      return generalWasteRows.reduce((m, r) => Math.max(m, toFiniteNumber(r.value) ?? 0), 0);
-    }, [generalWasteRows]);
-
   const statusPieRows = useMemo(() => {
     const total = generalTotalReports || 0;
     return generalStatusRows.map((r, idx) => {
@@ -216,12 +213,33 @@ export default function EnterpriseReportsAnalytics() {
     });
   }, [generalStatusRows, generalTotalReports]);
 
-    const wasteTypeChartData = useMemo(() => {
-      return generalWasteRows.slice(0, 8).map((r) => ({
-        name: r.label,
-        kg: toFiniteNumber(r.value) ?? 0,
-      }));
+    const { weightRows, canRows, bottleRows } = useMemo(() => {
+      const wRows = [];
+      const cRows = [];
+      const bRows = [];
+
+      generalWasteRows.forEach((r) => {
+        const keyStr = String(r.key).toUpperCase();
+        
+        // Find unit from constants by name
+        const option = WASTE_TYPE_OPTIONS.find((opt) => String(opt.name).toUpperCase() === keyStr);
+        const unit = option ? option.unit : null;
+
+        if (unit === "CAN" || keyStr.endsWith("_CAN") || keyStr === "CAN") {
+          cRows.push(r);
+        } else if (unit === "BOTTLE" || keyStr.endsWith("_BOTTLE") || keyStr === "BOTTLE") {
+          bRows.push(r);
+        } else {
+          wRows.push(r);
+        }
+      });
+
+      return { weightRows: wRows, canRows: cRows, bottleRows: bRows };
     }, [generalWasteRows]);
+
+    const weightTotal = useMemo(() => weightRows.reduce((acc, r) => acc + (toFiniteNumber(r.value) ?? 0), 0), [weightRows]);
+    const canTotal = useMemo(() => canRows.reduce((acc, r) => acc + (toFiniteNumber(r.value) ?? 0), 0), [canRows]);
+    const bottleTotal = useMemo(() => bottleRows.reduce((acc, r) => acc + (toFiniteNumber(r.value) ?? 0), 0), [bottleRows]);
 
     const citizenRows = useMemo(() => {
       const list = Array.isArray(citizenStats)
@@ -501,56 +519,136 @@ export default function EnterpriseReportsAnalytics() {
 
                   <div className="grid grid-cols-1 gap-6">
                     <div className="min-w-0 space-y-3">
-                      <div className="text-sm font-bold text-slate-900">Waste by type</div>
-                      {wasteTypeChartData.length ? (
-                        <div className="h-72 min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={wasteTypeChartData} layout="vertical" margin={{ top: 6, right: 16, left: 24, bottom: 10 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                              <XAxis
-                                type="number"
-                                tick={{ fontSize: 12, fill: "#64748B" }}
-                                tickMargin={8}
-                                tickFormatter={(v) => `${formatNumber(v)}kg`}
-                              />
-                              <YAxis
-                                type="category"
-                                dataKey="name"
-                                tick={{ fontSize: 12, fill: "#334155" }}
-                                tickMargin={8}
-                                tickLine={false}
-                                width={120}
-                              />
-                              <RechartsTooltip
-                                formatter={(v) => formatKg(v)}
-                                contentStyle={{ borderRadius: 12, borderColor: "#E2E8F0" }}
-                              />
-                              <Bar dataKey="kg" fill="#10B981" radius={[10, 10, 10, 10]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-slate-600">No data.</div>
-                      )}
-                      {generalWasteRows.length ? (
-                        <div className="grid gap-3">
-                          <div className="text-xs text-slate-500">Max: {formatKg(generalWasteMax)}</div>
-                          <div className="rounded-2xl border border-slate-200 bg-white">
-                            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                              <div className="text-sm font-bold text-slate-900">Top types</div>
-                              <div className="text-xs font-semibold text-slate-500">kg</div>
+                      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        {/* CARD 1: Weight */}
+                        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="mb-6 flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="rounded-full bg-emerald-50 p-2.5 text-emerald-700">
+                                <Scale className="h-5 w-5" aria-hidden="true" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-bold text-slate-900">Weight</h3>
+                                <p className="text-sm font-semibold text-slate-500">(KG)</p>
+                              </div>
                             </div>
-                            <SimpleTable
-                              columns={[
-                                { key: "label", label: "Type" },
-                                { key: "value", label: "Weight", align: "right", render: (r) => formatKg(r.value) },
-                              ]}
-                              rows={generalWasteRows.slice(0, 6)}
-                              empty="No data."
-                            />
+                            <div className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-emerald-700">
+                              Primary Metric
+                            </div>
+                          </div>
+                          <div className="flex-1 space-y-5">
+                            {weightRows.length ? (
+                              weightRows.slice(0, 4).map((item) => {
+                                const maxVal = Math.max(...weightRows.map((r) => r.value), 1);
+                                const pct = Math.min((item.value / maxVal) * 100, 100);
+                                return (
+                                  <div key={item.key}>
+                                    <div className="mb-1.5 flex justify-between text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                                      <span>{item.label}</span>
+                                      <span className="text-slate-900">{formatNumber(item.value)} kg</span>
+                                    </div>
+                                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-sm text-slate-500">No weight data.</div>
+                            )}
+                          </div>
+                          <div className="mt-8 flex items-baseline gap-2 border-t border-slate-100 pt-4">
+                            <span className="text-2xl font-black text-slate-900">{formatNumber(weightTotal)}</span>
+                            <span className="text-sm font-semibold text-slate-500">Total</span>
                           </div>
                         </div>
-                      ) : null}
+
+                        {/* CARD 2: Cans */}
+                        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="mb-6 flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="rounded-full bg-emerald-50 p-2.5 text-emerald-700">
+                                <Database className="h-5 w-5" aria-hidden="true" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-bold text-slate-900">Cans</h3>
+                                <p className="text-sm font-semibold text-slate-500">(CAN)</p>
+                              </div>
+                            </div>
+                            <div className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-indigo-600">
+                              Unit Count
+                            </div>
+                          </div>
+                          <div className="flex-1 space-y-5">
+                            {canRows.length ? (
+                              canRows.slice(0, 4).map((item) => {
+                                const maxVal = Math.max(...canRows.map((r) => r.value), 1);
+                                const pct = Math.min((item.value / maxVal) * 100, 100);
+                                return (
+                                  <div key={item.key}>
+                                    <div className="mb-1.5 flex justify-between text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                                      <span>{item.label.replace(/_(CAN)$/i, "").replace(/_/g, " ")}</span>
+                                      <span className="text-slate-900">{formatNumber(item.value)} units</span>
+                                    </div>
+                                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-sm text-slate-500">No can data.</div>
+                            )}
+                          </div>
+                          <div className="mt-8 flex items-baseline gap-2 border-t border-slate-100 pt-4">
+                            <span className="text-2xl font-black text-slate-900">{formatNumber(canTotal)}</span>
+                            <span className="text-sm font-semibold text-slate-500">Total</span>
+                          </div>
+                        </div>
+
+                        {/* CARD 3: Bottles */}
+                        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="mb-6 flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="rounded-full bg-emerald-50 p-2.5 text-emerald-700">
+                                <Wine className="h-5 w-5" aria-hidden="true" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-bold text-slate-900">Bottles</h3>
+                                <p className="text-sm font-semibold text-slate-500">(BOTTLE)</p>
+                              </div>
+                            </div>
+                            <div className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold tracking-wide text-indigo-600">
+                              Unit Count
+                            </div>
+                          </div>
+                          <div className="flex-1 space-y-5">
+                            {bottleRows.length ? (
+                              bottleRows.slice(0, 4).map((item) => {
+                                const maxVal = Math.max(...bottleRows.map((r) => r.value), 1);
+                                const pct = Math.min((item.value / maxVal) * 100, 100);
+                                return (
+                                  <div key={item.key}>
+                                    <div className="mb-1.5 flex justify-between text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                                      <span>{item.label.replace(/_(BOTTLE)$/i, "").replace(/_/g, " ")}</span>
+                                      <span className="text-slate-900">{formatNumber(item.value)} units</span>
+                                    </div>
+                                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-sm text-slate-500">No bottle data.</div>
+                            )}
+                          </div>
+                          <div className="mt-8 flex items-baseline gap-2 border-t border-slate-100 pt-4">
+                            <span className="text-2xl font-black text-slate-900">{formatNumber(bottleTotal)}</span>
+                            <span className="text-sm font-semibold text-slate-500">Total</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

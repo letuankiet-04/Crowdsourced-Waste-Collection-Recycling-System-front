@@ -49,7 +49,7 @@ export default function Citizen_Terms() {
   return (
     <RoleLayout
       sidebar={<Sidebar />}
-      navbar={<CD_Navbar brandTitle="Citizen Portal" />}
+      navbar={<CD_Navbar brandTitle="" />}
       showBackgroundEffects
       footer={
         <div className="mt-10">
