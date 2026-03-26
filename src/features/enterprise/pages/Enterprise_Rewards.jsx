@@ -183,7 +183,6 @@ export default function EnterpriseRewards() {
                     <th className="w-28 px-4 sm:px-6 lg:px-8 py-4 font-bold">Value</th>
                     <th className="w-28 px-4 sm:px-6 lg:px-8 py-4 font-bold">Points</th>
                     <th className="w-32 px-4 sm:px-6 lg:px-8 py-4 font-bold">Valid Until</th>
-                    <th className="w-24 px-4 sm:px-6 lg:px-8 py-4 font-bold">Stock</th>
                     <th className="w-28 px-4 sm:px-6 lg:px-8 py-4 font-bold text-right">Status</th>
                     <th className="w-44 pl-4 sm:pl-6 lg:pl-8 pr-2 sm:pr-3 lg:pr-4 py-4 font-bold text-center">Actions</th>
                   </tr>
@@ -215,7 +214,6 @@ export default function EnterpriseRewards() {
                         <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{v?.valueDisplay || "-"}</td>
                         <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{v?.pointsRequired ?? "-"}</td>
                         <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{formatDateOnly(v?.validUntil)}</td>
-                        <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-gray-700">{v?.remainingStock ?? "-"}</td>
                         <td className="px-4 sm:px-6 lg:px-8 py-4 text-[15px] text-right">
                           <StatusPill variant={v?.active ? "green" : "red"}>{v?.active ? "Active" : "Inactive"}</StatusPill>
                         </td>

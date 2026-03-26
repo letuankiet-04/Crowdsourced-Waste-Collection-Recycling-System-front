@@ -1,4 +1,4 @@
-import { Edit2, Eye, Key, Loader2, Search } from "lucide-react";
+import { Edit2, Eye, Key, Loader2, Search, Trash2 } from "lucide-react";
 import getRoleBadgeStyle from "./getRoleBadgeStyle.js";
 
 function getStatusBadgeClassName(status) {
@@ -17,7 +17,7 @@ function getStatusDotClassName(status) {
   return "bg-gray-400";
 }
 
-export default function AdminUsersTable({ users, loading, onResetFilters, onViewUser, onEditUser, onStatusToggle }) {
+export default function AdminUsersTable({ users, loading, onResetFilters, onViewUser, onEditUser, onStatusToggle, onDeleteUser }) {
   return (
     <div className="overflow-x-auto min-h-[300px]">
       {loading ? (
@@ -106,6 +106,14 @@ export default function AdminUsersTable({ users, loading, onResetFilters, onView
                         type="button"
                       >
                         <Key className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteUser?.(user)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete User"
+                        type="button"
+                      >
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                   </td>

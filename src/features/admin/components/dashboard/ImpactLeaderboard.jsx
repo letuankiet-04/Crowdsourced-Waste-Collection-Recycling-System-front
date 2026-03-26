@@ -180,7 +180,7 @@ export default function ImpactLeaderboard() {
   const [collectorRows, setCollectorRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [period, setPeriod] = useState("daily");
+  const [period, setPeriod] = useState("weekly");
 
   useEffect(() => {
     let active = true;
@@ -231,16 +231,6 @@ export default function ImpactLeaderboard() {
           </div>
 
           <div className="flex p-1 bg-slate-100 rounded-2xl self-start">
-            <button
-              onClick={() => setPeriod("daily")}
-              className={`px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
-                period === "daily"
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Daily
-            </button>
             <button
               onClick={() => setPeriod("weekly")}
               className={`px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${

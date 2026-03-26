@@ -41,6 +41,11 @@ export async function updateAdminAccount(userId, payload) {
   return unwrapApiResponse(data)
 }
 
+export async function deleteAdminAccount(userId) {
+  const { data } = await api.delete(`/api/admin/accounts/${userId}`)
+  return unwrapApiResponse(data)
+}
+
 export async function getAdminSystemAnalytics(params) {
   const { data } = await api.get('/api/admin/analytics/system', { params })
   return unwrapApiResponse(data)

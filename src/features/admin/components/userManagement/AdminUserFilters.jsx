@@ -43,14 +43,6 @@ export default function AdminUserFilters({
           <option value="Suspended">Suspended</option>
         </select>
 
-        <button
-          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors"
-          type="button"
-        >
-          <Filter className="w-4 h-4" aria-hidden="true" />
-          Columns
-        </button>
-
         {hasActiveFilter ? (
           <button
             onClick={onReset}

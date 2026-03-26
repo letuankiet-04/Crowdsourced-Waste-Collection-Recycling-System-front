@@ -8,6 +8,7 @@ import AdminSidebar from "../components/navigation/Admin_Sidebar.jsx";
 import StatCard from "../components/dashboard/StatCard.jsx";
 import {
   activateAdminAccount,
+  deleteAdminAccount,
   getAdminAccountById,
   getAdminAccounts,
   suspendAdminAccount,
@@ -48,6 +49,8 @@ export default function AdminUserManagement() {
   const [confirmSuspendUser, setConfirmSuspendUser] = useState(null);
   const [confirmActivateOpen, setConfirmActivateOpen] = useState(false);
   const [confirmActivateUser, setConfirmActivateUser] = useState(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
   const [statusSubmitting, setStatusSubmitting] = useState(false);
   const [createCitizenOpen, setCreateCitizenOpen] = useState(false);
   const [createCollectorOpen, setCreateCollectorOpen] = useState(false);
@@ -187,6 +190,36 @@ export default function AdminUserManagement() {
     }
     setConfirmActivateUser(user);
     setConfirmActivateOpen(true);
+  };
+
+  const requestDeleteUser = (user) => {
+    setConfirmDeleteUser(user);
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDeleteUser) return;
+    if (statusSubmitting) return;
+    setStatusSubmitting(true);
+    try {
+      await notify.promise(deleteAdminAccount(confirmDeleteUser.id), {
+        loadingTitle: "Deleting user",
+        successTitle: "Success",
+        successMessage: "User deleted successfully.",
+        errorTitle: "Error",
+      });
+      // Optionally refresh the list or just remove the user locally
+      setAllUsers((prev) => (Array.isArray(prev) ? prev.filter((u) => u.id !== confirmDeleteUser.id) : prev));
+      if (selectedUser?.id === confirmDeleteUser.id) {
+        setSelectedUser(null);
+      }
+    } catch {
+      // Notification handles the error
+    } finally {
+      setStatusSubmitting(false);
+      setConfirmDeleteOpen(false);
+      setConfirmDeleteUser(null);
+    }
   };
 
   const openEditUser = async (user) => {
@@ -385,10 +418,6 @@ export default function AdminUserManagement() {
           <CardHeader className="py-6 px-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <CardTitle className="text-xl">User Directory</CardTitle>
             <div className="flex gap-3">
-               <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-                 <Download className="w-4 h-4" />
-                 Export
-               </button>
             </div>
           </CardHeader>
           <AdminUserFilters
@@ -406,6 +435,7 @@ export default function AdminUserManagement() {
             onViewUser={handleViewUser}
             onEditUser={openEditUser}
             onStatusToggle={requestStatusToggle}
+            onDeleteUser={requestDeleteUser}
           />
 
           {/* Pagination Controls */}
@@ -474,6 +504,22 @@ export default function AdminUserManagement() {
             setConfirmActivateOpen(false);
             setConfirmActivateUser(null);
           }}
+        />
+
+        <ConfirmDialog
+          open={confirmDeleteOpen}
+          title="Delete account?"
+          description="Are you sure you want to delete this account? This action will mark the user as deleted and they will no longer be able to log in."
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmDisabled={statusSubmitting}
+          confirmClassName="bg-red-600 hover:bg-red-700"
+          onClose={() => {
+            if (statusSubmitting) return;
+            setConfirmDeleteOpen(false);
+            setConfirmDeleteUser(null);
+          }}
+          onConfirm={handleDeleteConfirm}
         />
 
         {editOpen ? (
