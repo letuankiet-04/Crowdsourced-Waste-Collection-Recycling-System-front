@@ -27,6 +27,7 @@ import { getPendingAdminFeedbackCount } from "../../../services/feedback.service
 
 export default function AdminUserManagement() {
   const notify = useNotify();
+  const canUpdateUsers = String(import.meta.env?.VITE_ENABLE_ADMIN_USER_UPDATE || "").toLowerCase() === "true";
   const [filter, setFilter] = useState({
     search: "",
     role: null,
@@ -260,6 +261,10 @@ export default function AdminUserManagement() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (editSubmitting) return;
+    if (!canUpdateUsers) {
+      setEditError("Editing users is not supported by the current backend.");
+      return;
+    }
     const userId = editUser?.id;
     if (!userId) return;
 
@@ -538,6 +543,11 @@ export default function AdminUserManagement() {
               </div>
 
               <form onSubmit={handleEditSubmit} className="p-6 space-y-5">
+                {!canUpdateUsers ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                    Editing users is not supported by the current backend.
+                  </div>
+                ) : null}
                 {editError ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                     {editError}
@@ -573,7 +583,7 @@ export default function AdminUserManagement() {
                       onChange={(e) => setEditDraft((prev) => ({ ...prev, email: e.target.value }))}
                       className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
                       type="email"
-                      disabled={editSubmitting}
+                      disabled={editSubmitting || !canUpdateUsers}
                       required
                     />
                   </div>
@@ -583,7 +593,7 @@ export default function AdminUserManagement() {
                       value={editDraft.fullName}
                       onChange={(e) => setEditDraft((prev) => ({ ...prev, fullName: e.target.value }))}
                       className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
-                      disabled={editSubmitting}
+                      disabled={editSubmitting || !canUpdateUsers}
                       required
                     />
                   </div>
@@ -593,7 +603,7 @@ export default function AdminUserManagement() {
                       value={editDraft.phone}
                       onChange={(e) => setEditDraft((prev) => ({ ...prev, phone: e.target.value }))}
                       className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
-                      disabled={editSubmitting}
+                      disabled={editSubmitting || !canUpdateUsers}
                     />
                   </div>
                 </div>
@@ -610,7 +620,7 @@ export default function AdminUserManagement() {
                   <button
                     type="submit"
                     className="px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors shadow-md bg-green-500 hover:bg-green-600 disabled:opacity-60"
-                    disabled={editSubmitting}
+                    disabled={editSubmitting || !canUpdateUsers}
                   >
                     {editSubmitting ? "Saving..." : "Save"}
                   </button>

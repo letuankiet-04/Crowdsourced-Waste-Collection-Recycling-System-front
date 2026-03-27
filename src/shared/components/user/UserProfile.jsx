@@ -14,6 +14,8 @@ export default function UserProfile({ user: propUser, className }) {
   const [pending, setPending] = useState(false);
   const [formData, setFormData] = useState({});
   const hydrateRef = useRef("");
+  const roleNormalized = String(user?.role ?? user?.roleCode ?? "").toLowerCase();
+  const canEditProfile = roleNormalized === "citizen" || roleNormalized === "enterprise";
 
   useEffect(() => {
     if (user) {
@@ -118,6 +120,10 @@ export default function UserProfile({ user: propUser, className }) {
   };
 
   const handleSave = async () => {
+      if (!canEditProfile) {
+          alert("Profile editing is not supported for this account.");
+          return;
+      }
       setPending(true);
       try {
           const updatedUser = await updateProfile({ ...user, ...formData });
@@ -173,7 +179,13 @@ export default function UserProfile({ user: propUser, className }) {
         avatarUrl={user.avatarUrl}
         isEditing={isEditing}
         pending={pending}
-        onEdit={() => setIsEditing(true)}
+        onEdit={() => {
+          if (!canEditProfile) {
+            alert("Profile editing is not supported for this account.");
+            return;
+          }
+          setIsEditing(true);
+        }}
         onCancel={handleCancel}
         onSave={handleSave}
       />
