@@ -7,6 +7,7 @@ import RoleLayout from "../../../shared/layout/RoleLayout.jsx";
 import { Card } from "../../../shared/ui/Card.jsx";
 import { getCitizenPoints, getCitizenPointsHistory } from "../../../services/citizen.service.js";
 import { PATHS } from "../../../app/routes/paths.js";
+import { formatPoints, formatSignedPoints } from "../../../shared/lib/numberFormat.js";
 
 
 export default function PointHistory() {
@@ -23,12 +24,6 @@ export default function PointHistory() {
     return Number.isFinite(n) ? n : 0;
   };
 
-  const formatSignedPoints = (value) => {
-    const n = toNumber(value);
-    const sign = n < 0 ? '-' : '+';
-    return `${sign}${Math.abs(n)}`;
-  };
-
   const pointsToneClassName = (value) => {
     const n = toNumber(value);
     if (n < 0) return 'text-red-600';
@@ -43,12 +38,43 @@ export default function PointHistory() {
     return text === '' ? null : text;
   };
 
+  const getVoucherId = (item) => {
+    const voucherId =
+      item?.voucherId ??
+      item?.voucherID ??
+      item?.voucher_id ??
+      item?.voucher?.id ??
+      item?.voucher?.voucherId ??
+      item?.voucher?.voucher_id;
+
+    if (voucherId != null) {
+      const text = String(voucherId).trim();
+      return text === '' ? null : text;
+    }
+
+    const description = item?.description ?? item?.activity ?? '';
+    if (!description) return null;
+
+    const match = String(description).match(/voucher\s*#\s*(\d+)/i);
+    return match?.[1] ?? null;
+  };
+
+  const isVoucherActivity = (item) => {
+    const voucherId = getVoucherId(item);
+    if (voucherId) return true;
+    const pointsValue = toNumber(item?.point ?? item?.points ?? 0);
+    return pointsValue < 0;
+  };
+
   const getActivityLabel = (item) => {
     const reportId = getReportId(item);
     if (reportId) return `Report #${reportId}`;
 
+    const voucherId = getVoucherId(item);
+    if (voucherId) return item?.description ?? `Voucher #${voucherId}`;
+
     const pointsValue = toNumber(item?.point ?? item?.points ?? 0);
-    if (pointsValue < 0) return 'Đổi voucher';
+    if (pointsValue < 0) return item?.description ?? 'Đổi voucher';
 
     return item?.activity ?? item?.description ?? 'Hoạt động';
   };
@@ -89,7 +115,7 @@ export default function PointHistory() {
     const matchesTab =
       activeTab === 'All Activities' ||
       (activeTab === 'Reports' && Boolean(reportId)) ||
-      (activeTab === 'Voucher' && !reportId);
+      (activeTab === 'Voucher' && isVoucherActivity(item));
 
     if (!matchesTab) return false;
 
@@ -192,7 +218,7 @@ export default function PointHistory() {
               <div>
                 <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">CURRENT BALANCE</p>
                 <div className="flex items-baseline justify-center md:justify-start gap-2">
-                  <span className="text-5xl font-bold text-gray-900">{pointsData.totalPoints}</span>
+                  <span className="text-5xl font-bold text-gray-900">{formatPoints(pointsData.totalPoints)}</span>
                   <span className="text-xl font-semibold text-green-600">pts</span>
                 </div>
               </div>
@@ -285,14 +311,46 @@ export default function PointHistory() {
                   const pointsValue = toNumber(item.point ?? item.points ?? 0);
                   const dateLabel = getDateLabel(item);
                   const activityLabel = getActivityLabel(item);
+                  const reportId = getReportId(item);
+                  const voucherId = getVoucherId(item);
+                  const isClickable = Boolean(reportId) || Boolean(voucherId);
+
+                  const handleRowClick = () => {
+                    if (reportId) {
+                      navigate(PATHS.citizen.reportDetail.replace(':reportId', reportId));
+                      return;
+                    }
+
+                    if (voucherId) {
+                      const numericVoucherId = Number(voucherId);
+                      navigate(PATHS.citizen.rewards, {
+                        state: {
+                          focusVoucherId: Number.isFinite(numericVoucherId) ? numericVoucherId : voucherId,
+                        },
+                      });
+                    }
+                  };
 
                   return (
-                    <tr key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
+                    <tr
+                      key={item.id ?? `${item.date ?? 'date'}-${item.activity ?? 'activity'}-${idx}`}
+                      className="hover:bg-gray-50/50 transition-colors"
+                    >
                       <td className="py-3 px-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                         {dateLabel}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700 text-center truncate max-w-0">
-                        {activityLabel}
+                        {isClickable ? (
+                          <button
+                            type="button"
+                            onClick={handleRowClick}
+                            className="w-full truncate text-center hover:underline focus:underline"
+                          >
+                            {activityLabel}
+                          </button>
+                        ) : (
+                          activityLabel
+                        )}
                       </td>
                       <td className={`py-3 px-4 text-right font-bold tabular-nums whitespace-nowrap ${pointsToneClassName(pointsValue)}`}>
                         {formatSignedPoints(pointsValue)} pts

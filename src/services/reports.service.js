@@ -55,6 +55,11 @@ export async function getMyReportResult(id) {
   return unwrapApiResponse(data)
 }
 
+export async function getMyReportCollectorReport(id) {
+  const { data } = await api.get(`/api/citizen/reports/${id}/collector-report`)
+  return unwrapApiResponse(data)
+}
+
 export async function createReport(reportData) {
   const formData = buildReportFormData(reportData)
   const { data } = await api.post('/api/citizen/reports', formData)

@@ -400,25 +400,6 @@ export default function EnterpriseReportsAnalytics() {
     return () => clearTimeout(t);
   }, [load]);
 
-  const handleExport = useCallback(() => {
-    const payload = {
-      params: { year, quarter, month },
-      generatedAt: new Date().toISOString(),
-      general: generalStats,
-      citizens: citizenRows,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const suffix = month != null ? `m${String(month).padStart(2, "0")}` : quarter != null ? `q${quarter}` : `y${year}`;
-    a.href = url;
-    a.download = `enterprise_reports_analytics_${suffix}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }, [citizenRows, generalStats, month, quarter, year]);
-
   return (
     <EnterpriseLayout>
       <div className="min-h-screen space-y-8">
@@ -471,9 +452,6 @@ export default function EnterpriseReportsAnalytics() {
               </div>
               <Button variant="outline" disabled={loading} onClick={load} className="rounded-full">
                 Refresh
-              </Button>
-              <Button disabled={loading} onClick={handleExport} className="rounded-full">
-                Export
               </Button>
             </div>
           }

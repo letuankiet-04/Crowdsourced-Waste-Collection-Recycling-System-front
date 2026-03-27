@@ -12,6 +12,7 @@ import { getWasteCategories } from "../../../../services/reports.service.js";
 import WasteItemsTable from "../../../../shared/ui/WasteItemsTable.jsx";
 import { formatWasteTypeUnit } from "../../../../shared/constants/wasteTypes.js";
 import { normalizeLegacyWeightInput, normalizeWasteItemsInput } from "./createReportForm.utils.js";
+import { formatPoints } from "../../../../shared/lib/numberFormat.js";
 
 export default function CreateReportForm() {
   const navigate = useNavigate();
@@ -106,13 +107,6 @@ export default function CreateReportForm() {
   const totalEstimatedPoints = useMemo(() => {
     return (Array.isArray(pointsBreakdown) ? pointsBreakdown : []).reduce((acc, r) => acc + (Number.isFinite(r?.points) ? r.points : 0), 0);
   }, [pointsBreakdown]);
-
-  const formatPoints = (n) => {
-    if (!Number.isFinite(n)) return "0";
-    const rounded = Math.round(n);
-    if (Math.abs(n - rounded) < 1e-9) return String(rounded);
-    return n.toFixed(2);
-  };
 
   const handleDiscard = () => {
     setWasteItems([]);

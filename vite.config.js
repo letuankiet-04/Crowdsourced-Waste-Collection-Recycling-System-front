@@ -19,6 +19,11 @@ export default defineConfig(({ mode }) => {
         proxy.on('proxyReq', (proxyReq) => {
           proxyReq.removeHeader('origin')
         })
+        proxy.on('proxyRes', (proxyRes) => {
+          if (!proxyRes?.headers) return
+          delete proxyRes.headers['www-authenticate']
+          delete proxyRes.headers['WWW-Authenticate']
+        })
       },
     },
   }

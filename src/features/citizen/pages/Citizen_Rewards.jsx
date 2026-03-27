@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import Sidebar from "../components/navigation/Sidebar";
 import Navbar from "../components/navigation/CD_Navbar";
 import CD_Footer from "../../../shared/layout/CD_Footer.jsx";
@@ -12,10 +13,16 @@ import { getMyVouchers, getRedeemableVouchers, redeemVoucher } from "../../../se
 import useNotify from "../../../shared/hooks/useNotify.js";
 
 export default function CitizenRewards() {
+  const location = useLocation();
   const [myVouchers, setMyVouchers] = useState([]);
   const [redeemableVouchers, setRedeemableVouchers] = useState([]);
   const [pointsData, setPointsData] = useState({ totalPoints: 0, monthlyPoints: 0 });
   const notify = useNotify();
+  const myVouchersRef = useRef(null);
+
+  const focusVoucherIdRaw = location?.state?.focusVoucherId;
+  const focusVoucherId = Number(focusVoucherIdRaw);
+  const focusVoucherIdValue = Number.isFinite(focusVoucherId) ? focusVoucherId : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +74,14 @@ export default function CitizenRewards() {
     };
   }, [notify]);
 
+  useEffect(() => {
+    if (!focusVoucherIdValue) return;
+    if (!myVouchers?.length) return;
+    const match = myVouchers.some((v) => Number(v?.voucherId) === focusVoucherIdValue);
+    if (!match) return;
+    myVouchersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [focusVoucherIdValue, myVouchers]);
+
   const handleRedeem = async (voucher) => {
     try {
       await redeemVoucher(voucher);
@@ -102,7 +117,9 @@ export default function CitizenRewards() {
         <RedeemSection onRedeem={handleRedeem} vouchers={redeemableVouchers} />
 
         {/* My Vouchers Section */}
-        <MyVouchersSection vouchers={myVouchers} />
+        <div ref={myVouchersRef}>
+          <MyVouchersSection vouchers={myVouchers} focusVoucherId={focusVoucherIdValue} />
+        </div>
       </div>
     </RoleLayout>
   );

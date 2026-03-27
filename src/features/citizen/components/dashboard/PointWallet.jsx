@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from "../../../../shared/ui/Card.jsx";
 import { getCitizenPoints } from "../../../../services/rewards.service.js";
 import { PATHS } from "../../../../app/routes/paths.js";
+import { formatPoints } from "../../../../shared/lib/numberFormat.js";
 
 export default function PointWallet() {
   const navigate = useNavigate();
@@ -75,7 +76,7 @@ export default function PointWallet() {
       </div>
       
       <div className={`relative flex items-baseline gap-2 mb-8 transition-all duration-500 ${loading ? 'opacity-40 filter blur-[1px]' : ''}`}>
-        <span className="text-5xl font-bold text-gray-900 tracking-tight">{points}</span>
+        <span className="text-5xl font-bold text-gray-900 tracking-tight">{formatPoints(points)}</span>
         <span className="text-green-600 font-semibold text-lg">PTS</span>
       </div>
 

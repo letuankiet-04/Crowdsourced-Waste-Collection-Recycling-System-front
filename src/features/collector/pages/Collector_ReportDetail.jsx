@@ -112,6 +112,8 @@ export default function CollectorReportDetail() {
       if (!Number.isFinite(requestId)) return;
       setLoading(true);
       setReportError("");
+      setTaskDetail(null);
+      setCollectorReport(null);
       try {
         const [detailData, reportData] = await Promise.all([
           getCollectorTaskDetail(requestId),
@@ -142,6 +144,11 @@ export default function CollectorReportDetail() {
       active = false;
     };
   }, [id, notify]);
+
+  const derivedStatus = useMemo(() => {
+    if (collectorReport) return "completed";
+    return taskDetail?.status ?? task?.status ?? stateReport?.status ?? null;
+  }, [collectorReport, stateReport, task?.status, taskDetail?.status]);
 
   const report = useMemo(() => {
     if (!id) return null;
@@ -183,7 +190,7 @@ export default function CollectorReportDetail() {
         stateReport?.reportCode ??
         stateReport?.code ??
         null,
-      status: task?.status ?? collectorReport?.status ?? stateReport?.status ?? null,
+      status: derivedStatus,
       createdAt: task?.createdAt ?? collectorReport?.createdAt ?? stateReport?.createdAt ?? task?.assignedAt ?? task?.updatedAt ?? null,
       updatedAt: task?.updatedAt ?? null,
       description: taskDetail?.description ?? taskDetail?.notes ?? stateReport?.description ?? stateReport?.notes ?? null,
@@ -196,7 +203,7 @@ export default function CollectorReportDetail() {
       types: taskDetail?.wasteType ? [String(taskDetail.wasteType)] : Array.isArray(stateReport?.types) ? stateReport.types : [],
       wasteItems: collectedWasteItems.length ? collectedWasteItems : suggestedWasteItems,
     };
-  }, [collectorReport, collectedAddressResolved, id, stateReport, task, taskDetail]);
+  }, [collectorReport, collectedAddressResolved, derivedStatus, id, stateReport, task, taskDetail]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,13 +240,14 @@ export default function CollectorReportDetail() {
     report?.collectedCoords?.lng,
   ]);
 
-  const rawStatus = String(task?.status || "").trim().toLowerCase();
-  const statusLabel = normalizeReportStatus(task?.status);
+  const effectiveStatus = derivedStatus;
+  const rawStatus = String(effectiveStatus || "").trim().toLowerCase();
+  const statusLabel = normalizeReportStatus(effectiveStatus);
   const canAccept = rawStatus === "assigned";
   const canReject = canAccept;
   const canStart = rawStatus === "accepted_collector";
   const canCollect = rawStatus === "on_the_way";
-  const canSubmitReport = rawStatus === "collected";
+  const canSubmitReport = Boolean(taskDetail) && !loading && rawStatus === "collected";
 
   const [collectOpen, setCollectOpen] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
@@ -288,6 +296,15 @@ export default function CollectorReportDetail() {
     const requestId = Number(id);
     if (!Number.isFinite(requestId)) return false;
     try {
+      const latestDetail = await getCollectorTaskDetail(requestId).catch(() => null);
+      const latestStatus = String(latestDetail?.status ?? "").trim().toLowerCase();
+      if (latestStatus && latestStatus !== "collected") {
+        setTask((prev) => (prev ? { ...prev, status: latestDetail?.status ?? prev.status } : prev));
+        setTaskDetail((prev) => latestDetail ?? prev);
+        notify.error("Unable to submit report", "This task is no longer in Collected status.");
+        setCollectOpen(false);
+        return false;
+      }
       await completeCollectorTask(requestId, payload || {});
       setTask((prev) => (prev ? { ...prev, status: "completed" } : prev));
       notify.success("Completed", "Collection report submitted.");
@@ -337,82 +354,121 @@ export default function CollectorReportDetail() {
         ) : null}
         {reportError && !loading ? <div className="text-sm text-red-600">{reportError}</div> : null}
 
-        <Card className="overflow-hidden bg-gradient-to-br from-emerald-50/70 via-white to-white">
-          <CardHeader className="py-6 px-8">
-            <div className="min-w-0">
-              <CardTitle className="text-2xl">Decision</CardTitle>
-              <div className="mt-1 text-sm text-gray-600">
-                Update this task as you progress through collection.
+        {rawStatus !== "completed" ? (
+          <Card className="overflow-hidden bg-gradient-to-br from-emerald-50/70 via-white to-white">
+            <CardHeader className="py-6 px-8">
+              <div className="min-w-0">
+                <CardTitle className="text-2xl">Decision</CardTitle>
+                <div className="mt-1 text-sm text-gray-600">
+                  Update this task as you progress through collection.
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:block text-xs text-gray-500">
-                {report?.updatedAt
-                  ? `Updated ${new Date(report.updatedAt).toLocaleString()}`
-                  : report?.createdAt
-                    ? `Created ${new Date(report.createdAt).toLocaleString()}`
-                    : null}
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:block text-xs text-gray-500">
+                  {report?.updatedAt
+                    ? `Updated ${new Date(report.updatedAt).toLocaleString()}`
+                    : report?.createdAt
+                      ? `Created ${new Date(report.createdAt).toLocaleString()}`
+                      : null}
+                </div>
+                <StatusPill variant={reportStatusToPillVariant(effectiveStatus)}>{statusLabel}</StatusPill>
               </div>
-              <StatusPill variant={reportStatusToPillVariant(task?.status)}>{statusLabel}</StatusPill>
-            </div>
-          </CardHeader>
-          <CardBody className="p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-center">
-              <div className="rounded-2xl border border-emerald-100 bg-white/70 p-5">
-                <div className="text-sm font-semibold text-gray-900">What happens next</div>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
-                  <div className="flex items-start gap-2">
-                    <Truck className="h-5 w-5 text-emerald-700 mt-0.5" aria-hidden="true" />
-                    <div>
-                      <div className="font-semibold text-gray-900">Progress</div>
-                      <div className="text-gray-600">Accept, start, confirm collected, then submit the collection report.</div>
+            </CardHeader>
+            <CardBody className="p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-center">
+                <div className="rounded-2xl border border-emerald-100 bg-white/70 p-5">
+                  <div className="text-sm font-semibold text-gray-900">What happens next</div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
+                    <div className="flex items-start gap-2">
+                      <Truck className="h-5 w-5 text-emerald-700 mt-0.5" aria-hidden="true" />
+                      <div>
+                        <div className="font-semibold text-gray-900">Progress</div>
+                        <div className="text-gray-600">Accept, start, confirm collected, then submit the collection report.</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <XCircle className="h-5 w-5 text-red-700 mt-0.5" aria-hidden="true" />
-                    <div>
-                      <div className="font-semibold text-gray-900">Reject</div>
-                      <div className="text-gray-600">If you cannot handle it, reject so it can be reassigned.</div>
+                    <div className="flex items-start gap-2">
+                      <XCircle className="h-5 w-5 text-red-700 mt-0.5" aria-hidden="true" />
+                      <div>
+                        <div className="font-semibold text-gray-900">Reject</div>
+                        <div className="text-gray-600">If you cannot handle it, reject so it can be reassigned.</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap justify-end gap-3">
-                {canAccept && (
-                  <>
-                    {canReject && (
+                <div className="flex flex-wrap justify-end gap-3">
+                  {canAccept && (
+                    <>
+                      {canReject && (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="rounded-full border-red-600 text-red-700 hover:bg-red-50"
+                          disabled={loading || rejectSubmitting}
+                          onClick={() => {
+                            setRejectReason("");
+                            setRejectReasonError("");
+                            setRejectOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-5 w-5" aria-hidden="true" />
+                          Reject Task
+                        </Button>
+                      )}
+
                       <Button
-                        variant="outline"
                         size="lg"
-                        className="rounded-full border-red-600 text-red-700 hover:bg-red-50"
-                        disabled={loading || rejectSubmitting}
+                        className="rounded-full"
+                        disabled={loading}
                         onClick={() => {
-                          setRejectReason("");
-                          setRejectReasonError("");
-                          setRejectOpen(true);
+                          setConfirmConfig({
+                            title: "Are you sure you want to accept this task?",
+                            description: "If you continue, the task status will be updated to Accepted.",
+                            confirmText: "Accept",
+                            confirmClassName: "bg-blue-600 hover:bg-blue-700 text-white",
+                            action: async () => {
+                              const requestId = Number(id);
+                              if (!Number.isFinite(requestId)) return;
+                              try {
+                                await acceptCollectorTask(requestId);
+                                const nextDetail = await getCollectorTaskDetail(requestId);
+                                setTask({
+                                  id: requestId,
+                                  requestCode: nextDetail?.reportCode ?? null,
+                                  status: nextDetail?.status ?? null,
+                                  createdAt: nextDetail?.createdAt ?? null,
+                                  updatedAt: null,
+                                });
+                                setTaskDetail(nextDetail);
+                                notify.success("Accepted", "Task accepted successfully.");
+                              } catch (e) {
+                                notify.error("Unable to accept task", translateErrorMessage(e?.message) || "Request failed");
+                              }
+                            },
+                          });
                         }}
                       >
-                        <XCircle className="h-5 w-5" aria-hidden="true" />
-                        Reject Task
+                        <Truck className="h-5 w-5" aria-hidden="true" />
+                        Accept Task
                       </Button>
-                    )}
-
+                    </>
+                  )}
+                  {canStart && (
                     <Button
                       size="lg"
                       className="rounded-full"
                       disabled={loading}
                       onClick={() => {
                         setConfirmConfig({
-                          title: "Are you sure you want to accept this task?",
-                          description: "If you continue, the task status will be updated to Accepted.",
-                          confirmText: "Accept",
-                          confirmClassName: "bg-blue-600 hover:bg-blue-700 text-white",
+                          title: "Are you sure you want to start this task?",
+                          description: "If you continue, the task status will be updated to On the way.",
+                          confirmText: "Start",
+                          confirmClassName: "bg-indigo-600 hover:bg-indigo-700 text-white",
                           action: async () => {
                             const requestId = Number(id);
                             if (!Number.isFinite(requestId)) return;
                             try {
-                              await acceptCollectorTask(requestId);
+                              await startCollectorTask(requestId);
                               const nextDetail = await getCollectorTaskDetail(requestId);
                               setTask({
                                 id: requestId,
@@ -422,99 +478,57 @@ export default function CollectorReportDetail() {
                                 updatedAt: null,
                               });
                               setTaskDetail(nextDetail);
-                              notify.success("Accepted", "Task accepted successfully.");
+                              notify.success("Started", "Task started successfully.");
                             } catch (e) {
-                              notify.error("Unable to accept task", translateErrorMessage(e?.message) || "Request failed");
+                              notify.error("Unable to start task", translateErrorMessage(e?.message) || "Request failed");
                             }
                           },
                         });
                       }}
                     >
                       <Truck className="h-5 w-5" aria-hidden="true" />
-                      Accept Task
+                      Start Task
                     </Button>
-                  </>
-                )}
-                {canStart && (
-                  <Button
-                    size="lg"
-                    className="rounded-full"
-                    disabled={loading}
-                    onClick={() => {
-                      setConfirmConfig({
-                        title: "Are you sure you want to start this task?",
-                        description: "If you continue, the task status will be updated to On the way.",
-                        confirmText: "Start",
-                        confirmClassName: "bg-indigo-600 hover:bg-indigo-700 text-white",
-                        action: async () => {
-                          const requestId = Number(id);
-                          if (!Number.isFinite(requestId)) return;
-                          try {
-                            await startCollectorTask(requestId);
-                            const nextDetail = await getCollectorTaskDetail(requestId);
-                            setTask({
-                              id: requestId,
-                              requestCode: nextDetail?.reportCode ?? null,
-                              status: nextDetail?.status ?? null,
-                              createdAt: nextDetail?.createdAt ?? null,
-                              updatedAt: null,
-                            });
-                            setTaskDetail(nextDetail);
-                            notify.success("Started", "Task started successfully.");
-                          } catch (e) {
-                            notify.error("Unable to start task", translateErrorMessage(e?.message) || "Request failed");
-                          }
-                        },
-                      });
-                    }}
-                  >
-                    <Truck className="h-5 w-5" aria-hidden="true" />
-                    Start Task
-                  </Button>
-                )}
-                 {canCollect && (
+                  )}
+                  {canCollect && (
                     <Button
-                    size="lg"
-                    className="rounded-full bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => {
-                      setConfirmConfig({
-                        title: "Are you sure you want to confirm collected?",
-                        description: "If you continue, the task status will be updated to Collected.",
-                        confirmText: "Confirm",
-                        confirmClassName: "bg-green-600 hover:bg-green-700 text-white",
-                        action: confirmCollected,
-                      });
-                    }}
+                      size="lg"
+                      className="rounded-full bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => {
+                        setConfirmConfig({
+                          title: "Are you sure you want to confirm collected?",
+                          description: "If you continue, the task status will be updated to Collected.",
+                          confirmText: "Confirm",
+                          confirmClassName: "bg-green-600 hover:bg-green-700 text-white",
+                          action: confirmCollected,
+                        });
+                      }}
                     >
-                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-                    Confirm Collected
+                      <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                      Confirm Collected
                     </Button>
-                )}
-                {rawStatus === "collected" && (
-                  <Button
-                    size="lg"
-                    className="rounded-full bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => {
-                      openCollectDialog();
-                    }}
-                  >
-                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-                    Submit Collection Report
-                  </Button>
-                )}
-                {!canAccept && !canStart && !canCollect && rawStatus && rawStatus !== "collected" && rawStatus !== "completed" && (
+                  )}
+                  {Boolean(taskDetail) && rawStatus === "collected" && (
+                    <Button
+                      size="lg"
+                      className="rounded-full bg-green-600 hover:bg-green-700 text-white"
+                      disabled={loading}
+                      onClick={() => {
+                        openCollectDialog();
+                      }}
+                    >
+                      <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                      Submit Collection Report
+                    </Button>
+                  )}
+                  {!canAccept && !canStart && !canCollect && rawStatus && rawStatus !== "collected" && (
                     <div className="text-gray-500">No actions available for this status.</div>
-                )}
-                 {rawStatus === "completed" && (
-                    <div className="flex items-center gap-2 text-green-700 font-medium">
-                        <CheckCircle2 className="h-5 w-5" />
-                        Task Completed
-                    </div>
-                )}
-             </div>
-            </div>
-          </CardBody>
-        </Card>
+                  )}
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        ) : null}
 
         <ConfirmDialog
           open={Boolean(confirmConfig)}
@@ -644,7 +658,7 @@ export default function CollectorReportDetail() {
           onClose={() => setCollectOpen(false)}
           reportId={report?.id ?? null}
           statusLabel={statusLabel}
-          statusVariant={reportStatusToPillVariant(task?.status)}
+          statusVariant={reportStatusToPillVariant(effectiveStatus)}
           categories={
             Array.isArray(taskDetail?.categories)
               ? taskDetail.categories.map((c) => ({

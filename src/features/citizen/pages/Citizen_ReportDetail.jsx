@@ -16,6 +16,7 @@ import { deleteReport } from "../../../services/reports.service.js";
 import { formatWasteTypeUnit } from "../../../shared/constants/wasteTypes.js";
 import useCitizenReportDetail from "../hooks/useCitizenReportDetail.js";
 import { buildCitizenReportDetail } from "./citizenReportDetail.utils.js";
+import { formatPoints } from "../../../shared/lib/numberFormat.js";
 
 export default function CitizenReportDetail() {
   const { reportId } = useParams();
@@ -23,11 +24,11 @@ export default function CitizenReportDetail() {
   const notify = useNotify();
 
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
-  const { apiReport, apiResult, loading, categoryOptions } = useCitizenReportDetail({ reportId, notify });
+  const { apiReport, apiResult, collectorReport, loading, categoryOptions } = useCitizenReportDetail({ reportId, notify });
 
   const report = useMemo(() => {
-    return buildCitizenReportDetail(apiReport, reportId);
-  }, [apiReport, reportId]);
+    return buildCitizenReportDetail(apiReport, reportId, collectorReport);
+  }, [apiReport, reportId, collectorReport]);
 
   const status = normalizeReportStatus(report?.status);
   const canManage = status === "Pending";
@@ -91,13 +92,6 @@ export default function CitizenReportDetail() {
     [pointsBreakdown]
   );
 
-  const formatPoints = (n) => {
-    if (!Number.isFinite(n)) return "0";
-    const rounded = Math.round(n);
-    if (Math.abs(n - rounded) < 1e-9) return String(rounded);
-    return n.toFixed(2);
-  };
-
   const reportInfoExtra = useMemo(() => {
     if (!pointsBreakdown.length) return null;
     return (
@@ -136,6 +130,148 @@ export default function CitizenReportDetail() {
     );
   }, [pointsBreakdown, totalEstimatedPoints]);
 
+  const collectionDetails = useMemo(() => {
+    const cr = collectorReport ?? null;
+    const images = Array.isArray(cr?.imageUrls) ? cr.imageUrls.filter(Boolean).map(String) : [];
+    const categories = Array.isArray(cr?.categories) ? cr.categories : [];
+    const toNumber = (v) => {
+      if (v == null) return null;
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const reportTotalPoint = toNumber(cr?.totalPoint);
+    const resultTotalPoint = toNumber(apiResult?.totalPoint);
+    const earnedPoints = resultTotalPoint ?? reportTotalPoint;
+    const statusText = status === "Collected" ? "Collection completed." : "Collection details are not available yet.";
+
+    const formatNumber = (n) => {
+      const num = typeof n === "number" ? n : Number(n);
+      if (!Number.isFinite(num)) return "-";
+      const rounded = Math.round(num);
+      if (Math.abs(num - rounded) < 1e-9) return String(rounded);
+      return num.toFixed(2);
+    };
+
+    const rows = categories
+      .map((c) => {
+        const name = c?.name ? String(c.name).trim() : "";
+        if (!name) return null;
+        const unit = c?.unit ? String(c.unit) : "";
+        const q = typeof c?.quantity === "number" ? c.quantity : Number(c?.quantity);
+        const p = typeof c?.pointPerUnit === "number" ? c.pointPerUnit : Number(c?.pointPerUnit);
+        const points = Number.isFinite(q) && Number.isFinite(p) ? q * p : null;
+        return { key: c?.id ?? `${name}-${unit}`, name, unit, quantity: Number.isFinite(q) ? q : null, pointPerUnit: Number.isFinite(p) ? p : null, points };
+      })
+      .filter(Boolean);
+
+    const basePoints = rows.reduce((sum, r) => sum + (Number.isFinite(r?.points) ? r.points : 0), 0);
+    const enterpriseRateRaw =
+      basePoints > 0 && Number.isFinite(earnedPoints) && earnedPoints > 0 ? (earnedPoints / basePoints) * 100 : null;
+    const enterpriseRate = enterpriseRateRaw != null ? Math.min(100, Math.max(0, enterpriseRateRaw)) : null;
+
+    return (
+      <Card className="overflow-hidden border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-sky-50 shadow-md hover:shadow-xl">
+        <CardHeader className="py-6 px-8 border-b border-emerald-100 bg-white/60 backdrop-blur">
+          <CardTitle className="text-2xl text-emerald-950">Collection Details</CardTitle>
+        </CardHeader>
+        <CardBody className="p-8 space-y-8">
+          {!cr ? (
+            <div className="rounded-2xl border border-emerald-200 bg-white/70 px-5 py-4 text-sm text-emerald-900">
+              {statusText}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collector Report Code</div>
+                  <div className="mt-1 text-gray-900">{cr?.reportCode ?? cr?.id ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected At</div>
+                  <div className="mt-1 text-gray-900">{cr?.collectedAt ? new Date(cr.collectedAt).toLocaleString() : "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Points</div>
+                  <div className="mt-1 text-gray-900 font-semibold">{earnedPoints != null ? formatPoints(earnedPoints) : "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Enterprise Rate</div>
+                  <div className="mt-1 text-gray-900 font-semibold">{enterpriseRate != null ? `${formatNumber(enterpriseRate)}%` : "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collection Request ID</div>
+                  <div className="mt-1 text-gray-900">{cr?.collectionRequestId ?? "-"}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collector Note</div>
+                <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-800">
+                  {cr?.collectorNote ? String(cr.collectorNote) : "No notes provided."}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Collected Categories</div>
+                <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-600">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold">Name</th>
+                        <th className="px-4 py-3 text-left font-semibold">Quantity</th>
+                        <th className="px-4 py-3 text-left font-semibold">Unit</th>
+                        <th className="px-4 py-3 text-right font-semibold">Point / Unit</th>
+                        <th className="px-4 py-3 text-right font-semibold">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {rows.length ? (
+                        rows.map((r) => (
+                          <tr key={r.key}>
+                            <td className="px-4 py-3 text-gray-900 font-semibold">{r.name}</td>
+                            <td className="px-4 py-3 text-gray-900">{r.quantity != null ? formatNumber(r.quantity) : "-"}</td>
+                            <td className="px-4 py-3 text-gray-900">{r.unit ? formatWasteTypeUnit(r.unit) : "-"}</td>
+                            <td className="px-4 py-3 text-gray-900 text-right">{r.pointPerUnit != null ? formatPoints(r.pointPerUnit) : "-"}</td>
+                            <td className="px-4 py-3 text-gray-900 text-right">{r.points != null ? formatPoints(r.points) : "-"}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="px-4 py-6 text-gray-600" colSpan={5}>
+                            No collected categories found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Evidence Photos</div>
+                {images.length ? (
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {images.map((src, idx) => (
+                      <img
+                        key={`${src}-${idx}`}
+                        src={src}
+                        alt={`Evidence photo ${idx + 1}`}
+                        className="w-full h-40 object-cover rounded-xl border border-gray-100"
+                        loading="lazy"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-sm text-gray-600">No evidence photos attached.</div>
+                )}
+              </div>
+            </>
+          )}
+        </CardBody>
+      </Card>
+    );
+  }, [collectorReport, apiResult, status]);
+
   const steps = [
     { label: "Pending Review", sub: report?.createdAt ? new Date(report.createdAt).toLocaleString() : null },
     { label: "Accepted", sub: "Processing report details..." },
@@ -165,6 +301,7 @@ export default function CitizenReportDetail() {
           wasteItemsLabel="Waste item"
           showSubmittedBy={false}
           reportInfoExtra={reportInfoExtra}
+          mainBottom={collectionDetails}
           aside={
             <>
               <Card className="overflow-hidden">

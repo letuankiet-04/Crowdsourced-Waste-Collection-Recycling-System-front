@@ -11,6 +11,7 @@ import useLatestFeedbackDetail from "./useLatestFeedbackDetail.js";
 import useFeedbackReportInfo from "./useFeedbackReportInfo.js";
 import EnterpriseAttachedReports from "./EnterpriseAttachedReports.jsx";
 import EnterpriseRewardSection from "./EnterpriseRewardSection.jsx";
+import { formatPoints } from "../../lib/numberFormat.js";
 
 export default function FeedbackDetailModal({
   open,
@@ -93,7 +94,9 @@ export default function FeedbackDetailModal({
       notify.update(toastId, {
         variant: "success",
         title: "Saved",
-        message: `Adjusted ${res?.points ?? points} pts. Balance: ${res?.balanceAfter ?? "N/A"}.`,
+        message: `Adjusted ${formatPoints(res?.points ?? points)} pts. Balance: ${
+          res?.balanceAfter != null ? formatPoints(res.balanceAfter) : "N/A"
+        }.`,
       });
       setTimeout(() => notify.dismiss(toastId), 3500);
 

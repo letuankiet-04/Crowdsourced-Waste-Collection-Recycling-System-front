@@ -8,7 +8,7 @@ export function mapWasteCategoryOptions(cats) {
   }));
 }
 
-export function buildCitizenReportDetail(apiReport, reportId) {
+export function buildCitizenReportDetail(apiReport, reportId, collectorReport) {
   if (!apiReport) return null;
   const reportCodeRaw = apiReport?.reportCode ?? apiReport?.code ?? apiReport?.report_code ?? null;
   const reportCode =
@@ -41,6 +41,16 @@ export function buildCitizenReportDetail(apiReport, reportId) {
   const coords =
     lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? { lat: Number(lat), lng: Number(lng) } : null;
 
+  const collectedLat = collectorReport?.latitude ?? null;
+  const collectedLng = collectorReport?.longitude ?? null;
+  const collectedCoords =
+    collectedLat != null &&
+    collectedLng != null &&
+    Number.isFinite(Number(collectedLat)) &&
+    Number.isFinite(Number(collectedLng))
+      ? { lat: Number(collectedLat), lng: Number(collectedLng) }
+      : null;
+
   return {
     id: apiReport?.id ?? reportId,
     reportCode,
@@ -50,6 +60,7 @@ export function buildCitizenReportDetail(apiReport, reportId) {
     address,
     coords,
     images,
+    collectedCoords,
     wasteItems: categories
       .map((c) => {
         const name = c?.name ? String(c.name) : "";

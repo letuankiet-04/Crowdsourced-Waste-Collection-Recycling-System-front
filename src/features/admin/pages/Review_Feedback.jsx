@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { 
   Search, 
-  Filter, 
   Calendar,
   Clock,
   Archive,
@@ -204,10 +203,6 @@ export default function Review_Feedback() {
                  </select>
                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               </div>
-              <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-                <Filter className="w-4 h-4" />
-                More Filters
-              </button>
             </div>
           </CardHeader>
 

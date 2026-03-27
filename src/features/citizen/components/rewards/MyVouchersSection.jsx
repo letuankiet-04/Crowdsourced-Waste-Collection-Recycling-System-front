@@ -2,14 +2,33 @@ import React, { useState, useMemo } from 'react';
 import { Card } from "../../../../shared/ui/Card.jsx";
 import { X, QrCode } from "lucide-react"; // Import Icons
 
-export function MyVouchersSection({ vouchers = [] }) {
-  const [filterStatus, setFilterStatus] = useState("All");
+export function MyVouchersSection({ vouchers = [], focusVoucherId = null }) {
+  const [filterStatusOverride, setFilterStatusOverride] = useState(null);
   const [selectedVoucher, setSelectedVoucher] = useState(null); // State for modal
+  const [dismissedFocusVoucherId, setDismissedFocusVoucherId] = useState(null);
 
-  const qrValue = selectedVoucher
-    ? (selectedVoucher.code ?? `VOUCHER-${selectedVoucher.id}`)
+  const focusId = Number(focusVoucherId);
+  const focusIdValue = Number.isFinite(focusId) ? focusId : null;
+
+  const focusedVoucher = useMemo(() => {
+    if (!focusIdValue) return null;
+    return vouchers.find((v) => Number(v?.voucherId) === focusIdValue) ?? null;
+  }, [focusIdValue, vouchers]);
+
+  const focusActive = Boolean(focusedVoucher) && dismissedFocusVoucherId !== focusIdValue;
+  const autoFilterStatus =
+    focusActive && ['Active', 'Used', 'Expired'].includes(focusedVoucher.status)
+      ? focusedVoucher.status
+      : 'All';
+  const filterStatus = filterStatusOverride ?? autoFilterStatus;
+
+  const autoSelectedVoucher = focusActive && focusedVoucher?.status === 'Active' ? focusedVoucher : null;
+  const activeSelectedVoucher = selectedVoucher ?? autoSelectedVoucher;
+
+  const qrValue = activeSelectedVoucher
+    ? (activeSelectedVoucher.code ?? `VOUCHER-${activeSelectedVoucher.id}`)
     : "";
-  const qrImageSrc = selectedVoucher
+  const qrImageSrc = activeSelectedVoucher
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrValue)}`
     : "";
 
@@ -44,7 +63,10 @@ export function MyVouchersSection({ vouchers = [] }) {
                   {['All', 'Active', 'Used', 'Expired'].map(status => (
                       <button
                           key={status}
-                          onClick={() => setFilterStatus(status)}
+                          onClick={() => {
+                            setFilterStatusOverride(status);
+                            if (focusIdValue) setDismissedFocusVoucherId(focusIdValue);
+                          }}
                           className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-in-out whitespace-nowrap ${
                               filterStatus === status 
                                   ? 'bg-green-600 text-white shadow-md transform scale-105' 
@@ -105,7 +127,10 @@ export function MyVouchersSection({ vouchers = [] }) {
                               <td className="py-4 px-6 text-right">
                                  {voucher.status === 'Active' ? (
                                      <button
-                                       onClick={() => setSelectedVoucher(voucher)}
+                                       onClick={() => {
+                                         setSelectedVoucher(voucher);
+                                         if (focusIdValue) setDismissedFocusVoucherId(focusIdValue);
+                                       }}
                                        className="px-4 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800 transition-colors"
                                      >
                                         Use Now
@@ -138,11 +163,15 @@ export function MyVouchersSection({ vouchers = [] }) {
        </Card>
 
        {/* QR Code Modal */}
-       {selectedVoucher && (
+       {activeSelectedVoucher && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up relative">
              <button 
-               onClick={(e) => { e.stopPropagation(); setSelectedVoucher(null); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedVoucher(null);
+                if (focusIdValue) setDismissedFocusVoucherId(focusIdValue);
+              }}
                className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors z-10"
              >
                <X className="w-5 h-5 text-gray-600" />
@@ -151,14 +180,14 @@ export function MyVouchersSection({ vouchers = [] }) {
              <div className="p-8 flex flex-col items-center text-center">
                <div className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white mb-4 -mt-12">
                  <img 
-                   src={selectedVoucher.logoUrl} 
-                   alt={selectedVoucher.brandName} 
+                  src={activeSelectedVoucher.logoUrl} 
+                  alt={activeSelectedVoucher.brandName} 
                    className="w-full h-full object-contain"
                  />
                </div>
                
-               <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedVoucher.brandName}</h3>
-               <p className="text-gray-500 text-sm mb-6">{selectedVoucher.title}</p>
+               <h3 className="text-xl font-bold text-gray-900 mb-1">{activeSelectedVoucher.brandName}</h3>
+               <p className="text-gray-500 text-sm mb-6">{activeSelectedVoucher.title}</p>
 
                <div className="bg-white p-4 rounded-xl border-2 border-dashed border-gray-300 w-full mb-6">
                  {/* Simulate QR Code with an image API or placeholder */}
@@ -175,13 +204,16 @@ export function MyVouchersSection({ vouchers = [] }) {
                <div className="text-xs text-gray-400">
                  Show this QR code to the cashier to redeem.
                  <br/>
-                 Valid until: <span className="font-bold text-gray-600">{selectedVoucher.validDate}</span>
+                 Valid until: <span className="font-bold text-gray-600">{activeSelectedVoucher.validDate}</span>
                </div>
              </div>
              
              <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-center">
                 <button 
-                  onClick={() => setSelectedVoucher(null)}
+                  onClick={() => {
+                    setSelectedVoucher(null);
+                    if (focusIdValue) setDismissedFocusVoucherId(focusIdValue);
+                  }}
                   className="text-sm font-bold text-gray-600 hover:text-gray-900"
                 >
                   Close

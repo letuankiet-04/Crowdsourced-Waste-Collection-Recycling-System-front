@@ -18,6 +18,7 @@ import {
 import { PATHS } from "../../../app/routes/paths.js";
 import GoongMapView from "../../../shared/components/maps/GoongMapView.jsx";
 import { translateErrorMessage } from "../../../shared/lib/errorTranslator.js";
+import { formatPoints } from "../../../shared/lib/numberFormat.js";
 
 const reverseGeocodeCache = new Map();
 
@@ -398,7 +399,7 @@ export default function EnterpriseCollectorReportDetail() {
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Total Points</div>
-                      <div className="mt-1 text-gray-900 font-medium">{totalPoints}</div>
+                      <div className="mt-1 text-gray-900 font-medium">{formatPoints(totalPoints)}</div>
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Verification Rate</div>
@@ -493,7 +494,7 @@ export default function EnterpriseCollectorReportDetail() {
                     />
                     <div>
                       <div className="text-sm font-medium text-slate-800">Estimated points to award</div>
-                      <div className="mt-2 text-2xl font-semibold text-gray-900">{estimatedAwardPoints}</div>
+                      <div className="mt-2 text-2xl font-semibold text-gray-900">{formatPoints(estimatedAwardPoints)}</div>
                       <div className="mt-1 text-xs text-gray-500">
                         Based on collected categories × pointPerUnit × rate
                       </div>
@@ -503,11 +504,11 @@ export default function EnterpriseCollectorReportDetail() {
                   {alreadyRewarded ? (
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                       This report has been rewarded. Total points:{" "}
-                      <span className="font-semibold">{report.totalPoint}</span>
+                      <span className="font-semibold">{formatPoints(report.totalPoint)}</span>
                     </div>
                   ) : rewardResult ? (
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                      Rewarded <span className="font-semibold">{rewardResult.points}</span> points (rate{" "}
+                      Rewarded <span className="font-semibold">{formatPoints(rewardResult.points)}</span> points (rate{" "}
                       <span className="font-semibold">{rewardResult.verificationRate}</span>%).
                     </div>
                   ) : null}

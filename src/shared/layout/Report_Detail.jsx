@@ -49,6 +49,7 @@ export default function ReportDetail({
   wasteItemsLabel = 'Estimated Items',
   showSubmittedBy = true,
   reportInfoExtra,
+  mainBottom,
 }) {
   const safeReport = report ?? null
   const reportCode = safeReport?.reportCode ?? safeReport?.code ?? null
@@ -216,6 +217,8 @@ export default function ReportDetail({
           />
 
           <ReportPhotosCard images={images} collectedImages={collectedImages} />
+
+          {mainBottom ? <div>{mainBottom}</div> : null}
         </div>
 
         {aside ? <div className="space-y-8 lg:sticky lg:top-6 self-start">{aside}</div> : null}

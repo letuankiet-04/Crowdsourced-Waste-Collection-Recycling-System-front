@@ -2,6 +2,7 @@ import { Card, CardBody, CardHeader, CardTitle } from "../../../../shared/ui/Car
 import { useEffect, useState } from "react";
 import { getCitizenLeaderboard } from "../../../../services/citizen.service.js";
 import { getAdminSystemAnalytics } from "../../../../services/admin.service.js";
+import { formatNumber, formatPoints } from "../../../../shared/lib/numberFormat.js";
 
 function getInitials(name) {
   if (!name) return "";
@@ -11,14 +12,6 @@ function getInitials(name) {
     .join("")
     .toUpperCase()
     .slice(0, 2);
-}
-
-function toNumber(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  if (value == null) return 0;
-  const cleaned = String(value).replace(/,/g, "");
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
 }
 
 function UserAvatar({ name, className = "" }) {
@@ -100,7 +93,7 @@ function CollectorLeaderboardTable({ title, rows, loading, error }) {
                   </td>
                   <td className="py-4 px-2 text-right">
                     <span className="text-lg font-bold text-blue-600">
-                      {row.totalWeightCollected?.toLocaleString() ?? 0}
+                      {formatNumber(row.totalWeightCollected, { maximumFractionDigits: 0 }, "0")}
                     </span>
                   </td>
                 </tr>
@@ -162,7 +155,7 @@ function CitizenLeaderboardTable({ title, rows, loading, error }) {
                   </td>
                   <td className="py-4 px-2 text-right">
                     <span className="text-lg font-bold text-green-600 italic">
-                      {toNumber(row.totalPoints ?? row.totalPoint).toLocaleString()}
+                      {formatPoints(row.totalPoints ?? row.totalPoint)}
                     </span>
                   </td>
                 </tr>

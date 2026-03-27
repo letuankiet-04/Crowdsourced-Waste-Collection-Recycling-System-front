@@ -1,6 +1,7 @@
 import { Card, CardBody, CardTitle } from "../../../../shared/ui/Card.jsx";
 import { useEffect, useState } from "react";
 import { getCitizenLeaderboard } from "../../../../services/citizen.service.js";
+import { formatPoints } from "../../../../shared/lib/numberFormat.js";
 
 export default function TopRank() {
   const [rows, setRows] = useState([]);
@@ -64,7 +65,7 @@ export default function TopRank() {
                     </div>
                   </div>
                 </div>
-                <div className="shrink-0 text-sm font-bold text-gray-900">{row.totalPoint ?? 0}</div>
+                <div className="shrink-0 text-sm font-bold text-gray-900">{formatPoints(row.totalPoint ?? 0)}</div>
               </div>
             ))}
           </div>

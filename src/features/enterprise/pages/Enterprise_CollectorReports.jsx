@@ -9,6 +9,7 @@ import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
 import { getCollectorReports } from "../../../services/enterprise.service.js";
 import { PATHS } from "../../../app/routes/paths.js";
 import StatusPill from "../../../shared/ui/StatusPill.jsx";
+import { formatPoints } from "../../../shared/lib/numberFormat.js";
 
 export default function EnterpriseCollectorReports() {
   const navigate = useNavigate();
@@ -184,7 +185,7 @@ export default function EnterpriseCollectorReports() {
                       >
                         <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.reportCode || r.id}</td>
                         <td className="px-8 py-5 text-sm text-gray-600">{r.collectorId}</td>
-                        <td className="px-8 py-5 text-sm text-gray-600">{r.totalPoint}</td>
+                        <td className="px-8 py-5 text-sm text-gray-600">{formatPoints(r.totalPoint)}</td>
                         <td className="px-8 py-5 text-sm text-gray-600">
                           {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
                         </td>

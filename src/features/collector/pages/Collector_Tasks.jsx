@@ -198,7 +198,6 @@ export default function CollectorTasks() {
                   <option value="All">All</option>
                   <option value="Assigned">Assigned</option>
                   <option value="Accepted">Accepted</option>
-                  <option value="Reassign">Reassign</option>
                   <option value="On The Way">On The Way</option>
                   <option value="Collected">Collected</option>
                   <option value="Rejected">Rejected</option>
