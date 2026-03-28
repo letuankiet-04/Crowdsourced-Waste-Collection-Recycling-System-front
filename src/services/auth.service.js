@@ -214,7 +214,10 @@ export async function changePassword({ currentPassword, newPassword, confirmNewP
 function normalizeRole(role) {
   if (typeof role !== 'string') return null
   const trimmed = role.trim()
-  return trimmed ? trimmed.toLowerCase() : null
+  if (!trimmed) return null
+  const normalized = trimmed.toLowerCase()
+  if (normalized.startsWith('role_')) return normalized.slice('role_'.length) || null
+  return normalized
 }
 
 function readStoredUser() {

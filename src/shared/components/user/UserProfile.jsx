@@ -152,7 +152,8 @@ export default function UserProfile({ user: propUser, className }) {
           setIsEditing(false);
       } catch (error) {
           console.error("Failed to update profile", error);
-          alert("Failed to update profile. Please try again.");
+          const details = typeof error?.message === "string" && error.message.trim() ? ` Details: ${error.message}` : "";
+          alert(`Failed to update profile. Please try again.${details}`);
       } finally {
           setPending(false);
       }

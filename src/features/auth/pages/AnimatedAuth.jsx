@@ -1,6 +1,6 @@
 import { Leaf, Recycle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { buildStoredUserFromToken, login, register } from '../../../services/auth.service.js'
+import { buildStoredUserFromToken, getMyProfileByRole, login, register } from '../../../services/auth.service.js'
 import { runEkycCccdFlow } from '../../../services/ekyc.service.js'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import foliageBackground from '../../../assets/foliage-bg.svg'
@@ -100,6 +100,24 @@ export default function AnimatedAuth() {
       const userToStore = { ...restRes, ...tokenData }
       tokenStorage.setItem('user', JSON.stringify(userToStore))
       otherStorage.removeItem('user')
+
+      void (async () => {
+        try {
+          const profile = await getMyProfileByRole(userToStore.role)
+          if (profile && typeof profile === 'object') {
+            const mergedUser = { ...userToStore, ...profile }
+            const serialized = JSON.stringify(mergedUser)
+            tokenStorage.setItem('user', serialized)
+            try {
+              window.dispatchEvent(new StorageEvent('storage', { key: 'user', newValue: serialized }))
+            } catch {
+              window.dispatchEvent(new Event('storage'))
+            }
+          }
+        } catch {
+          void 0
+        }
+      })()
 
       switch (userToStore.role) {
         case 'citizen':
