@@ -2,6 +2,7 @@ import { cn } from '../lib/cn.js'
 
 export default function TextField({
   id,
+  name,
   label,
   type = 'text',
   autoComplete,
@@ -36,7 +37,7 @@ export default function TextField({
         ) : null}
         <input
           id={id}
-          name={id}
+          name={name ?? id}
           type={type}
           autoComplete={autoComplete}
           value={value}

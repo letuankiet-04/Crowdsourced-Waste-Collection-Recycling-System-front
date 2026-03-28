@@ -5,8 +5,23 @@ import TextField from '../../../shared/ui/TextField.jsx'
 import LoadingButton from '../../../shared/ui/LoadingButton.jsx'
 import usePasswordVisibility from '../../../shared/hooks/usePasswordVisibility.js'
 
+const REMEMBER_LOGIN_KEY = 'remember_login'
+
 export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) {
-  const [values, setValues] = useState({ email: '', password: '', remember: false })
+  const [values, setValues] = useState(() => {
+    const defaults = { email: '', password: '', remember: false }
+    try {
+      const raw = window.localStorage.getItem(REMEMBER_LOGIN_KEY)
+      if (!raw) return defaults
+      const parsed = JSON.parse(raw)
+      const rememberedEmail = typeof parsed?.email === 'string' ? parsed.email : ''
+      if (!rememberedEmail) return defaults
+      return { ...defaults, email: rememberedEmail, remember: true }
+    } catch {
+      window.localStorage.removeItem(REMEMBER_LOGIN_KEY)
+      return defaults
+    }
+  })
   const passwordVisibility = usePasswordVisibility(false)
   const [error, setError] = useState('')
   const isActive = mode === 'login'
@@ -20,6 +35,7 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
     return (e) => {
       const next = field === 'remember' ? e.target.checked : e.target.value
       setValues((prev) => ({ ...prev, [field]: next }))
+      if (field === 'remember' && !next) window.localStorage.removeItem(REMEMBER_LOGIN_KEY)
       if (error) setError('')
     }
   }
@@ -32,6 +48,11 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
     if (!email || !password) {
       setError('Email and password are required.')
       return
+    }
+    if (values.remember) {
+      window.localStorage.setItem(REMEMBER_LOGIN_KEY, JSON.stringify({ email }))
+    } else {
+      window.localStorage.removeItem(REMEMBER_LOGIN_KEY)
     }
     onLogin({ email, password, remember: values.remember }).catch((err) => {
       setError(err.message || 'Login failed. Please try again.')
@@ -50,7 +71,8 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
         id="login_email"
         label="Email"
         type="email"
-        autoComplete="email"
+        name="username"
+        autoComplete="username"
         value={values.email}
         onChange={handleChange('email')}
         placeholder="you@example.com"
@@ -62,6 +84,7 @@ export default function LoginForm({ mode, pending, onLogin, onSwitchToSignup }) 
         id="login_password"
         label="Password"
         type={passwordVisibility.visible ? 'text' : 'password'}
+        name="password"
         autoComplete="current-password"
         value={values.password}
         onChange={handleChange('password')}
