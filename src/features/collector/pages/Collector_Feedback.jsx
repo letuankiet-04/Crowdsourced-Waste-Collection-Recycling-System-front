@@ -42,7 +42,7 @@ export default function Collector_Feedback() {
         preselectedRequestId != null ? Number(preselectedRequestId) : null;
       const normalizedRating = Math.min(5, Math.max(1, Number(rating) || 5));
       await createCollectorFeedback({
-        type: type === "System" ? "SYSTEM" : "COLLECTION",
+        type: type === "System" ? "SYSTEM" : "COMPLAINT_COLLECTION",
         content: content.trim(),
         rating: normalizedRating,
         collectionRequestId:

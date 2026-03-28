@@ -31,12 +31,13 @@ const CustomXAxisTick = ({ x, y, payload }) => {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const value = Number(data.value) || 0;
     return (
       <div className="bg-white p-4 rounded-xl shadow-xl border border-gray-100 z-50">
         <p className="font-semibold text-gray-900 mb-2 text-base">{label}</p>
         <div className="flex items-center gap-2">
           <span className="text-3xl font-bold text-gray-900">
-            {data.value.toLocaleString()}
+            {value.toLocaleString()}
           </span>
           <span className="text-sm text-gray-500 font-medium mt-2">{data.unit}</span>
         </div>
@@ -55,24 +56,24 @@ export default function CollectByUnitChart() {
     async function fetchData() {
       try {
         setLoading(true);
-        const result = await getAdminCollectedWasteByUnit();
+        const result = await getAdminCollectedWasteByUnit(period);
         
         const chartData = [
           { 
             name: 'KG', 
-            value: result.totalWeightKg || 0, 
+            value: Number(result.totalWeightKg) || 0, 
             unit: 'KG', 
             color: '#10b981' 
           },
           { 
             name: 'CAN', 
-            value: result.totalCans || 0, 
+            value: Number(result.totalCans) || 0, 
             unit: 'CANS', 
             color: '#3b82f6' 
           },
           { 
             name: 'BOTTLE', 
-            value: result.totalBottles || 0, 
+            value: Number(result.totalBottles) || 0, 
             unit: 'BOTTLES', 
             color: '#06b6d4' 
           }
@@ -82,7 +83,7 @@ export default function CollectByUnitChart() {
           Object.entries(result.otherUnits).forEach(([key, value]) => {
              chartData.push({
                name: key,
-               value: value,
+               value: Number(value) || 0,
                unit: key,
                color: '#f59e0b'
              });

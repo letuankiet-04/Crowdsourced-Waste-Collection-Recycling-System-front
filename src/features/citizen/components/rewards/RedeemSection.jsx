@@ -45,7 +45,6 @@ export function RedeemSection({ onRedeem, vouchers = [] }) {
              </span>
              Redeem Gifts
           </h2>
-          <button className="text-green-600 font-medium hover:text-green-700">View all</button>
        </div>
 
        <div 
