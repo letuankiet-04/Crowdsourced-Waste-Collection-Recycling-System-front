@@ -23,7 +23,7 @@ export default function UserProfileSecuritySettingsCard() {
 
   const validatePwd = () => {
     if (!pwdForm.current || !pwdForm.next || !pwdForm.confirm) return "Please fill in all password fields.";
-    if (pwdForm.next.length < 8) return "New password must be at least 6 characters.";
+    if (pwdForm.next.length < 6) return "New password must be at least 6 characters.";
     if (pwdForm.next !== pwdForm.confirm) return "New password and confirmation do not match.";
     if (pwdForm.current === pwdForm.next) return "New password must be different from current password.";
     return "";
@@ -44,7 +44,7 @@ export default function UserProfileSecuritySettingsCard() {
         newPassword: pwdForm.next,
         confirmNewPassword: pwdForm.confirm,
       });
-      setPwdSuccess("Password updated successfully.");
+      setPwdSuccess("Password updated successfully!");
       setPwdForm({ current: "", next: "", confirm: "" });
     } catch (e) {
       setPwdError(e?.message || "Failed to update password.");
