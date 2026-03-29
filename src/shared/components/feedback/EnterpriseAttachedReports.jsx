@@ -62,11 +62,68 @@ async function reverseGeocodeAddress(coords) {
   }
 }
 
+function normalizeImageUrl(value) {
+  if (typeof value === "string") return value.trim();
+  if (!value || typeof value !== "object") return "";
+  const url =
+    value.url ??
+    value.imageUrl ??
+    value.image_url ??
+    value.photoUrl ??
+    value.photo_url ??
+    value.path ??
+    value.src ??
+    value.location ??
+    "";
+  return typeof url === "string" ? url.trim() : "";
+}
+
 function reportImages(report) {
-  const raw = report?.images ?? report?.imageUrls ?? report?.collectedImages ?? report?.photos ?? report?.photoUrls;
-  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
-  if (typeof raw === "string" && raw.trim()) return raw.split(",").map((s) => s.trim()).filter(Boolean);
-  return [];
+  if (!report || typeof report !== "object") return [];
+
+  const seen = new Set();
+  const out = [];
+  const pushOne = (value) => {
+    const url = normalizeImageUrl(value);
+    if (!url) return;
+    if (seen.has(url)) return;
+    seen.add(url);
+    out.push(url);
+  };
+
+  const arraySources = [
+    report.imageUrls,
+    report.image_urls,
+    report.photoUrls,
+    report.photo_urls,
+    report.photos,
+    report.collectedImages,
+    report.images,
+    report.imageUrlList,
+    report.image_url_list,
+  ];
+
+  for (const src of arraySources) {
+    if (!Array.isArray(src)) continue;
+    for (const it of src) pushOne(it);
+  }
+
+  const stringSources = [
+    report.imageUrl,
+    report.image_url,
+    report.photoUrl,
+    report.photo_url,
+    report.images,
+    report.photos,
+  ];
+  for (const src of stringSources) {
+    if (typeof src !== "string") continue;
+    const s = src.trim();
+    if (!s) continue;
+    for (const part of s.split(",")) pushOne(part);
+  }
+
+  return out;
 }
 
 function reportCreatedAt(report) {
@@ -166,16 +223,12 @@ function collectorStatusVariant(status) {
 }
 
 function PhotoStrip({ urls, label }) {
-  const max = 3;
-  const list = (urls || []).filter(Boolean).slice(0, max);
-  const cells = [];
-  for (let i = 0; i < max; i++) {
-    cells.push(list[i] ? { type: "img", url: list[i] } : { type: "empty" });
-  }
+  const list = (urls || []).filter(Boolean);
+  const cells = list.length ? list.map((url) => ({ type: "img", url })) : Array.from({ length: 3 }, () => ({ type: "empty" }));
   return (
     <div>
       <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{label}</div>
-      <div className="mt-2 flex gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         {cells.map((cell, idx) =>
           cell.type === "img" ? (
             <a

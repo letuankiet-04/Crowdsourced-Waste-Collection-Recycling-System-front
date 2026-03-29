@@ -18,6 +18,8 @@ export default function Collector_FeedbackDetails() {
     const v = String(t || "").toUpperCase();
     if (v === "SYSTEM") return "SYSTEM";
     if (v === "COLLECTION") return "COLLECTION";
+    if (v === "COMPLAINT_SYSTEM") return "COMPLAINT_SYSTEM";
+    if (v === "COMPLAINT_COLLECTION") return "COMPLAINT_COLLECTION";
     return v || "UNKNOWN";
   };
 

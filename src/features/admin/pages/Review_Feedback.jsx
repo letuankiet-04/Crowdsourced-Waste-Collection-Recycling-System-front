@@ -37,6 +37,11 @@ export default function Review_Feedback() {
         setFeedback(
           items.map((item) => {
             const isCollectorComplaint = Number(item?.id) < 0;
+            const subjectText = String(item.subject ?? item.title ?? "");
+            const inferredTypeMatch = subjectText.match(/\bCOMPLAINT_[A-Z_]+\b/i);
+            const inferredType = inferredTypeMatch ? inferredTypeMatch[0].toUpperCase() : "";
+            const rawType =
+              item.type || item.feedbackType || item.complaintType || item.category || inferredType || "";
             const wasteReportId =
               item.wasteReportId ?? item.waste_report_id ?? item.reportId ?? item.report_id ?? null;
             const collectionRequestId =
@@ -45,7 +50,7 @@ export default function Review_Feedback() {
               item.collectorReportId ?? item.collector_report_id ?? item.collectorSubmissionId ?? null;
             return {
               ...item,
-              type: item.type || item.feedbackType || "",
+              type: rawType,
               wasteReportId,
               collectionRequestId,
               collectorReportId,
@@ -53,7 +58,7 @@ export default function Review_Feedback() {
               reportId:
                 wasteReportId ?? collectionRequestId ?? collectorReportId ?? item.reportId ?? null,
               sender: {
-                name: item.citizenName,
+                name: item.citizenName || item.senderName || item.fullName || item.name || "Unknown",
                 role: isCollectorComplaint ? "Collector" : "Citizen",
               },
             };
@@ -74,17 +79,39 @@ export default function Review_Feedback() {
   const filteredFeedback = useMemo(() => {
     let result = feedback;
 
-    // Xác định khiếu nại SYSTEM:
-    // - Ưu tiên theo type trả về (nếu backend có cung cấp)
-    // - Bỏ qua các khiếu nại liên quan đến collection
-    result = result.filter(item => {
+    result = result.filter((item) => {
+      const subjectText = String(item.subject ?? item.title ?? "").toUpperCase();
       const t = String(item.type || item.feedbackType || "").toUpperCase();
-      if (t === "COMPLAINT_COLLECTION" || t.includes("COLLECTION")) {
-        return false;
-      }
-      const hasSystemType = t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM");
-      const looksSystemByLinkage = !t && item.collectionRequestId == null;
-      return hasSystemType || looksSystemByLinkage;
+
+      const hasCollectionLink = item.collectionRequestId != null && item.collectionRequestId !== "";
+      const hasAnyReportLink =
+        (item.wasteReportId != null && item.wasteReportId !== "") ||
+        (item.reportId != null && item.reportId !== "") ||
+        (item.collectorReportId != null && item.collectorReportId !== "");
+
+      const isCollectionRelated =
+        hasCollectionLink ||
+        t === "COMPLAINT_COLLECTION" ||
+        t.includes("COLLECTION") ||
+        subjectText.includes("COMPLAINT_COLLECTION") ||
+        subjectText.includes("COLLECTION");
+
+      const isEnterpriseRelated =
+        isCollectionRelated ||
+        t === "COMPLAINT_REWARD" ||
+        t.includes("REWARD") ||
+        subjectText.includes("COMPLAINT_REWARD") ||
+        subjectText.includes("REWARD");
+
+      if (isEnterpriseRelated) return false;
+
+      const isSystemRelated =
+        t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM") || subjectText.includes("SYSTEM");
+
+      if (isSystemRelated) return true;
+
+      if (!t && !hasAnyReportLink) return true;
+      return false;
     });
 
     // Tab Filter

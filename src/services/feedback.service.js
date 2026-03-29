@@ -61,14 +61,44 @@ export async function getPendingAdminFeedbackCount() {
   const list = await getAdminFeedbacks({ _: Date.now() })
   if (!Array.isArray(list)) return 0
   return list.filter((item) => {
-    // Only count SYSTEM feedbacks
-    const t = String(item.type || item.feedbackType || "").toUpperCase()
-    if (t === "COMPLAINT_COLLECTION" || t.includes("COLLECTION")) {
+    const subjectText = String(item.subject ?? item.title ?? "").toUpperCase()
+    const t = String(item.type || item.feedbackType || item.complaintType || item.category || "").toUpperCase()
+    const collectionRequestId =
+      item.collectionRequestId ??
+      item.collection_request_id ??
+      item.collectionRequestID ??
+      item.requestId ??
+      item.request_id ??
+      null
+    const hasCollectionLink = collectionRequestId != null && collectionRequestId !== ""
+    const reportId = item.reportId ?? item.report_id ?? item.wasteReportId ?? item.waste_report_id ?? null
+    const collectorReportId =
+      item.collectorReportId ?? item.collector_report_id ?? item.collectorSubmissionId ?? null
+    const hasAnyReportLink =
+      (reportId != null && reportId !== "") || (collectorReportId != null && collectorReportId !== "")
+
+    const isCollectionRelated =
+      hasCollectionLink ||
+      t === "COMPLAINT_COLLECTION" ||
+      t.includes("COLLECTION") ||
+      subjectText.includes("COMPLAINT_COLLECTION") ||
+      subjectText.includes("COLLECTION")
+
+    const isEnterpriseRelated =
+      isCollectionRelated ||
+      t === "COMPLAINT_REWARD" ||
+      t.includes("REWARD") ||
+      subjectText.includes("COMPLAINT_REWARD") ||
+      subjectText.includes("REWARD")
+
+    if (isEnterpriseRelated) {
       return false
     }
-    const hasSystemType = t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM")
-    const looksSystemByLinkage = !t && item.collectionRequestId == null
-    if (!hasSystemType && !looksSystemByLinkage) {
+
+    const isSystemRelated =
+      t === "SYSTEM" || t === "COMPLAINT_SYSTEM" || t.includes("SYSTEM") || subjectText.includes("SYSTEM")
+
+    if (!isSystemRelated && (!t || hasAnyReportLink)) {
       return false
     }
 

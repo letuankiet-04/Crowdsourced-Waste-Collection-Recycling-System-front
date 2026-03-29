@@ -336,11 +336,59 @@ export default function FeedbackDetailModal({
   const linkedEntityId =
     view?.wasteReportId ?? view?.reportEntityId ?? view?.reportId ?? view?.collectionRequestId ?? null;
 
+  const normalizeImageUrl = (value) => {
+    if (typeof value === "string") return value.trim();
+    if (!value || typeof value !== "object") return "";
+    const url =
+      value.url ??
+      value.imageUrl ??
+      value.image_url ??
+      value.photoUrl ??
+      value.photo_url ??
+      value.path ??
+      value.src ??
+      value.location ??
+      "";
+    return typeof url === "string" ? url.trim() : "";
+  };
+
   const extractImages = (source) => {
-    const raw = source?.images ?? source?.imageUrls ?? source?.image_urls ?? source?.photos ?? source?.photoUrls;
-    if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
-    if (typeof raw === "string" && raw.trim()) return raw.split(",").map((s) => s.trim()).filter(Boolean);
-    return [];
+    if (!source || typeof source !== "object") return [];
+
+    const seen = new Set();
+    const out = [];
+    const pushOne = (value) => {
+      const url = normalizeImageUrl(value);
+      if (!url) return;
+      if (seen.has(url)) return;
+      seen.add(url);
+      out.push(url);
+    };
+
+    const arraySources = [
+      source.imageUrls,
+      source.image_urls,
+      source.photoUrls,
+      source.photo_urls,
+      source.photos,
+      source.images,
+      source.imageUrlList,
+      source.image_url_list,
+    ];
+    for (const src of arraySources) {
+      if (!Array.isArray(src)) continue;
+      for (const it of src) pushOne(it);
+    }
+
+    const stringSources = [source.imageUrl, source.image_url, source.photoUrl, source.photo_url, source.images, source.photos];
+    for (const src of stringSources) {
+      if (typeof src !== "string") continue;
+      const s = src.trim();
+      if (!s) continue;
+      for (const part of s.split(",")) pushOne(part);
+    }
+
+    return out;
   };
 
   const linkedImages = extractImages(view);
