@@ -8,6 +8,7 @@ import LoginForm from '../components/LoginForm.jsx'
 import SignupForm from '../components/SignupForm.jsx'
 import CccdUploadDialog from '../components/CccdUploadDialog.jsx'
 import { cn } from '../../../shared/lib/cn.js'
+import { isSuspendedAccount, normalizeRole } from '../../../shared/lib/accountStatus.js'
 import { PATHS } from '../../../app/routes/paths.js'
 
 const APP_NAME = 'RacDay Recycling'
@@ -98,28 +99,34 @@ export default function AnimatedAuth() {
       const { token: _token, ...restRes } = res
       const tokenData = buildStoredUserFromToken(res.token, restRes)
       const userToStore = { ...restRes, ...tokenData }
-      tokenStorage.setItem('user', JSON.stringify(userToStore))
+      const normalizedRole = normalizeRole(userToStore.role ?? restRes.role ?? tokenData.role)
+
+      let profile = null
+      try {
+        profile = await getMyProfileByRole(normalizedRole ?? userToStore.role)
+      } catch {
+        profile = null
+      }
+
+      const mergedUser = profile && typeof profile === 'object' ? { ...userToStore, ...profile } : userToStore
+      if (isSuspendedAccount(res) || isSuspendedAccount(profile) || isSuspendedAccount(mergedUser)) {
+        tokenStorage.removeItem('token')
+        tokenStorage.removeItem('user')
+        otherStorage.removeItem('token')
+        otherStorage.removeItem('user')
+        throw new Error('Your account is suspended. Please contact an administrator.')
+      }
+
+      const serialized = JSON.stringify(mergedUser)
+      tokenStorage.setItem('user', serialized)
       otherStorage.removeItem('user')
+      try {
+        window.dispatchEvent(new StorageEvent('storage', { key: 'user', newValue: serialized }))
+      } catch {
+        window.dispatchEvent(new Event('storage'))
+      }
 
-      void (async () => {
-        try {
-          const profile = await getMyProfileByRole(userToStore.role)
-          if (profile && typeof profile === 'object') {
-            const mergedUser = { ...userToStore, ...profile }
-            const serialized = JSON.stringify(mergedUser)
-            tokenStorage.setItem('user', serialized)
-            try {
-              window.dispatchEvent(new StorageEvent('storage', { key: 'user', newValue: serialized }))
-            } catch {
-              window.dispatchEvent(new Event('storage'))
-            }
-          }
-        } catch {
-          void 0
-        }
-      })()
-
-      switch (userToStore.role) {
+      switch (normalizedRole ?? userToStore.role) {
         case 'citizen':
           navigate(PATHS.citizen.dashboard)
           break

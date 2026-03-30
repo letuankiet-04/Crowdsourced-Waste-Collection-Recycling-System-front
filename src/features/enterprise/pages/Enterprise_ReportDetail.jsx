@@ -325,8 +325,9 @@ export default function EnterpriseReportDetail() {
       const onlineFlag = base?.online ?? base?.active ?? base?.isActive ?? row?.online ?? row?.active ?? row?.isActive ?? false;
       const statusValue = base?.status ?? base?.availability ?? base?.state ?? row?.status ?? row?.availability ?? row?.state ?? null;
       const statusRaw = String(statusValue ?? (onlineFlag ? "online" : "offline")).toLowerCase();
-      const isOnline = onlineFlag === true || ["online", "active", "available"].includes(statusRaw);
-      const statusText = toTitle(base?.statusText ?? statusValue) || (isOnline ? "Online" : "Offline");
+      const isSuspended = statusRaw.includes("suspend");
+      const isOnline = !isSuspended && (onlineFlag === true || ["online", "active", "available"].includes(statusRaw));
+      const statusText = isSuspended ? "Suspended" : toTitle(base?.statusText ?? statusValue) || (isOnline ? "Online" : "Offline");
       const taskCountRaw =
         row?.currentTaskCount ??
         base?.currentTaskCount ??
@@ -343,7 +344,7 @@ export default function EnterpriseReportDetail() {
         null;
       const taskCountNum = taskCountRaw == null ? null : Number(taskCountRaw);
       const currentTaskCount = Number.isFinite(taskCountNum) ? taskCountNum : null;
-      return { id, name, email, isOnline, statusText, currentTaskCount };
+      return { id, name, email, isOnline, isSuspended, statusText, currentTaskCount };
     };
 
     const enterpriseById = new Map();
@@ -361,17 +362,37 @@ export default function EnterpriseReportDetail() {
         const onlineFlag = row?.online ?? matched?.isOnline ?? false;
         const statusValue = row?.status ?? matched?.statusText ?? null;
         const statusRaw = String(statusValue ?? (onlineFlag ? "online" : "offline")).toLowerCase();
-        const isOnline = onlineFlag === true || ["online", "active", "available"].includes(statusRaw);
-        const statusText = toTitle(statusValue) || (isOnline ? "Online" : "Offline");
+        const isSuspended = statusRaw.includes("suspend");
+        const isOnline = !isSuspended && (onlineFlag === true || ["online", "active", "available"].includes(statusRaw));
+        const statusText = isSuspended ? "Suspended" : toTitle(statusValue) || (isOnline ? "Online" : "Offline");
         const taskCountRaw = row?.activeTaskCount ?? row?.currentTaskCount ?? matched?.currentTaskCount ?? null;
         const taskCountNum = taskCountRaw == null ? null : Number(taskCountRaw);
         const currentTaskCount = Number.isFinite(taskCountNum) ? taskCountNum : null;
-        return { id, name, email, isOnline, statusText, currentTaskCount };
+        return { id, name, email, isOnline, isSuspended, statusText, currentTaskCount };
       });
     }
 
     return enterpriseList.map((row, idx) => normalizeCollector(row, idx));
   }, [eligibleCollectorSource, enterpriseCollectorSource]);
+
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedCollectorId, setSelectedCollectorId] = useState("");
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
+  const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [rejectDialogError, setRejectDialogError] = useState("");
+
+  const assignableCollectors = useMemo(() => collectors.filter((c) => !c?.isSuspended), [collectors]);
+
+  useEffect(() => {
+    if (!assignOpen) return;
+    if (!selectedCollectorId) return;
+    const exists = assignableCollectors.some((c) => String(c.id) === String(selectedCollectorId));
+    if (!exists) setSelectedCollectorId("");
+  }, [assignOpen, assignableCollectors, selectedCollectorId]);
 
   const assignedEmails = useMemo(() => getAssignedEmailsFromReport(report), [report]);
   const assignedLabel = useMemo(() => {
@@ -382,15 +403,6 @@ export default function EnterpriseReportDetail() {
     });
     return labels.join(", ");
   }, [assignedEmails, collectors]);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [selectedCollectorId, setSelectedCollectorId] = useState("");
-  const [assignSubmitting, setAssignSubmitting] = useState(false);
-  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false);
-  const [acceptConfirmOpen, setAcceptConfirmOpen] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [rejectSubmitting, setRejectSubmitting] = useState(false);
-  const [rejectDialogError, setRejectDialogError] = useState("");
 
   useEffect(() => {
     if (!rejectOpen) return;
@@ -495,7 +507,7 @@ export default function EnterpriseReportDetail() {
 
   async function handleAssignSelectedCollectors() {
     if (!report || !(canGoAssign || canReassign) || assignSubmitting) return;
-    const primaryCollector = collectors.find((c) => String(c.id) === String(selectedCollectorId)) ?? null;
+    const primaryCollector = assignableCollectors.find((c) => String(c.id) === String(selectedCollectorId)) ?? null;
     if (!primaryCollector) return;
     setAssignConfirmOpen(false);
     setAssignSubmitting(true);
@@ -700,8 +712,8 @@ export default function EnterpriseReportDetail() {
                   <div className="max-h-64 overflow-auto rounded-2xl border border-gray-200 bg-white">
                     {enterpriseCollectorsLoading || eligibleCollectorsLoading ? (
                       <div className="px-4 py-5 text-sm text-gray-600">Loading collectors...</div>
-                    ) : collectors.length ? (
-                      collectors.map((c) => {
+                    ) : assignableCollectors.length ? (
+                      assignableCollectors.map((c) => {
                         const checked = String(selectedCollectorId) === String(c.id);
                         return (
                           <label

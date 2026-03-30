@@ -10,12 +10,17 @@ import { updateCollectorPresence } from "../../../services/collector.service.js"
 import { collectorNavItems } from "../components/navigation/CollectorNavItems.jsx";
 import resolveApiBaseUrl from "../../../services/http/baseUrl.js";
 import { readCollectorPresence, writeCollectorPresence } from "../../../shared/lib/collectorPresenceStorage.js";
+import { isSuspendedAccount } from "../../../shared/lib/accountStatus.js";
 
 export default function CollectorLayout({ children }) {
   const { user } = useStoredUser();
 
   useEffect(() => {
     if (!user) return;
+    if (isSuspendedAccount(user)) {
+      writeCollectorPresence(false);
+      return;
+    }
 
     const storedPresence = readCollectorPresence();
     if (storedPresence === null) {

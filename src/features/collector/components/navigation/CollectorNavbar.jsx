@@ -7,13 +7,16 @@ import { cn } from "../../../../shared/lib/cn.js";
 import { readCollectorPresence, clearCollectorPresence, writeCollectorPresence } from "../../../../shared/lib/collectorPresenceStorage.js";
 import { updateCollectorPresence } from "../../../../services/collector.service.js";
 import useLogout from "../../../../shared/hooks/useLogout.js";
+import { isSuspendedAccount } from "../../../../shared/lib/accountStatus.js";
 
 export default function CollectorNavbar() {
   const notify = useNotify();
   const { user, displayName, roleLabel } = useStoredUser();
   const logoutAndRedirect = useLogout();
+  const suspended = useMemo(() => isSuspendedAccount(user), [user]);
   const initialOnline = useMemo(() => {
     if (!user) return false;
+    if (isSuspendedAccount(user)) return false;
     const stored = readCollectorPresence();
     if (stored === null) return true;
     return stored ?? false;
@@ -27,6 +30,7 @@ export default function CollectorNavbar() {
 
   async function handleTogglePresence() {
     if (presencePending) return;
+    if (suspended) return;
     const nextOnline = !online;
     setPresencePending(true);
     try {
@@ -53,25 +57,30 @@ export default function CollectorNavbar() {
         <div className="flex items-center justify-end h-20">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
-              <span className={cn("text-xs font-semibold tracking-wide", online ? "text-emerald-700" : "text-slate-600")}>
-                {online ? "Online" : "Offline"}
+              <span
+                className={cn(
+                  "text-xs font-semibold tracking-wide",
+                  suspended ? "text-red-700" : online ? "text-emerald-700" : "text-slate-600"
+                )}
+              >
+                {suspended ? "Suspended" : online ? "Online" : "Offline"}
               </span>
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={online}
+                  aria-checked={suspended ? false : online}
                   aria-label="Toggle online status"
                   onClick={handleTogglePresence}
-                  disabled={presencePending}
+                  disabled={presencePending || suspended}
                   className={cn(
                     "relative inline-flex h-7 w-12 items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60",
-                    online ? "bg-emerald-600" : "bg-slate-300"
+                    online && !suspended ? "bg-emerald-600" : "bg-slate-300"
                   )}
                 >
                   <span
                     className={cn(
                       "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition",
-                      online ? "translate-x-6" : "translate-x-1"
+                      online && !suspended ? "translate-x-6" : "translate-x-1"
                     )}
                   />
                 </button>

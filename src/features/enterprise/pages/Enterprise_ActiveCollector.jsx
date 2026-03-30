@@ -64,18 +64,21 @@ export default function EnterpriseActiveCollector() {
       const statusRaw = String(
         c?.status ?? c?.availability ?? (c?.online || c?.active || c?.isActive ? "online" : "offline")
       ).toLowerCase();
+      const isSuspended = statusRaw.includes("suspend");
       const isOnline =
-        c?.online === true ||
-        c?.active === true ||
-        c?.isActive === true ||
-        ["online", "active", "available"].includes(statusRaw);
-      const statusLabel = isOnline ? "Online" : "Offline";
-      return { id, name, email, lastSeen, isOnline, statusLabel };
+        !isSuspended &&
+        (c?.online === true ||
+          c?.active === true ||
+          c?.isActive === true ||
+          ["online", "active", "available"].includes(statusRaw));
+      const statusLabel = isSuspended ? "Suspended" : isOnline ? "Online" : "Offline";
+      return { id, name, email, lastSeen, isOnline, isSuspended, statusLabel };
       });
   }, [collectors]);
 
   const filteredCollectors = useMemo(() => {
     let filtered = [...allCollectors];
+    filtered = filtered.filter((c) => !c.isSuspended);
 
     // Filter by status
     if (filter.status !== "All") {
@@ -189,7 +192,7 @@ export default function EnterpriseActiveCollector() {
                         <td className="px-8 py-5 text-sm font-semibold text-gray-900">{r.name}</td>
                         <td className="px-8 py-5 text-sm text-gray-700">{r.email}</td>
                         <td className="px-8 py-5 text-right">
-                          <StatusPill variant={r.isOnline ? "green" : "gray"}>{r.statusLabel}</StatusPill>
+                          <StatusPill variant={r.isSuspended ? "red" : r.isOnline ? "green" : "gray"}>{r.statusLabel}</StatusPill>
                         </td>
                       </tr>
                     ))

@@ -61,7 +61,8 @@ export async function getAdminCollectedWeightDailyChart(year, month) {
   return unwrapApiResponse(data)
 }
 
-export async function getAdminCollectedWasteByUnit() {
-  const { data } = await api.get('/api/admin/analytics/collected-waste-by-unit')
+export async function getAdminCollectedWasteByUnit(period) {
+  const params = period ? { period } : undefined
+  const { data } = await api.get('/api/admin/analytics/collected-waste-by-unit', { params })
   return unwrapApiResponse(data)
 }
