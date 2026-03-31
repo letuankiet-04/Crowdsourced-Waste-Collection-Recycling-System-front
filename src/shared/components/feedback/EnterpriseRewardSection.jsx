@@ -17,7 +17,7 @@ export default function EnterpriseRewardSection({
   disabled = false,
 }) {
   const rateNum = Number(rateInput);
-  const rateSafe = Number.isFinite(rateNum) ? Math.max(0, Math.min(100, Math.round(rateNum))) : null;
+  const rateSafe = Number.isFinite(rateNum) ? Math.max(0, Math.trunc(rateNum)) : null;
   const estimatedAwardPoints = useMemo(() => {
     if (rateSafe == null) return null;
     return estimatedAwardPointsFromCollector(collector, rateSafe);
@@ -32,12 +32,12 @@ export default function EnterpriseRewardSection({
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TextField
-              label="Please enter the bonus points."
+              label="Please enter the bonus points (greater than 0)."
               type="number"
               value={rateInput}
               onChange={(e) => onRateChange?.(e.target.value)}
               onBlur={onRateBlur}
-              placeholder="0 - 100"
+              placeholder="e.g. 5000"
               disabled={disabled}
               inputClassName="text-gray-900"
             />

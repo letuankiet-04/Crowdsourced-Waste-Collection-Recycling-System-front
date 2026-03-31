@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from 'react-dom';
 import { X, Clock, FileText } from 'lucide-react';
 import Button from '../../ui/Button.jsx';
@@ -28,7 +28,7 @@ export default function FeedbackDetailModal({
   const [decision, setDecision] = useState("RESOLVED");
   const [submitting, setSubmitting] = useState(false);
   const [savingReward, setSavingReward] = useState(false);
-  const [rewardRateInput, setRewardRateInput] = useState("100");
+  const [rewardRateInput, setRewardRateInput] = useState("0");
   const [collectorOverride, setCollectorOverride] = useState(null);
   const lastNegativeRateWarnAtRef = useRef(0);
   const { detail, loadingDetail } = useLatestFeedbackDetail({ open, feedback, mode });
@@ -44,7 +44,7 @@ export default function FeedbackDetailModal({
       setResponse("");
       setDecision("RESOLVED");
       setSubmitting(false);
-      setRewardRateInput("100");
+      setRewardRateInput("0");
       setCollectorOverride(null);
     }
   }, [open, feedback, mode]);
@@ -57,11 +57,6 @@ export default function FeedbackDetailModal({
     return resolveEnterpriseFeedback(id, payload);
   };
 
-  function estimatePointsFromCollector(report, bonusPoints) {
-    const bonus = typeof bonusPoints === "number" ? bonusPoints : Number(bonusPoints);
-    return Number.isFinite(bonus) ? Math.trunc(bonus) : 0;
-  }
-
   async function saveRewardRate(rateSafe) {
     if (mode !== "enterprise") return null;
     if (!canUpdatePoints) return null;
@@ -72,9 +67,9 @@ export default function FeedbackDetailModal({
       return { failed: true };
     }
 
-    const points = estimatePointsFromCollector(effectiveCollector, rateSafe);
-    if (!Number.isFinite(points) || points === 0) {
-      notify.error("Points must be non-zero", "Unable to create an adjustment with 0 points.");
+    const points = Math.trunc(rateSafe);
+    if (!Number.isFinite(points) || points <= 0) {
+      notify.error("Points must be greater than 0", "Please enter a positive number of points.");
       return { failed: true };
     }
 
@@ -131,10 +126,6 @@ export default function FeedbackDetailModal({
       return;
     }
     const n = Number(rewardRateInput);
-    if (Number.isFinite(n) && n < 0) {
-      notify.error("Verification rate cannot be negative.");
-      return;
-    }
     const decisionUpper = String(decision || "").toUpperCase();
     const isFeedbackFromCollector = 
       feedback?.sender?.role === "Collector" || 
@@ -156,9 +147,13 @@ export default function FeedbackDetailModal({
           );
           return;
         }
-        if (!Number.isFinite(n)) throw new Error("Invalid verification rate.");
-        const rateSafe = Math.max(0, Math.min(100, Math.round(n)));
-        const rewardState = await saveRewardRate(rateSafe);
+        if (!Number.isFinite(n)) throw new Error("Invalid points.");
+        const pointsSafe = Math.trunc(n);
+        if (pointsSafe <= 0) {
+          notify.error("Points must be greater than 0", "Please enter a positive number of points.");
+          return;
+        }
+        const rewardState = await saveRewardRate(pointsSafe);
         if (rewardState?.failed) return;
       }
       await resolveFeedback(feedback.id, {
@@ -231,28 +226,8 @@ export default function FeedbackDetailModal({
     collectionRequestIdForAdjustment != null && 
     !isCollectorFeedback;
 
-  const inferredRate = useMemo(() => {
-    const categories = Array.isArray(effectiveCollector?.categories) ? effectiveCollector.categories : [];
-    const ptsRaw = effectiveCollector?.totalPoint ?? effectiveCollector?.totalPoints ?? effectiveCollector?.points ?? null;
-    const pts = typeof ptsRaw === "number" ? ptsRaw : Number(ptsRaw);
-    if (!Number.isFinite(pts) || pts <= 0) return null;
-    let base = 0;
-    for (const c of categories) {
-      const p = c?.pointPerUnit ?? c?.point_per_unit ?? c?.point ?? null;
-      const q = c?.quantity ?? c?.qty ?? c?.weight ?? c?.actualWeight ?? c?.actual_weight ?? null;
-      const pn = typeof p === "number" ? p : Number(p);
-      const qn = typeof q === "number" ? q : Number(q);
-      if (!Number.isFinite(pn) || !Number.isFinite(qn)) continue;
-      base += pn * qn;
-    }
-    if (!Number.isFinite(base) || base <= 0) return null;
-    const r = (pts / base) * 100;
-    if (!Number.isFinite(r)) return null;
-    return Math.max(0, Math.min(100, Math.round(r)));
-  }, [effectiveCollector]);
-
   const rewardRateNum = Number(rewardRateInput);
-  const rewardRateSafe = Number.isFinite(rewardRateNum) ? Math.max(0, Math.min(100, Math.round(rewardRateNum))) : null;
+  const rewardRateSafe = Number.isFinite(rewardRateNum) ? Math.max(0, Math.trunc(rewardRateNum)) : null;
   const handleRewardRateChange = (nextValue) => {
     const s = nextValue == null ? "" : String(nextValue);
     const trimmed = s.trim();
@@ -263,7 +238,7 @@ export default function FeedbackDetailModal({
     if (trimmed.startsWith("-")) {
       const now = Date.now();
       if (now - lastNegativeRateWarnAtRef.current > 800) {
-        notify.error("Verification rate cannot be negative.");
+        notify.error("Points cannot be negative.");
         lastNegativeRateWarnAtRef.current = now;
       }
       setRewardRateInput("0");
@@ -273,7 +248,7 @@ export default function FeedbackDetailModal({
     if (Number.isFinite(num) && num < 0) {
       const now = Date.now();
       if (now - lastNegativeRateWarnAtRef.current > 800) {
-        notify.error("Verification rate cannot be negative.");
+        notify.error("Points cannot be negative.");
         lastNegativeRateWarnAtRef.current = now;
       }
       setRewardRateInput("0");
@@ -286,27 +261,18 @@ export default function FeedbackDetailModal({
     const n = Number(rewardRateInput);
     if (!Number.isFinite(n)) return;
     if (n < 0) {
-      notify.error("Verification rate cannot be negative.");
+      notify.error("Points cannot be negative.");
       return;
     }
-    const rateSafe = Math.max(0, Math.min(100, Math.round(n)));
-    setRewardRateInput(String(rateSafe));
+    const pointsSafe = Math.max(0, Math.trunc(n));
+    setRewardRateInput(String(pointsSafe));
   };
 
   useEffect(() => {
     if (!open) return;
-    const raw = effectiveCollector?.verificationRate ?? effectiveCollector?.verification_rate ?? null;
-    const num = typeof raw === "number" ? raw : Number(raw);
-    if (Number.isFinite(num)) {
-      setRewardRateInput(String(Math.max(0, Math.min(100, Math.round(num)))));
-      return;
-    }
-    if (inferredRate != null) {
-      setRewardRateInput(String(inferredRate));
-      return;
-    }
-    setRewardRateInput("100");
-  }, [effectiveCollector, inferredRate, open]);
+    if (!canUpdatePoints) return;
+    setRewardRateInput((prev) => (String(prev ?? "").trim() ? prev : "0"));
+  }, [canUpdatePoints, open]);
   const hasAttached = Boolean(
     view?.wasteReportId ||
       view?.reportEntityId ||
@@ -722,7 +688,9 @@ export default function FeedbackDetailModal({
                         (mode === "enterprise" &&
                           String(decision || "").toUpperCase() === "RESOLVED" &&
                           (loadingDetail || loadingReports)) ||
-                        (canUpdatePoints && decision === "RESOLVED" && rewardRateSafe == null)
+                        (canUpdatePoints &&
+                          decision === "RESOLVED" &&
+                          (rewardRateSafe == null || rewardRateSafe <= 0))
                       }
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
