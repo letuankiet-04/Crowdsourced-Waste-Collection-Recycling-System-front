@@ -173,7 +173,6 @@ export default function ImpactLeaderboard() {
   const [collectorRows, setCollectorRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [period, setPeriod] = useState("weekly");
 
   useEffect(() => {
     let active = true;
@@ -183,14 +182,18 @@ export default function ImpactLeaderboard() {
         setLoading(true);
         setError(null);
 
-        // Map period names to parameters for API
-        const params = { period };
+        const loadAllTime = () =>
+          Promise.all([getCitizenLeaderboard({ limit: 5 }), getAdminSystemAnalytics()]);
 
-        // Fetch both in parallel
-        const [citizenData, analyticsData] = await Promise.all([
-          getCitizenLeaderboard({ ...params, limit: 5 }),
-          getAdminSystemAnalytics(params),
-        ]);
+        const loadFallbackMonthly = () =>
+          Promise.all([
+            getCitizenLeaderboard({ period: "monthly", limit: 5 }),
+            getAdminSystemAnalytics({ period: "monthly" }),
+          ]);
+
+        const [citizenData, analyticsData] = await loadAllTime().catch(() =>
+          loadFallbackMonthly()
+        );
 
         if (!active) return;
 
@@ -210,7 +213,7 @@ export default function ImpactLeaderboard() {
     return () => {
       active = false;
     };
-  }, [period]);
+  }, []);
 
   return (
     <Card className="overflow-hidden border-none shadow-xl bg-white">
@@ -223,27 +226,8 @@ export default function ImpactLeaderboard() {
             </p>
           </div>
 
-          <div className="flex p-1 bg-slate-100 rounded-2xl self-start">
-            <button
-              onClick={() => setPeriod("weekly")}
-              className={`px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
-                period === "weekly"
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Weekly
-            </button>
-            <button
-              onClick={() => setPeriod("monthly")}
-              className={`px-6 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
-                period === "monthly"
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Monthly
-            </button>
+          <div className="inline-flex items-center justify-center h-9 px-3 rounded-full bg-green-500 text-white self-start text-[11px] font-extrabold tracking-widest shadow-sm">
+            ALL TIME
           </div>
         </div>
       </CardHeader>
