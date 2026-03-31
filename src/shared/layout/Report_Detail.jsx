@@ -64,13 +64,68 @@ export default function ReportDetail({
   }, [safeReport])
 
   const images = useMemo(() => {
-    const raw = safeReport?.images ?? safeReport?.imageUrls ?? safeReport?.image_urls
-    return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
+    const normalize = (value) => {
+      if (typeof value === 'string') return value.trim()
+      if (!value || typeof value !== 'object') return ''
+      const url =
+        value.url ??
+        value.imageUrl ??
+        value.image_url ??
+        value.photoUrl ??
+        value.photo_url ??
+        value.path ??
+        value.src ??
+        value.location ??
+        ''
+      return typeof url === 'string' ? url.trim() : ''
+    }
+    const toList = (value) => {
+      if (Array.isArray(value)) return value.map(normalize).filter(Boolean)
+      if (typeof value === 'string' && value.trim()) {
+        return value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      }
+      return []
+    }
+    const primary = safeReport?.imageUrls ?? safeReport?.image_urls
+    const legacy = safeReport?.images
+    const merged = [...toList(primary), ...toList(legacy)]
+    return Array.from(new Set(merged))
   }, [safeReport])
 
   const collectedImages = useMemo(() => {
-    const raw = safeReport?.collectedImages ?? safeReport?.collectedImageUrls ?? safeReport?.collected_image_urls
-    return Array.isArray(raw) ? raw.filter(Boolean).map(String) : []
+    const normalize = (value) => {
+      if (typeof value === 'string') return value.trim()
+      if (!value || typeof value !== 'object') return ''
+      const url =
+        value.url ??
+        value.imageUrl ??
+        value.image_url ??
+        value.photoUrl ??
+        value.photo_url ??
+        value.path ??
+        value.src ??
+        value.location ??
+        ''
+      return typeof url === 'string' ? url.trim() : ''
+    }
+    const toList = (value) => {
+      if (Array.isArray(value)) return value.map(normalize).filter(Boolean)
+      if (typeof value === 'string' && value.trim()) {
+        return value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      }
+      return []
+    }
+    const primary =
+      safeReport?.collectedImageUrls ?? safeReport?.collected_image_urls ?? safeReport?.collectedImages ?? safeReport?.collected_images
+    const legacy = safeReport?.collectedImages
+    const merged = [...toList(primary), ...toList(legacy)]
+    return Array.from(new Set(merged))
   }, [safeReport])
 
   const wasteItemsEntries = useMemo(() => {

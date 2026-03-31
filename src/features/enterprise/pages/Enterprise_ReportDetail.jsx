@@ -124,14 +124,6 @@ export default function EnterpriseReportDetail() {
       (typeof base?.description === "string" && base.description.trim()) ||
       "";
 
-    const imagesRaw =
-      base?.images ??
-      base?.imageUrls ??
-      base?.image_urls ??
-      base?.photos ??
-      base?.photoUrls ??
-      base?.photo_urls ??
-      null;
     const normalizeImage = (value) => {
       if (typeof value === "string") return value.trim();
       if (!value || typeof value !== "object") return "";
@@ -147,15 +139,31 @@ export default function EnterpriseReportDetail() {
         "";
       return typeof url === "string" ? url.trim() : "";
     };
-    const images =
-      Array.isArray(imagesRaw)
-        ? imagesRaw.map(normalizeImage).filter(Boolean)
-        : typeof imagesRaw === "string" && imagesRaw.trim()
-          ? imagesRaw
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [];
+    const primaryImages =
+      Array.isArray(base?.imageUrls) && base.imageUrls.length
+        ? base.imageUrls
+        : Array.isArray(base?.image_urls) && base.image_urls.length
+          ? base.image_urls
+          : Array.isArray(base?.photos) && base.photos.length
+            ? base.photos
+            : Array.isArray(base?.photoUrls) && base.photoUrls.length
+              ? base.photoUrls
+              : Array.isArray(base?.photo_urls) && base.photo_urls.length
+                ? base.photo_urls
+                : null;
+    const legacyImages = base?.images ?? null;
+    const toList = (value) => {
+      if (Array.isArray(value)) return value.map(normalizeImage).filter(Boolean);
+      if (typeof value === "string" && value.trim()) {
+        return value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
+    const merged = [...toList(primaryImages), ...toList(legacyImages)];
+    const images = Array.from(new Set(merged));
 
     const typesRaw = Array.isArray(base?.types) ? base.types.filter(Boolean).map(String) : [];
     const categoriesRaw = Array.isArray(base?.categories) ? base.categories : [];
@@ -264,6 +272,11 @@ export default function EnterpriseReportDetail() {
       setEligibleCollectorSource(null);
       return;
     }
+    const normalizedStatus = normalizeReportStatus(report?.status);
+    if (normalizedStatus !== "Accepted" && normalizedStatus !== "Reassign") {
+      setEligibleCollectorSource(null);
+      return;
+    }
     let cancelled = false;
     setEligibleCollectorsLoading(true);
     setCollectorsError("");
@@ -275,8 +288,16 @@ export default function EnterpriseReportDetail() {
       .catch((err) => {
         if (cancelled) return;
         const message = err?.message || "Unable to load eligible collectors.";
-        setCollectorsError(message);
-        notify.error("Load collectors failed", message);
+        const suppress =
+          /ACCEPTED_ENTERPRISE|REASSIGN/i.test(message) ||
+          /chỉ\s*hỗ\s*trợ/i.test(message) ||
+          /chi\s*ho\s*tro/i.test(message);
+        if (!suppress) {
+          setCollectorsError(message);
+          notify.error("Load collectors failed", message);
+        } else {
+          setCollectorsError("");
+        }
       })
       .finally(() => {
         if (cancelled) return;
