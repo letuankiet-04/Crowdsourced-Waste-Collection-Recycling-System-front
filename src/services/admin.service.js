@@ -36,9 +36,32 @@ export async function activateAdminAccount(userId) {
   return unwrapApiResponse(data)
 }
 
-export async function updateAdminAccount(userId, payload) {
-  const { data } = await api.patch(`/api/admin/accounts/${userId}`, payload)
+export async function updateCitizenProfileByAdmin(userId, payload) {
+  const { data } = await api.put(`/api/admin/accounts/${userId}/citizen-profile`, payload)
   return unwrapApiResponse(data)
+}
+
+export async function updateCollectorProfileByAdmin(userId, payload) {
+  const { data } = await api.put(`/api/admin/accounts/${userId}/collector-profile`, payload)
+  return unwrapApiResponse(data)
+}
+
+export async function updateEnterpriseProfileByAdmin(userId, payload) {
+  const { data } = await api.put(`/api/admin/accounts/${userId}/enterprise-profile`, payload)
+  return unwrapApiResponse(data)
+}
+
+export async function updateAdminAccount(userId, payload) {
+  try {
+    const { data } = await api.patch(`/api/admin/accounts/${userId}`, payload)
+    return unwrapApiResponse(data)
+  } catch (err) {
+    if (err?.status === 405) {
+      const { data } = await api.put(`/api/admin/accounts/${userId}`, payload)
+      return unwrapApiResponse(data)
+    }
+    throw err
+  }
 }
 
 export async function deleteAdminAccount(userId) {

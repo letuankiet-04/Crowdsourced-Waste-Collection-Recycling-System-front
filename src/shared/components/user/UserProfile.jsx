@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import useStoredUser from "../../hooks/useStoredUser.js";
 import { cn } from "../../lib/cn.js";
 import { getMyProfileByRole, updateProfile } from "../../../services/auth.service.js";
+import { normalizeRole } from "../../lib/accountStatus.js";
 import UserProfileHeader from "./UserProfileHeader.jsx";
 import UserProfilePersonalDetailsCard from "./UserProfilePersonalDetailsCard.jsx";
 import UserProfileSecuritySettingsCard from "./UserProfileSecuritySettingsCard.jsx";
@@ -14,8 +15,12 @@ export default function UserProfile({ user: propUser, className }) {
   const [pending, setPending] = useState(false);
   const [formData, setFormData] = useState({});
   const hydrateRef = useRef("");
-  const roleNormalized = String(user?.role ?? user?.roleCode ?? "").toLowerCase();
-  const canEditProfile = roleNormalized === "citizen" || roleNormalized === "enterprise";
+  const roleNormalized = normalizeRole(user?.role ?? user?.roleCode) || "";
+  const canEditProfile =
+    roleNormalized === "citizen" || roleNormalized === "enterprise" || roleNormalized === "collector" || roleNormalized === "admin";
+  const canEditEmail = roleNormalized === "enterprise" || roleNormalized === "collector" || roleNormalized === "admin";
+  const canEditPhone = roleNormalized === "citizen" || roleNormalized === "enterprise";
+  const canEditAddress = roleNormalized === "citizen" || roleNormalized === "enterprise";
 
   useEffect(() => {
     if (user) {
@@ -200,6 +205,9 @@ export default function UserProfile({ user: propUser, className }) {
           status={status}
           enterpriseId={enterpriseId}
           enterpriseName={enterpriseName}
+          canEditEmail={canEditEmail}
+          canEditPhone={canEditPhone}
+          canEditAddress={canEditAddress}
         />
         <UserProfileSecuritySettingsCard />
       </div>

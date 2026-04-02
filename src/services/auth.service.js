@@ -150,7 +150,9 @@ export async function updateProfile(userData) {
         ? '/api/enterprise/profile'
         : role === 'collector'
           ? '/api/collector/profile'
-          : '/api/users/profile'
+          : role === 'admin'
+            ? '/api/admin/accounts/me/profile'
+            : '/api/users/profile'
 
   const payload =
     role === 'citizen'
@@ -177,9 +179,14 @@ export async function updateProfile(userData) {
               vehicleType: userData?.vehicleType ?? userData?.vehicle_type ?? undefined,
               vehiclePlate: userData?.vehiclePlate ?? userData?.vehicle_plate ?? undefined,
             }
+          : role === 'admin'
+            ? {
+                fullName: userData?.fullName ?? undefined,
+                email: userData?.email ?? undefined,
+              }
           : userData ?? {}
 
-  const { data } = await api.put(endpoint, payload)
+  const { data } = await (role === 'admin' ? api.patch(endpoint, payload) : api.put(endpoint, payload))
   return sanitizeProfile(unwrapApiResponse(data))
 }
 
@@ -199,7 +206,9 @@ export async function changePassword({ currentPassword, newPassword, confirmNewP
         ? '/api/enterprise/password'
         : role === 'collector'
           ? '/api/collector/password'
-          : null
+          : role === 'admin'
+            ? '/api/admin/accounts/me/password'
+            : null
 
   if (!endpoint) throw new Error('Unsupported user role for password change')
 

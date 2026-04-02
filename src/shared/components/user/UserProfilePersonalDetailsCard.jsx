@@ -12,6 +12,9 @@ const UserProfilePersonalDetailsCard = memo(function UserProfilePersonalDetailsC
   status,
   enterpriseId,
   enterpriseName,
+  canEditEmail = false,
+  canEditPhone = false,
+  canEditAddress = false,
 }) {
   return (
     <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 h-full flex flex-col">
@@ -22,9 +25,9 @@ const UserProfilePersonalDetailsCard = memo(function UserProfilePersonalDetailsC
       <div className="space-y-8 flex-1">
         <div className="space-y-8">
           <UserProfileDetailRow label="Full Name" value={formData.fullName} isEditing={isEditing} name="fullName" onChange={onChange} />
-          <UserProfileDetailRow label="Email Address" value={formData.email} isEditing={false} name="email" onChange={onChange} />
-          <UserProfileDetailRow label="Phone Number" value={formData.phone} isEditing={isEditing} name="phone" onChange={onChange} />
-          {isEditing ? (
+          <UserProfileDetailRow label="Email Address" value={formData.email} isEditing={isEditing && canEditEmail} name="email" onChange={onChange} type="email" />
+          <UserProfileDetailRow label="Phone Number" value={formData.phone} isEditing={isEditing && canEditPhone} name="phone" onChange={onChange} />
+          {isEditing && canEditAddress ? (
             <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Address Details</div>
               <input

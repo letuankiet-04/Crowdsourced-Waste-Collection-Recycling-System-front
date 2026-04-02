@@ -12,7 +12,9 @@ import {
   getAdminAccountById,
   getAdminAccounts,
   suspendAdminAccount,
-  updateAdminAccount,
+  updateCitizenProfileByAdmin,
+  updateCollectorProfileByAdmin,
+  updateEnterpriseProfileByAdmin,
 } from "../../../services/admin.service.js";
 import useNotify from "../../../shared/hooks/useNotify.js";
 import PaginationControls from "../../../shared/ui/PaginationControls.jsx";
@@ -24,10 +26,11 @@ import CreateCollectorDialog from "../components/userManagement/CreateCollectorD
 import CreateEnterpriseDialog from "../components/userManagement/CreateEnterpriseDialog.jsx";
 import ConfirmDialog from "../../../shared/ui/ConfirmDialog.jsx";
 import { getPendingAdminFeedbackCount } from "../../../services/feedback.service.js";
+import { normalizeRole } from "../../../shared/lib/accountStatus.js";
 
 export default function AdminUserManagement() {
   const notify = useNotify();
-  const canUpdateUsers = String(import.meta.env?.VITE_ENABLE_ADMIN_USER_UPDATE || "").toLowerCase() === "true";
+  const canUpdateUsers = String(import.meta.env?.VITE_ENABLE_ADMIN_USER_UPDATE || "").toLowerCase() !== "false";
   const [filter, setFilter] = useState({
     search: "",
     role: null,
@@ -45,7 +48,7 @@ export default function AdminUserManagement() {
   const [editError, setEditError] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editUser, setEditUser] = useState(null);
-  const [editDraft, setEditDraft] = useState({ email: "", fullName: "", phone: "" });
+  const [editDraft, setEditDraft] = useState({ email: "", fullName: "", phone: "", vehicleType: "", vehiclePlate: "" });
   const [confirmSuspendOpen, setConfirmSuspendOpen] = useState(false);
   const [confirmSuspendUser, setConfirmSuspendUser] = useState(null);
   const [confirmActivateOpen, setConfirmActivateOpen] = useState(false);
@@ -230,6 +233,8 @@ export default function AdminUserManagement() {
       email: String(user?.email || ""),
       fullName: String(user?.fullName || ""),
       phone: String(user?.phone || ""),
+      vehicleType: "",
+      vehiclePlate: "",
     });
     setEditOpen(true);
 
@@ -243,6 +248,8 @@ export default function AdminUserManagement() {
         email: String(resolved?.email || ""),
         fullName: String(resolved?.fullName || ""),
         phone: String(resolved?.phone || ""),
+        vehicleType: "",
+        vehiclePlate: "",
       });
     } catch {
       return;
@@ -255,7 +262,7 @@ export default function AdminUserManagement() {
     setEditError("");
     setEditSubmitting(false);
     setEditUser(null);
-    setEditDraft({ email: "", fullName: "", phone: "" });
+    setEditDraft({ email: "", fullName: "", phone: "", vehicleType: "", vehiclePlate: "" });
   };
 
   const handleEditSubmit = async (e) => {
@@ -268,38 +275,85 @@ export default function AdminUserManagement() {
     const userId = editUser?.id;
     if (!userId) return;
 
-    const payload = {
-      email: String(editDraft.email || "").trim(),
-      fullName: String(editDraft.fullName || "").trim(),
-      phone: String(editDraft.phone || "").trim(),
-    };
+    const roleKey = normalizeRole(editUser?.roleCode || editUser?.roleName || editUser?.role);
+    const isCitizen = roleKey === "citizen";
+    const isCollector = roleKey === "collector";
+    const isEnterprise = roleKey === "enterprise";
 
-    if (!payload.email || !payload.fullName) {
-      setEditError("Please fill in Email and Full name.");
+    const email = String(editDraft.email || "").trim();
+    const fullName = String(editDraft.fullName || "").trim();
+    const nextPhone = String(editDraft.phone || "").trim();
+    const prevPhone = String(editUser?.phone || "").trim();
+
+    if (!email) {
+      setEditError("Please fill in Email.");
+      return;
+    }
+    if ((isCitizen || isCollector) && !fullName) {
+      setEditError("Please fill in Full name.");
+      return;
+    }
+    if (!isCitizen && !isCollector && !isEnterprise) {
+      setEditError("This user role is not supported for editing.");
       return;
     }
 
     setEditError("");
     setEditSubmitting(true);
     try {
-      const updated = await notify.promise(updateAdminAccount(userId, payload), {
+      const requestPromise = (() => {
+        if (isCitizen) {
+          const payload = { email, fullName };
+          if (nextPhone) payload.phone = nextPhone;
+          else if (prevPhone) payload.phone = "";
+          return updateCitizenProfileByAdmin(userId, payload);
+        }
+        if (isCollector) {
+          const vehicleType = String(editDraft.vehicleType || "").trim();
+          const vehiclePlate = String(editDraft.vehiclePlate || "").trim();
+          const payload = { email, fullName };
+          if (vehicleType) payload.vehicleType = vehicleType;
+          if (vehiclePlate) payload.vehiclePlate = vehiclePlate;
+          return updateCollectorProfileByAdmin(userId, payload);
+        }
+        const payload = { email };
+        if (nextPhone) payload.phone = nextPhone;
+        else if (prevPhone) payload.phone = "";
+        return updateEnterpriseProfileByAdmin(userId, payload);
+      })();
+
+      const updated = await notify.promise(requestPromise, {
         loadingTitle: "Updating user",
         successTitle: "Success",
         successMessage: "User updated.",
         errorTitle: "Error",
       });
-      const patch = updated && typeof updated === "object" ? updated : payload;
+      const fallbackPatch = (() => {
+        if (isCitizen) {
+          const patch = { email, fullName };
+          if (nextPhone) patch.phone = nextPhone;
+          else if (prevPhone) patch.phone = "";
+          return patch;
+        }
+        if (isCollector) return { email, fullName };
+        const patch = { email };
+        if (nextPhone) patch.phone = nextPhone;
+        else if (prevPhone) patch.phone = "";
+        return patch;
+      })();
+      const patch = updated && typeof updated === "object" ? updated : fallbackPatch;
       setAllUsers((prev) => (Array.isArray(prev) ? prev.map((u) => (u?.id === userId ? { ...u, ...patch } : u)) : prev));
       setSelectedUser((prev) => (prev?.id === userId ? { ...prev, ...patch } : prev));
+      void refreshUsers();
       closeEdit(true);
     } catch (err) {
       const status = err?.status;
       if (status === 401 || status === 403) {
         setEditError("You are not authorized to perform this action.");
       } else if (status === 404 || status === 405) {
-        setEditError("The backend does not support updating users (PATCH /api/admin/accounts/{id}).");
+        setEditError("The backend does not support this update endpoint for the selected user role.");
       } else if (typeof status === "number" && status >= 500) {
-        setEditError("Server error while updating the user. Please check PATCH /api/admin/accounts/{id}.");
+        setEditError(err?.message ? `Server error while updating the user: ${err.message}` : "Server error while updating the user.");
       } else {
         setEditError(err?.message || "Unable to update user.");
       }
@@ -350,6 +404,8 @@ export default function AdminUserManagement() {
     setCurrentPage(1);
   };
   const handlePageChange = (page) => setCurrentPage(page);
+
+  const editRoleKey = normalizeRole(editUser?.roleCode || editUser?.roleName || editUser?.role);
 
   return (
     <RoleLayout
@@ -553,6 +609,11 @@ export default function AdminUserManagement() {
                     {editError}
                   </div>
                 ) : null}
+                {editRoleKey === "enterprise" ? (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-800">
+                    Enterprise accounts support updating Email and Phone only.
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -587,25 +648,57 @@ export default function AdminUserManagement() {
                       required
                     />
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Full name</label>
-                    <input
-                      value={editDraft.fullName}
-                      onChange={(e) => setEditDraft((prev) => ({ ...prev, fullName: e.target.value }))}
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
-                      disabled={editSubmitting || !canUpdateUsers}
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Phone</label>
-                    <input
-                      value={editDraft.phone}
-                      onChange={(e) => setEditDraft((prev) => ({ ...prev, phone: e.target.value }))}
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
-                      disabled={editSubmitting || !canUpdateUsers}
-                    />
-                  </div>
+                  {editRoleKey !== "enterprise" ? (
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Full name</label>
+                      <input
+                        value={editDraft.fullName}
+                        onChange={(e) => setEditDraft((prev) => ({ ...prev, fullName: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
+                        disabled={editSubmitting || !canUpdateUsers}
+                        required
+                      />
+                    </div>
+                  ) : null}
+                  {editRoleKey === "citizen" || editRoleKey === "enterprise" ? (
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Phone</label>
+                      <input
+                        value={editDraft.phone}
+                        onChange={(e) => setEditDraft((prev) => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
+                        disabled={editSubmitting || !canUpdateUsers}
+                      />
+                    </div>
+                  ) : null}
+                  {editRoleKey === "collector" ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Vehicle type</label>
+                        <select
+                          value={editDraft.vehicleType}
+                          onChange={(e) => setEditDraft((prev) => ({ ...prev, vehicleType: e.target.value }))}
+                          className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
+                          disabled={editSubmitting || !canUpdateUsers}
+                        >
+                          <option value="">Keep unchanged</option>
+                          <option value="CAR">CAR</option>
+                          <option value="TRUCK">TRUCK</option>
+                          <option value="MOTORBIKE">MOTORBIKE</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Vehicle plate</label>
+                        <input
+                          value={editDraft.vehiclePlate}
+                          onChange={(e) => setEditDraft((prev) => ({ ...prev, vehiclePlate: e.target.value }))}
+                          className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-green-500 outline-none"
+                          disabled={editSubmitting || !canUpdateUsers}
+                          placeholder="Keep unchanged"
+                        />
+                      </div>
+                    </>
+                  ) : null}
                 </div>
 
                 <div className="pt-2 flex justify-end gap-3">
